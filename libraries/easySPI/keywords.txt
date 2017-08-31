@@ -1,0 +1,28 @@
+#######################################
+# Syntax Coloring Map For easySPI
+####################################### 
+# Class
+#######################################
+
+easySPI	KEYWORD3
+
+#######################################
+# Methods and Functions 
+#######################################	
+
+spi_transfer	KEYWORD2
+spi_begin	KEYWORD2
+spi_end		KEYWORD2
+
+#######################################
+# Constants
+#######################################
+
+SPI_CLOCK_DIV4   LITERAL1
+SPI_CLOCK_DIV16  LITERAL1
+SPI_CLOCK_DIV64  LITERAL1
+SPI_CLOCK_DIV128 LITERAL1
+SPI_MODE0        LITERAL1
+SPI_MODE1        LITERAL1
+SPI_MODE2        LITERAL1
+SPI_MODE3        LITERAL1

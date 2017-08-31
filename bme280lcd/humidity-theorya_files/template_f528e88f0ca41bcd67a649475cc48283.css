@@ -1,0 +1,675 @@
+
+
+
+/* Start:/bitrix/templates/microfor_v1/components/bitrix/menu/horizontal_multilevel/style.css?13014866634621*/
+/**Top menu**/
+#horizontal-multilevel-menu,#horizontal-multilevel-menu ul
+{
+	margin:0; padding:0;
+	height:21px;
+	width:497px;
+	list-style:none;
+	font-size:10px;
+	float:left;
+	/*font-size:90%*/
+}
+
+#horizontal-multilevel-menu
+{
+	
+}
+
+/*Links*/
+#horizontal-multilevel-menu a
+{
+	display:block;
+	/*padding:0.3em 0.8em;*/
+	text-decoration:none;
+	text-align:center;
+}
+
+#horizontal-multilevel-menu li 
+{
+	float:left;
+	margin:0; padding:0;
+	font-style:italic;
+}
+
+/*Root items*/
+#horizontal-multilevel-menu li a.root-item
+{
+	color:#222222;
+	font-weight:bold;
+	/*padding:7px 12px;*/
+	padding:0px 5px;
+	font-style:italic;
+}
+
+/*Root menu selected*/
+#horizontal-multilevel-menu li a.root-item-selected
+{
+	/*background:#fc8d3d;*/
+	color:#222222;
+	font-weight:bold;
+	/*padding:7px 12px;*/
+	padding:0px 5px;
+}
+
+/*Root items: hover*/
+#horizontal-multilevel-menu li:hover a.root-item, #horizontal-multilevel-menu li.jshover a.root-item
+{
+	/*background:#e26336;*/
+	color:#fff;
+}
+
+/*Item-parents*/
+#horizontal-multilevel-menu a.parent
+{
+	background: url(/bitrix/templates/microfor_v1/components/bitrix/menu/horizontal_multilevel/images/arrow.gif) center right no-repeat;
+}
+
+/*Denied items*/
+#horizontal-multilevel-menu a.denied
+{
+	background: url(/bitrix/templates/microfor_v1/components/bitrix/menu/horizontal_multilevel/images/lock.gif) center right no-repeat;
+}
+
+/*Child-items: hover*/
+#horizontal-multilevel-menu li:hover, #horizontal-multilevel-menu li.jshover
+{
+	background:#D6D6D6;
+	color:#fff;
+}
+
+/*Child-items selected*/
+#horizontal-multilevel-menu li.item-selected
+{
+	background:#D6D6D6;
+	color:#fff;
+}
+
+/*Sub-menu box*/
+#horizontal-multilevel-menu li ul
+{
+	position:absolute;
+	/*top:-999em;*/
+	top:auto;
+	display:none;
+	z-index:500;
+
+	height:auto;
+	/*width:12em;*/
+	width:135px;
+	background:#F5F5F5;
+	border:1px solid #C1C1C1;
+	padding:5px 5px;
+}
+
+/*Sub-menu item box*/
+#horizontal-multilevel-menu li li 
+{
+	width:100%;
+	border-bottom:1px solid #DEDEDE;
+
+	padding:5px 0px;
+}
+
+/*Item link*/
+#horizontal-multilevel-menu li ul a
+{
+	text-align:left;
+}
+
+/*Items text color & size */
+#horizontal-multilevel-menu li a,
+#horizontal-multilevel-menu li:hover li a,
+#horizontal-multilevel-menu li.jshover li a,
+#horizontal-multilevel-menu li:hover li:hover li a,
+#horizontal-multilevel-menu li.jshover li.jshover li a,
+#horizontal-multilevel-menu li:hover li:hover li:hover li a,
+#horizontal-multilevel-menu li.jshover li.jshover li.jshover li a,
+#horizontal-multilevel-menu li:hover li:hover li:hover li:hover li a,
+#horizontal-multilevel-menu li.jshover li.jshover li.jshover li.jshover li a,
+#horizontal-multilevel-menu li:hover li:hover li:hover li:hover li:hover li a,
+#horizontal-multilevel-menu li.jshover li.jshover li.jshover li.jshover li.jshover li a
+{
+	color:#4F4F4F;
+	font-weight:bold;
+}
+
+/*Items text color & size: hover*/
+#horizontal-multilevel-menu li:hover li:hover a,
+#horizontal-multilevel-menu li.jshover li.jshover a,
+#horizontal-multilevel-menu li:hover li:hover li:hover a,
+#horizontal-multilevel-menu li.jshover li.jshover li.jshover a,
+#horizontal-multilevel-menu li:hover li:hover li:hover li:hover a,
+#horizontal-multilevel-menu li.jshover li.jshover li.jshover li.jshover a
+#horizontal-multilevel-menu li:hover li:hover li:hover li:hover li:hover a,
+#horizontal-multilevel-menu li.jshover li.jshover li.jshover li.jshover li.jshover a
+#horizontal-multilevel-menu li:hover li:hover li:hover li:hover li:hover li:hover a,
+#horizontal-multilevel-menu li.jshover li.jshover li.jshover li.jshover li.jshover li.jshover a
+{
+	color:#4F4F4F;
+}
+
+#horizontal-multilevel-menu li ul ul
+{
+	margin:-27px 0 0 132px;
+}
+
+#horizontal-multilevel-menu li:hover ul ul,
+#horizontal-multilevel-menu li.jshover ul ul,
+#horizontal-multilevel-menu li:hover ul ul ul,
+#horizontal-multilevel-menu li.jshover ul ul ul,
+#horizontal-multilevel-menu li:hover ul ul ul ul,
+#horizontal-multilevel-menu li.jshover ul ul ul ul,
+#horizontal-multilevel-menu li:hover ul ul ul ul ul,
+#horizontal-multilevel-menu li.jshover ul ul ul ul ul
+{
+	/*top:-999em;*/
+	display:none;
+}
+
+#horizontal-multilevel-menu li:hover ul,
+#horizontal-multilevel-menu li.jshover ul,
+#horizontal-multilevel-menu li li:hover ul,
+#horizontal-multilevel-menu li li.jshover ul,
+#horizontal-multilevel-menu li li li:hover ul,
+#horizontal-multilevel-menu li li li.jshover ul,
+#horizontal-multilevel-menu li li li li:hover ul,
+#horizontal-multilevel-menu li li li li.jshover ul,
+#horizontal-multilevel-menu li li li li li:hover ul,
+#horizontal-multilevel-menu li li li li li.jshover ul
+{
+	/*z-index:1000;
+	top:auto;*/
+	display:block;
+}
+
+div.menu-clear-left
+{
+	clear:left;
+}
+
+#horizontal-multilevel-menu li li li,
+#horizontal-multilevel-menu li li li li,
+#horizontal-multilevel-menu li li li li li
+{
+	font-size: 85%;
+	font-weight:none;
+}
+/* End */
+
+
+
+/* Start:/bitrix/templates/.default/components/bitrix/breadcrumb/microfor_v1/style.css?1328792027261*/
+ul.breadcrumb-navigation
+{
+	padding:0; margin:0;
+	padding-top:4px;
+	list-style:none;
+}
+
+ul.breadcrumb-navigation li
+{
+	display:inline;
+margin : 0px 5px}
+
+ul.breadcrumb-navigation a
+{
+text-decoration:none;
+font-weight:bold;
+}
+
+ul.breadcrumb-navigation span
+{
+	
+}
+/* End */
+
+
+
+/* Start:/bitrix/templates/.default/components/bitrix/news.list/mic_list_2col/style.css?1328615892108*/
+div.news-list img.preview_picture
+{
+	float:left;
+	margin:0 4px 6px 0;
+}
+.news-date-time {
+	color:#486DAA;
+}
+
+/* End */
+
+
+
+/* Start:/bitrix/templates/.default/components/bitrix/news.list/microfor_v1_newslist_min/style.css?1300873301108*/
+div.news-list img.preview_picture
+{
+	float:left;
+	margin:0 4px 6px 0;
+}
+.news-date-time {
+	color:#486DAA;
+}
+
+/* End */
+
+
+
+/* Start:/bitrix/components/bitrix/search.suggest.input/templates/.default/style.css?1299053407501*/
+input.search-suggest {}
+div.search-popup{border: 1px solid #333333;background: #FFFFFF;padding: 2px;margin: 0px;}
+div.search-popup-row, div.search-popup-row-active{position: relative; padding: 2px 4px;margin: 0px;cursor: hand;cursor: pointer;}
+div.search-popup-row{background:#FFFFFF;}
+div.search-popup-row-active{background:#EEEEEE;}
+div.search-popup-el-name, div.search-popup-el-cnt{position: relative; margin:0px;padding:0px;text-align:left;}
+div.search-popup-el-cnt{text-align:right; float:right;}
+/* End */
+
+
+
+/* Start:/bitrix/templates/.default/components/bitrix/menu/microfor_v1_bottom/style.css?13016468881731*/
+/**Top menu**/
+
+#microfor_bottom_menu,#microfor_bottom_menu ul
+{
+/*display:block;*/
+display:inline;
+	text-align:center;
+ margin:0 auto;
+	 padding:0;
+padding-top:5px;
+	height:21px;
+	list-style:none;
+	font-size:10px;
+	/*float:left;*/
+}
+
+#microfor_bottom_menu
+{
+text-align:center;
+	
+}
+
+/*Links*/
+#microfor_bottom_menu a
+{
+	/*display:block;*/
+
+display:inline;
+	/*padding:0.3em 0.8em;*/
+	text-decoration:none;
+	text-align:center;
+}
+
+#microfor_bottom_menu li 
+{
+	/*float:left;*/
+
+display:inline;
+	margin:0; padding:0;
+	font-style:italic;
+}
+
+/*Root items*/
+#microfor_bottom_menu li a.root-item
+{
+	/*color:#222222;*/
+	font-weight:bold;
+	/*padding:7px 12px;*/
+	padding:0px 5px;
+	font-style:italic;
+}
+
+/*Root menu selected*/
+#microfor_bottom_menu li a.root-item-selected
+{
+	/*background:#fc8d3d;
+	color:#222222;*/
+	font-weight:bold;
+	/*padding:7px 12px;*/
+	padding:0px 5px;
+}
+
+/*Root items: hover*/
+#microfor_bottom_menu li:hover a.root-item, #microfor_bottom_menu li.jshover a.root-item
+{
+	/*background:#e26336;
+	color:#fff;*/
+}
+
+/*Item-parents*/
+#horizontal-multilevel-menu a.parent
+{
+	/*background: url(/bitrix/templates/.default/components/bitrix/menu/microfor_v1_bottom/images/arrow.gif) center right no-repeat;*/
+}
+
+/*Denied items*/
+#microfor_bottom_menu a.denied
+{
+	/*background: url(/bitrix/templates/.default/components/bitrix/menu/microfor_v1_bottom/images/lock.gif) center right no-repeat;*/
+}
+
+/*Child-items: hover*/
+#microfor_bottom_menu li:hover, #microfor_bottom_menu li.jshover
+{
+	/*background:#D6D6D6;*/
+	color:#fff;
+}
+
+/*Child-items selected*/
+#microfor_bottom_menu li.item-selected
+{
+	background:#D6D6D6;
+	color:#fff;
+}
+
+/*Sub-menu box*/
+#microfor_bottom_menu li ul
+{
+	position:absolute;
+	/*top:-999em;*/
+	top:auto;
+	display:none;
+	z-index:500;
+
+	height:auto;
+	/*width:12em;*/
+	width:135px;
+	background:#F5F5F5;
+	border:1px solid #C1C1C1;
+	padding:5px 5px;
+}
+
+
+/* End */
+
+
+
+/* Start:/bitrix/templates/microfor_v1/styles.css?14610500611096*/
+h4, h5, h6
+{
+	font-size:110%;
+}
+
+/*Information block*/
+.information-block
+{
+	width:180px;
+	margin-bottom:16px;
+}
+
+.information-block-head
+{
+	color:#BC262C;
+	font-weight:bold;
+	font-size:85%;
+	border-bottom:1px solid #CCCCCC;
+	margin-bottom:4px;
+	padding-bottom:5px;
+}
+
+.information-block-body
+{
+	font-size:85%;
+	color:#737373;
+	margin-right:20px;
+}
+
+/*Content block*/
+.content-block
+{
+	border-top-color:#E4E4E4;
+	background:#F5F5F5;
+	margin-bottom:5px;
+	width:100%;
+}
+
+.content-block-head
+{
+	background-image:url(/bitrix/templates/microfor_v1/images/content_block_bg.gif);
+	font-weight:bold;
+	font-size:95%;
+	margin:2px;
+	padding: 5px 9px;
+}
+
+.content-block-body
+{
+	padding:4px 5px;
+	width:100%;
+}
+
+code
+{
+	font-size:100%;
+	font-weight:normal;
+	display:block;
+	padding:1.5em 1em 1em 1em;
+	border-style:solid;
+	border-width:1px;
+	border-width:1px 0;
+	margin:1em 0;
+	background-color:#F5F5F5;
+	font-family:sans-serif;
+}
+
+.cont1{
+	color: #003366;
+	text-align: left;
+	font-style: normal;
+}
+.cont1_1{
+	color: #003366;
+	text-align: right;
+	font-style: normal;
+}
+.cont1_2{
+	color: #003366;
+	text-align: center;
+	font-style: normal;
+}
+/* End */
+
+
+
+/* Start:/bitrix/templates/microfor_v1/template_styles.css?14610500613449*/
+html,body{
+	width :100%;
+	height : 100%;
+	margin : 0px;
+	padding : 0px;
+}
+body,tr,td,th,p,blockquote,ol,ul,li,span,div {
+	font-family: Arial, Helvetica, sans-serif;
+	font-size : 10pt;
+	color: Black;
+	font-style : normal;
+}
+ol,ul,li{
+	margin: 10px;
+	padding: 0px;
+}
+table{
+	border-color: #CCC;
+	border-collapse: collapse;
+}
+td{
+	border-color: #CCC;
+}
+tr{
+	border-color: #CCC;
+}
+
+body {background-color:#f6fbfe}
+
+a{color:#3871A5;text-decoration:underline}
+a:hover {color:#ff0000;text-decoration:underline}
+
+a.linkCopy, a.linkCopy:hover{color:#777777;text-decoration:underline}
+a.linkSub:link,a.linkSub:visited{
+	font-size : 11px;
+	color: #003366;
+	font-weight:bold;
+	text-decoration:none
+}
+a.linkSub:hover,a.linkSub:active{color:#ffffff}
+a.linkSub2:link,a.linkSub2:visited{font-size : 10px;color:#ffffff;font-weight:bold;text-decoration:none}
+a.linkSub2:hover,a.linkSub2:active{color:#ffffff;text-decoration:underline}
+
+.textNewsDate{color:#000000;font-weight:bold}
+.textSub{color:#B4B4B4;font-weight:bold;}
+
+.headerNews{
+	color:#F0000D;
+	font-weight:bold;
+	text-align : center;
+}
+
+.BkgLeft {background-color: #ffffff;}
+
+.divSubPadding {padding: 2px 0px 2px 1px}
+.DivView{
+	position:absolute;
+	visibility:hidden;
+	z-index:2;
+	width:212px;
+	border: 1px solid #AEBBC9;
+	background-color: #ffffff;
+}
+.tdDiv{position:relative;z-index:1}
+.divPaddingCopy {padding: 10px 10px 10px 190px;text-align:center}
+.menuPadding {padding: 2px 2px 2px 2px}
+.menuSubPadding {padding: 7px 5px 10px 5px}
+.menuSubPadding2 {padding: 0px 5px 3px 30px}
+.menuSubPadding3 {padding: 5px 5px 3px 15px}
+.content{padding: 0px 10px 0px 0px;text-align:justify; width:590px}
+
+h1{	border: 0;
+	padding: 15px;
+	font-style: oblique;
+	color: #003366;
+	font-size: medium;
+	letter-spacing: -1.5px;
+	font-weight: bold;
+	text-align: center;
+	vertical-align: middle;
+	font-family: Arial, Helvetica, sans-serif;
+}
+
+h2{	border: 0;
+	font-style: oblique;
+	color: #003366;
+	font-size: 10pt;
+	text-align: center;
+	font-style: normal;
+	font-weight: bold;
+}
+
+h3{	border: 0;
+	padding: 5px 15px 0px 15px;
+	font-style: oblique;
+	color: #003366;
+	font-size: 10pt;
+	text-align: center;
+	font-style: normal;
+	font-weight: bold;
+}
+.new{
+	color:#F0000D;
+	font-weight:bold;
+}
+.news{
+	color:#F0000D;
+	font-weight: normal;
+	font-style: oblique;
+	text-align: left;
+}
+.pozdrav{
+	color:#F0000D;
+	font-weight: normal;
+	font-style: oblique;
+	text-align: left;
+}
+.header1{
+	font-family: Arial, Helvetica, sans-serif;
+	font-style: italic;
+	color: Black;
+	font-size: 11pt;
+	letter-spacing: normal;
+	text-align: center;
+	vertical-align: middle;
+}
+.left{
+	float: left;
+	padding: 0px 10px 10px 0px;
+}
+.right{
+	float: right;
+	padding: 0px 0px 10px 10px;
+}
+.cont2{
+	color: Black;
+	text-align: justify;
+	font-style: normal;
+}
+.charakter{
+	color: #003366;
+	font-size: 10pt;
+	text-align: center;
+	font-style: normal;
+	font-weight: bold;
+}
+.podpisi{
+	color:#3871A5;
+	font-weight: bold;
+	text-align: center;
+}
+.formula {
+	text-align: center;
+}
+ol{
+	color: #3871A5;
+	text-align: left;
+	font-style: normal;
+	padding-left: 10px;
+}
+li.blue {
+	color: #3871A5;
+	text-align: left;
+	font-style: normal;
+	padding-left: 5px;
+}
+.cont4 {
+	color: #003366;
+	text-align: left;
+	font-style: normal;
+	padding-left: 20px;
+}
+.cont3 {
+	color: Black;
+	text-align: justify;
+	font-style: normal;
+	text-indent: 10px;
+	margin-top: 0px;
+	margin-bottom: 0px;
+}
+.bord{
+	border: 1px solid black;
+	padding: 5px;
+}
+#map{
+	width:600px;
+	height:500px;
+	float:left
+}
+/* End */
+/* /bitrix/templates/microfor_v1/components/bitrix/menu/horizontal_multilevel/style.css?13014866634621 */
+/* /bitrix/templates/.default/components/bitrix/breadcrumb/microfor_v1/style.css?1328792027261 */
+/* /bitrix/templates/.default/components/bitrix/news.list/mic_list_2col/style.css?1328615892108 */
+/* /bitrix/templates/.default/components/bitrix/news.list/microfor_v1_newslist_min/style.css?1300873301108 */
+/* /bitrix/components/bitrix/search.suggest.input/templates/.default/style.css?1299053407501 */
+/* /bitrix/templates/.default/components/bitrix/menu/microfor_v1_bottom/style.css?13016468881731 */
+/* /bitrix/templates/microfor_v1/styles.css?14610500611096 */
+/* /bitrix/templates/microfor_v1/template_styles.css?14610500613449 */

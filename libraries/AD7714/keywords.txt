@@ -1,0 +1,62 @@
+#######################################
+# Syntax Coloring Map For AD7714
+####################################### 
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+AD7714	KEYWORD1
+
+#######################################
+# Methods and Functions 
+#######################################	
+
+read16	KEYWORD2
+read24	KEYWORD2
+load24	KEYWORD2
+command	KEYWORD2
+reset	KEYWORD2
+wait	KEYWORD2
+read	KEYWORD2
+conv	KEYWORD2
+ready	KEYWORD2
+init	KEYWORD2
+t9conv	KEYWORD2
+
+#######################################
+# Constants
+#######################################
+
+REG_CMM		LITERAL1
+REG_SETUP	LITERAL1
+REG_CLOCK	LITERAL1
+REG_DATA	LITERAL1
+REG_TEST	LITERAL1
+REG_OFFSET	LITERAL1
+REG_GAIN	LITERAL1
+REG_RD  	LITERAL1
+REG_WR  	LITERAL1
+NOCALIBRATE	LITERAL1
+CHN_AIN16	LITERAL1
+CHN_AIN26	LITERAL1
+CHN_AIN36	LITERAL1
+CHN_AIN46	LITERAL1
+CHN_AIN12	LITERAL1
+CHN_AIN34	LITERAL1
+CHN_AIN56	LITERAL1
+CHN_TEST	LITERAL1
+CLK_DIS 	LITERAL1
+CLK_EN  	LITERAL1
+MODE_NORMAL	LITERAL1
+MODE_SELF_CAL	LITERAL1
+GAIN_1  	LITERAL1
+GAIN_2  	LITERAL1
+GAIN_4  	LITERAL1
+GAIN_8  	LITERAL1
+GAIN_16 	LITERAL1
+GAIN_32 	LITERAL1
+GAIN_64 	LITERAL1
+GAIN_128	LITERAL1
+UNIPOLAR	LITERAL1
+BIPOLAR 	LITERAL1
+FSYNC   	LITERAL1

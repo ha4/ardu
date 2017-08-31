@@ -1,0 +1,49 @@
+#######################################
+# Syntax Coloring Map For easyTIMER
+####################################### 
+# Class
+#######################################
+
+easyTIMER	KEYWORD3
+
+#######################################
+# Methods and Functions 
+#######################################	
+
+clk_seta	KEYWORD2
+clk_setb	KEYWORD2
+clk_seti	KEYWORD2
+clk_start	KEYWORD2
+clk_stop	KEYWORD2
+
+#######################################
+# Constants
+#######################################
+
+CLK_OFF         LITERAL1
+CLK_OSC         LITERAL1
+CLK_OSC_DIV8    LITERAL1
+CLK_OSC_DIV64   LITERAL1
+CLK_OSC_DIV256  LITERAL1
+CLK_OSC_DIV1024 LITERAL1
+CLK_EXT_FALLING LITERAL1
+CLK_EXT_RISING  LITERAL1
+CLK_M0_NORMAL   LITERAL1
+CLK_M1_PWM8     LITERAL1
+CLK_M2_PWM9     LITERAL1
+CLK_M3_PWM10    LITERAL1
+CLK_M4_CTC      LITERAL1
+CLK_M5_FPWM8    LITERAL1
+CLK_M6_FPWM9    LITERAL1
+CLK_M7_FPWM10   LITERAL1
+CLK_M8_PWM_PFC  LITERAL1
+CLK_M9_PWM_PFC  LITERAL1
+CLK_M10_PWM16   LITERAL1
+CLK_M11_PWM16   LITERAL1
+CLK_M12_CTC     LITERAL1
+CLK_M14_FPWM    LITERAL1
+CLK_M15_FPWM    LITERAL1
+CLK_IRQ_OVERFLOW LITERAL1
+CLK_IRQ_MATCHA  LITERAL1
+CLK_IRQ_MATCHB  LITERAL1
+CLK_IRQ_INPUT   LITERAL1

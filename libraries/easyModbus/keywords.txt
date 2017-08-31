@@ -1,0 +1,2 @@
+modbus_read	KEYWORD2
+modbus_reply	KEYWORD2
