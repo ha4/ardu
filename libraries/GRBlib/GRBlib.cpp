@@ -10,7 +10,6 @@ rgbled::rgbled(int pinR, int pinG, int pinB)
 	pinMode(pR, OUTPUT);
 	pinMode(pB, OUTPUT);
 	r=g=b=255;
-	inv = 0;
 }
 
 void rgbled::rgb(byte R, byte G, byte B)
@@ -158,15 +157,14 @@ rgbpwm::rgbpwm(int pinR, int pinG, int pinB) : rgbled(pinR,pinG,pinB)
 
 void rgbpwm::modx()
 {
-	if (inv) {
-		analogWrite(pG, g);
-		analogWrite(pR, r);
-		analogWrite(pB, b);
-	} else {
-		analogWrite(pG, ~g);
-		analogWrite(pR, ~r);
-		analogWrite(pB, ~b);
-	}
+	analogWrite(pG, inv^g);
+	analogWrite(pR, inv^r);
+	analogWrite(pB, inv^b);
+}
+
+void rgbpwm::inverse(byte i)
+{
+	if (i) inv = 255; else inv = 0;
 }
 
 rgbeasy::rgbeasy(int pinR, int pinG, int pinB) : rgbled(pinR,pinG,pinB)
@@ -186,6 +184,11 @@ void rgbeasy::modx()
 	}
 }
 
+void rgbeasy::inverse(byte i)
+{
+	inv = i;
+}
+
 rgbpdm::rgbpdm(int pinR, int pinG, int pinB) : rgbled(pinR,pinG,pinB)
 {
   pr = portOutputRegister(digitalPinToPort(pinR));
@@ -202,13 +205,12 @@ rgbpdm::rgbpdm(int pinR, int pinG, int pinB) : rgbled(pinR,pinG,pinB)
 void rgbpdm::modx()
 {
 	uint16_t a;
-	if (inv) {
-		a = ag + g; ag=a; if(a<256) *pg &= ng; else *pg|=bg;
-		a = ar + r; ar=a; if(a<256) *pr &= nr; else *pr|=br;
-		a = ab + b; ab=a; if(a<256) *pb &= nb; else *pb|=bb;
-	} else {
-		a = ag + g; ag=a; if(a>=256) *pg &= ng; else *pg|=bg;
-		a = ar + r; ar=a; if(a>=256) *pr &= nr; else *pr|=br;
-		a = ab + b; ab=a; if(a>=256) *pb &= nb; else *pb|=bb;
-	}
+	a = ag + g; ag=a; if((a^inv)&0x100) *pg &= ng; else *pg|=bg;
+	a = ar + r; ar=a; if((a^inv)&0x100) *pr &= nr; else *pr|=br;
+	a = ab + b; ab=a; if((a^inv)&0x100) *pb &= nb; else *pb|=bb;
+}
+
+void rgbpdm::inverse(byte i)
+{
+	if (i) inv = 0x100; else inv = 0;
 }

@@ -21,29 +21,35 @@ class rgbled {
 	void rgb2hsv();
 	void rgb2hsl();
 	virtual void modx() { }
+	virtual void inverse(byte i=1) { }
 	int  pG,pR,pB;
 	byte r, g, b;
 	unsigned int  h;
 	byte s, v;
-	byte inv;
 };
 
 class rgbpwm : public rgbled {
   public:
 	rgbpwm(int pinR, int pinG, int pinB);
 	void modx();
+	void inverse(byte i=1);
+	byte inv;
 };
 
 class rgbeasy : public rgbled {
   public:
 	rgbeasy(int pinR, int pinG, int pinB);
 	void modx();
+	void inverse(byte i=1);
+	byte inv;
 };
 
 class rgbpdm : public rgbled {
   public:
 	rgbpdm(int pinR, int pinG, int pinB);
 	void modx();
+	void inverse(byte i=1);
+	uint16_t inv;
 	byte ar, ag, ab;
 	uint8_t br, bg, bb;
 	uint8_t nr, ng, nb;
