@@ -1,4 +1,4 @@
-
+   
 
 //
 // 1110 1110 0010 0000 0000 0101 1101 1100   >EE2005DC~ok  <3BA00477=ok
@@ -38,6 +38,7 @@
 
 #define BUFSIZE 128
 char buf[BUFSIZE];
+char shell_mode = 0;
 
 void jInitIO()
 {
@@ -46,7 +47,7 @@ void jInitIO()
   JTAG_DDR &= ~TDO;
 }
 
-unsigned jShift(uint8_t d, uint8_t m, uint8_t count)
+unsigned jShift(uint8_t count, uint8_t d, uint8_t m)
 {
   uint8_t x,v;
 
@@ -75,29 +76,40 @@ void jnReset(uint8_t res)
   else       JTAG_PORT|=NRST;
 }
 
-void TAP(uint8_t state, uint8_t count)
+void tap_idle()
 {
-  jShift(0, state, count);
+    jShift(6, 0, 0x1F);
 }
 
-void instruction(uint32_t ir, uint8_t count)
+void tap_instruction(uint8_t *buf, uint8_t count)
 {
-  union {
-    uint32_t a;
-    uint8_t b[4];
-  } 
-  x5;
-  jShift(0, ir, count);
+  jShift(4, 0, 0x03); // TAP instruction
+  for(;count > 8;count-=8, buf++)
+    *buf=jShift(8, *buf, 0);
+  *buf=jShift(count, *buf, 1<<(count-1));
+  jShift(2, 0, 0x01); // TAP update register, go to idle
 }
 
-void instruction(uint32_t data, uint8_t count)
+void tap_data(uint8_t *buf, uint8_t count)
 {
-  union {
-    uint32_t a;
-    uint8_t b[4];
-  } 
-  x5;
-  jShift(0, ir, count);
+  jShift(3, 0, 0x01); // TAP data register
+  for(;count > 8;count-=8, buf++)
+    *buf=jShift(8, *buf, 0);
+  *buf=jShift(count, *buf, 1<<(count-1));
+  jShift(2, 0, 0x01); // TAP update register, go to idle
+}
+
+void tap_instruction_data(uint8_t *ibuf, uint8_t icount, uint8_t *dbuf, uint8_t dcount)
+{
+  jShift(4, 0, 0x03);  // TAP instruction
+  for(;icount > 8;icount-=8)
+    jShift(8, *ibuf++, 0);
+  jShift(icount, *ibuf, 1<<(icount-1));
+  jShift(4, 0, 0x03);  // TAP update, go to data register
+  for(;dcount > 8;dcount-=8, dbuf++)
+    jShift(8, *dbuf++, 0);
+  jShift(dcount, *dbuf, 1<<(dcount-1));
+  jShift(2, 0, 0x01); // TAP update register, go to idle
 }
 
 void target_reset()
@@ -108,20 +120,76 @@ void target_reset()
 }
 
 
-void setup()
+void send_str(char *buf, int n)
 {
-  jInitIO();
-  Serial.begin(9600);
+  int i;
+
+  Serial.write('=');
+
+  for(i=0; i<n; i++) {
+    char c = buf[i];
+    if(c == '\n')
+      Serial.println();   // "\r\n"
+    else
+      Serial.print(c);
+  }
+  Serial.flush();
 }
 
-void loop()
+void send_reply(char *buf, int n)
 {
-  int i, n=0;
+  int i;
+  char c;
+  
+  for(i=0; i<n; i++) {
+    c=buf[i];
+    switch(c) {
+    case '!':   
+      jShift(1,0,1); 
+      c=' ';      
+      break;
+    case '*':   
+      jShift(1,0,0); 
+      c=' ';      
+      break;
+    case '0':   
+      c='0'+jShift(1,0,0);
+      break;
+    case '1':   
+      c='0'+jShift(1,1,0);       
+      break;
+    case 'L':  
+    case 'l': 
+      c='0'+jShift(1,0,1);  
+      break;
+    case 'H':  
+    case 'h': 
+      c='0'+jShift(1,1,1);  
+      break;
+    case 'R': 
+      jnReset(1); 
+      break;
+    case 'r': 
+      jnReset(0); 
+      break;
+    case 'w': 
+      jShift(8,0,0); 
+      break;
+    case 's':
+      shell_mode=1;
+    }
+    buf[i]=c;
+  }
+  send_str(buf, n);
+}
+
+int get_str(char prompt,char *buf)
+{
+  int n;
   char c='\0';
 
-  // read input until buffer full or end of line
-  Serial.write('>');
-
+  Serial.write(prompt);
+  n=0;
   while(n<BUFSIZE && c!='\n') {
     while(!Serial.available()) {
     }
@@ -136,54 +204,93 @@ void loop()
     else
       buf[n++] = c;
   }
+  return n;  
+}
 
-  for(i=0; i<n; i++) {
-    c=buf[i];
-    switch(c) {
-    case '!':   
-      jShift(0,1,1); 
-      c=' ';      
-      break;
-    case '*':   
-      jShift(0,0,1); 
-      c=' ';      
-      break;
-    case '0':   
-      c='0'+jShift(0,0,1);       
-      break;
-    case '1':   
-      c='0'+jShift(1,0,1);       
-      break;
-    case 'L':  
-    case 'l': 
-      c='0'+jShift(0,1,1);  
-      break;
-    case 'H':  
-    case 'h': 
-      c='0'+jShift(1,1,1);  
-      break;
-    case 'R': 
-      jnReset(1); 
-      break;
-    case 'r': 
-      jnReset(0); 
-      break;
-    case 'w': 
-      jShift(0,0,8); 
-      break;
-    }
-    buf[i]=c;
+void put_hex(uint8_t *buf, int count)
+{
+  int bys;
+  bys = (count+7)/8;
+  for(;bys--;) {
+    Serial.print(buf[bys] >> 4, HEX);
+    Serial.print(buf[bys] & 15, HEX);
   }
+}
 
-  Serial.write('=');
-  for(i=0; i<n; i++) {
-    char c = buf[i];
-    if(c == '\n')
-      Serial.println();   // "\r\n"
-    else
-      Serial.print(c);
+int get_hex(uint8_t *buf, char *str)
+{
+  int n,i;
+  uint8_t nib, z;
+
+  n=0;
+  buf[0]=0;
+  for(;*str;n++,str++)
+    if (*str != ' ' && *str != '\t' && *str != '\b') break;
+  for(;*str;) {
+    nib = 255;
+    if (*str>='0' && *str<='9') nib = *str-'0';
+    if (*str>='A' && *str<='F') nib = *str-'A'+10;
+    if (*str>='a' && *str<='f') nib = *str-'a'+10;
+    str++; n++;
+    if (nib >= 16) break;
+    // shift long
+    i=0; do {
+      z=buf[i]>>4;
+      buf[i]=(buf[i]<<4) | nib;
+      nib=z; i++;
+    } while(i < (n+1)/2);
   }
-  Serial.flush();
+  return n;
+}
+
+void shell_exec(char *buf, int n)
+{
+  char *ter=buf;
+  uint8_t bi[32]; // 256bits max
+  uint8_t len;
+
+  ter[n]='\0';
+  switch(*ter++){
+    case '0': tap_idle(); break;
+    case 'r': target_reset(); break;
+    case 'd': ter+=get_hex(&len, ter);
+              ter+=get_hex(bi, ter);
+              tap_data(bi, len);
+              put_hex(bi, len);
+              break;
+    case 'i': ter+=get_hex(&len, ter);
+              ter+=get_hex(bi, ter);
+              tap_instruction(bi, len);
+              put_hex(bi, len);
+              break;
+    case 'p': ter+=get_hex(&len,ter);
+              ter+=get_hex(bi,ter);
+              put_hex(bi,len);
+              break;
+    case 'b': shell_mode=0;
+    case '\0': return;
+    default: Serial.println("error"); return;
+  }
+}
+
+
+
+
+void setup()
+{
+  jInitIO();
+  Serial.begin(9600);
+}
+
+void loop()
+{
+  int n;
+
+  n = get_str(shell_mode?'#':'>',buf);
+  if (shell_mode)
+  shell_exec(buf, n);
+  else
+  send_reply(buf, n);
 }
 
 
