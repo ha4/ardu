@@ -4,8 +4,8 @@ exec wish "$0" "$@"
 
 package require Thread 2.1
 package require modbus
-#source [file dirname [info script]]/tkinputer.tcl
-#source [file dirname [info script]]/configsave.tcl
+source [file dirname [info script]]/tkinputer.tcl
+source [file dirname [info script]]/configsave.tcl
 
 # --------------------
 # VARIABLES
