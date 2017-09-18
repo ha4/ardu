@@ -1,0 +1,93 @@
+
+Simple algorithms for adjusting image temperature and tint
+--------------------------------------------------------------
+
+Given a temperature adjustment on the range -100 to 100,
+ apply the following adjustment to each pixel in the image:
+
+r = r + adjustmentValue
+g = g
+b = b - adjustmentValue
+
+Given a tint adjustment on the range -100 to 100, 
+ apply the following adjustment to each pixel in the image:
+
+r = r 
+g = g + adjustmentValue
+b = b 
+
+
+How to Convert Temperature (K) to RGB
+--------------------------------------------------------------
+
+Start with a temperature, in Kelvin, somewhere between 1000 and 40000.
+(Other values may work, but I can't make any promises about the quality
+of the algorithm's estimates above 40000 K.)
+Temperature and color variables need to be declared as floating-point.
+
+    Set Temperature = Temperature \ 100
+    
+Calculate Red:
+
+    If Temperature <= 66 Then
+        Red = 255
+    Else
+        Red = Temperature - 60
+        Red = 329.698727446 * (Red ^ -0.1332047592)
+        If Red < 0 Then Red = 0
+        If Red > 255 Then Red = 255
+    End If
+    
+Calculate Green:
+
+    If Temperature <= 66 Then
+        Green = Temperature
+        Green = 99.4708025861 * Ln(Green) - 161.1195681661
+        If Green < 0 Then Green = 0
+        If Green > 255 Then Green = 255
+    Else
+        Green = Temperature - 60
+        Green = 288.1221695283 * (Green ^ -0.0755148492)
+        If Green < 0 Then Green = 0
+        If Green > 255 Then Green = 255
+    End If
+    
+Calculate Blue:
+
+    If Temperature >= 66 Then
+        Blue = 255
+    Else
+        If Temperature <= 19 Then
+            Blue = 0
+        Else
+            Blue = Temperature - 10
+            Blue = 138.5177312231 * Ln(Blue) - 305.0447927307
+            If Blue < 0 Then Blue = 0
+            If Blue > 255 Then Blue = 255
+        End If
+    End If
+
+For the actual color correction, I use the temperature formula to calculate
+corresponding R, G, and B values. Then I loop through the image and
+alpha-blend the existing RGB values with the temperature RGB values at
+the strength specified by the user. (The maximum blend is a 50/50 split
+between the two color values.)
+
+Unfortunately, this has the side-effect of universally brightening the
+image, so it’s necessary to use the HSL color space to maintain
+luminance in the image. To do that, I use the following steps:
+
+* Calculate temperature RGB
+* Loop through the image one pixel at a time. For each pixel:
+  Get RGB values
+  Calculate luminance of those RGB values 
+    (Luminance = (Max(R,G,B) + Min(R,G,B)) / 2)
+  Alpha-blend the RGB values with the temperature RGB values
+    at the requested strength (max strength = 50/50 blend)
+  Calculate HSL equivalents for the newly blended RGB values
+  Convert those HSL equivalents back to RGB, but substitute
+    the ORIGINAL luminance value
+
+The procedure BlendColors for red is basically:
+   r = r * tempStrength + tmpR * (1 – tempStrength);
+
