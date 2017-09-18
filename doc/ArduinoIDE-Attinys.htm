@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en-US"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Setting up Arduino IDE for working with Attinys | Martin's corner on the web</title>
+<link rel="profile" href="http://gmpg.org/xfn/11">
+<link rel="pingback" href="http://harizanov.com/xmlrpc.php">
+<!--[if lt IE 9]>
+<script src="http://harizanov.com/wp-content/themes/expound/js/html5.js" type="text/javascript"></script>
+<![endif]-->
+
+<link rel="alternate" type="application/rss+xml" title="Martin's corner on the web » Feed" href="http://harizanov.com/feed/">
+<link rel="alternate" type="application/rss+xml" title="Martin's corner on the web » Comments Feed" href="http://harizanov.com/comments/feed/">
+
+            <script src="ArduinoIDE-Attinys_files/pinit_main.js" async="" type="text/javascript"></script><script async="" src="ArduinoIDE-Attinys_files/cbgapi.loaded_1"></script><script async="" src="ArduinoIDE-Attinys_files/cbgapi.loaded_0"></script><script gapi_processed="true" src="ArduinoIDE-Attinys_files/plusone.js" async="" type="text/javascript"></script><script src="ArduinoIDE-Attinys_files/widgets.js" id="twitter-wjs"></script><script src="ArduinoIDE-Attinys_files/ca-pub-6012209009932982.js" type="text/javascript" async=""></script><script src="ArduinoIDE-Attinys_files/ga.js"></script><script src="ArduinoIDE-Attinys_files/ga.js" async="" type="text/javascript"></script><script type="text/javascript">//<![CDATA[
+            // Google Analytics for WordPress by Yoast v4.3.5 | http://yoast.com/wordpress/google-analytics/
+            var _gaq = _gaq || [];
+            _gaq.push(['_setAccount', 'UA-20531689-1']);
+				            _gaq.push(['_setCustomVar',1,'author','martin',3],['_trackPageview']);
+            (function () {
+                var ga = document.createElement('script');
+                ga.type = 'text/javascript';
+                ga.async = true;
+                ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+
+                var s = document.getElementsByTagName('script')[0];
+                s.parentNode.insertBefore(ga, s);
+            })();
+            //]]></script>
+			<link rel="alternate" type="application/rss+xml" title="Martin's corner on the web » Setting up Arduino IDE for working with Attinys Comments Feed" href="http://harizanov.com/2012/08/setting-up-arduino-ide-for-working-with-attinys/feed/">
+<link rel="stylesheet" id="jigoshop_theme_styles-css" href="ArduinoIDE-Attinys_files/frontend.css" type="text/css" media="all">
+<link rel="stylesheet" id="jigoshop_styles-css" href="ArduinoIDE-Attinys_files/frontend.css" type="text/css" media="all">
+<link rel="stylesheet" id="bbp-default-css" href="ArduinoIDE-Attinys_files/bbpress.css" type="text/css" media="screen">
+<link rel="stylesheet" id="mt-shcore-style-css" href="ArduinoIDE-Attinys_files/shCore.css" type="text/css" media="all">
+<link rel="stylesheet" id="mt-theme-style-css" href="ArduinoIDE-Attinys_files/shThemeDefault.css" type="text/css" media="all">
+<link rel="stylesheet" id="wpt-twitter-feed-css" href="ArduinoIDE-Attinys_files/twitter-feed.css" type="text/css" media="all">
+<link rel="stylesheet" id="expound-style-css" href="ArduinoIDE-Attinys_files/style.css" type="text/css" media="all">
+<script type="text/javascript" src="ArduinoIDE-Attinys_files/jquery.js"></script>
+<script type="text/javascript" src="ArduinoIDE-Attinys_files/jquery-migrate.js"></script>
+<script type="text/javascript" src="ArduinoIDE-Attinys_files/blockui.js"></script>
+<script type="text/javascript" src="ArduinoIDE-Attinys_files/shCore.js"></script>
+<script type="text/javascript" src="ArduinoIDE-Attinys_files/shAutoloader.js"></script>
+<link rel="EditURI" type="application/rsd+xml" title="RSD" href="http://harizanov.com/xmlrpc.php?rsd">
+<link rel="wlwmanifest" type="application/wlwmanifest+xml" href="http://harizanov.com/wp-includes/wlwmanifest.xml"> 
+<meta name="generator" content="WordPress 3.9.1">
+<link rel="canonical" href="http://harizanov.com/2012/08/setting-up-arduino-ide-for-working-with-attinys/">
+<link rel="shortlink" href="http://harizanov.com/?p=590">
+		<style type="text/css">
+			.ads {
+				position: relative;
+				text-align: center;
+				clear: both;
+			}
+		</style>
+<!-- Jigoshop Version: 1.9.6 -->
+<link rel="alternate" type="application/rss+xml" title="Martin's corner on the web Pages Rss Feed" href="http://harizanov.com/?feed=pages-rss">
+<link rel="alternate" type="application/rss+xml" title="Martin's corner on the web Pages Rss2 Feed" href="http://harizanov.com/?feed=pages-rss2">
+<link rel="alternate" type="application/atom+xml" title="Martin's corner on the web Pages Atom Feed" href="http://harizanov.com/?feed=pages-atom">
+ 
+		<style type="text/css">
+			.social-ring:after {
+				 clear: both;
+			}
+				   
+			.social-ring:before,
+			.social-ring:after {
+				 content: "";
+				 display: table;
+			}
+			
+			.social-ring {
+				margin: 0 0 0.5em !important;
+				padding: 0 !important;
+				line-height: 20px !important;
+				height: auto;
+				font-size: 11px;
+			}
+			.social-ring-button {
+				float: left !important;
+								height: 30px;
+								margin: 0 5px 0 0 !important;
+				padding: 0 !important;
+			}
+			.social-ring .social-ring-button iframe {
+				max-width: none !important;
+			}
+		</style>
+		<style type="text/css">
+	        .site-title a,
+        .site-title a:hover,
+        .site-description {
+			color: #ffffff;
+        }
+	
+			.site-header .site-branding {
+			background-color: transparent;
+			background-image: url('http://harizanov.com/wp-content/uploads/2013/07/cropped-IMG_27281.jpg');
+			background-position: 50% 0;
+			background-repeat: no-repeat;
+			height: 271px;
+		}
+		</style>
+	<style type="text/css" id="custom-background-css">
+body.custom-background { background-color: #f7f7f7; }
+</style>
+	<script type="text/javascript">
+	    var _gaq=[['_setAccount','UA-20531689-1'],['_setCustomVar',1,'logged-in','no',1],['_setCustomVar',2,'user-id','',1],['_setCustomVar',3, 'username','Guest',1],['_trackPageview']];
+	    (function(d,t){var g=d.createElement(t),s=d.getElementsByTagName(t)[0];
+	    g.src=('https:'==location.protocol?'//ssl':'//www')+'.google-analytics.com/ga.js';
+	    s.parentNode.insertBefore(g,s)}(document,'script'));
+  	</script>
+	<style type="text/css">a.PIN_1403113499584_pin_it_button_20 { cursor: pointer!important; background-repeat: none!important; background-size: 40px 60px!important; height: 20px!important; padding: 0!important; vertical-align: baseline!important; text-decoration: none!important; width: 40px!important; background-position: 0 -20px }
+a.PIN_1403113499584_pin_it_button_20:hover { background-position: 0 0px }
+a.PIN_1403113499584_pin_it_button_20:active, a.PIN_1403113499584_pin_it_button_20.PIN_1403113499584_hazClick { background-position: 0 -40px }
+a.PIN_1403113499584_pin_it_button_inline_20 { cursor: pointer!important; position: relative!important; display: inline-block!important; }
+a.PIN_1403113499584_pin_it_button_floating_20 { cursor: pointer!important; position: absolute!important; }
+a.PIN_1403113499584_pin_it_beside_20_pad { margin-right: 45px!important; }
+a.PIN_1403113499584_pin_it_button_en_20_red { background-image: url(http://passets.pinterest.com/images/pidgets/pinit_bg_en_rect_red_20_1.png)!important; }
+a.PIN_1403113499584_pin_it_button_en_20_white { background-image: url(http://passets.pinterest.com/images/pidgets/pinit_bg_en_rect_white_20_1.png)!important; }
+a.PIN_1403113499584_pin_it_button_en_20_gray { background-image: url(http://passets.pinterest.com/images/pidgets/pinit_bg_en_rect_gray_20_1.png)!important; }
+a.PIN_1403113499584_pin_it_button_ja_20_red { background-image: url(http://passets.pinterest.com/images/pidgets/pinit_bg_ja_rect_red_20_1.png)!important; }
+a.PIN_1403113499584_pin_it_button_ja_20_white { background-image: url(http://passets.pinterest.com/images/pidgets/pinit_bg_ja_rect_white_20_1.png)!important; }
+a.PIN_1403113499584_pin_it_button_ja_20_gray { background-image: url(http://passets.pinterest.com/images/pidgets/pinit_bg_ja_rect_gray_20_1.png)!important; }
+a.PIN_1403113499584_pin_it_above_20 span.PIN_1403113499584_pin_it_button_count { background: transparent url(http://passets.pinterest.com/images/pidgets/count_north_white_rect_20_1.png) 0 0 no-repeat!important; background-size: 40px 29px!important; position: absolute!important; bottom: 21px!important; left: 0px!important; height: 29px!important; width: 40px!important; font: 12px Arial, Helvetica, sans-serif!important; line-height: 24px!important; text-indent: 0!important;}
+a.PIN_1403113499584_pin_it_button_20 span.PIN_1403113499584_pin_it_button_count { position: absolute!important; color: #777!important; text-align: center!important; text-indent: 0!important; }
+a.PIN_1403113499584_pin_it_beside_20 span.PIN_1403113499584_pin_it_button_count, a.PIN_1403113499584_pin_it_beside_20 span.PIN_1403113499584_pin_it_button_count i { background-color: transparent!important; background-repeat: no-repeat!important; background-image: url(http://passets.pinterest.com/images/pidgets/count_east_white_rect_20_1.png)!important; }
+a.PIN_1403113499584_pin_it_beside_20 span.PIN_1403113499584_pin_it_button_count { padding: 0 3px 0 10px!important; background-size: 45px 20px!important; background-position: 0 0!important; position: absolute!important; top: 0!important; left: 41px!important; height: 20px!important; font: 10px Arial, Helvetica, sans-serif!important; line-height: 20px!important; }
+a.PIN_1403113499584_pin_it_beside_20 span.PIN_1403113499584_pin_it_button_count i { background-position: 100% 0!important; position: absolute!important; top: 0!important; right: -2px!important; height: 20px!important; width: 2px!important; }
+a.PIN_1403113499584_pin_it_button_20.PIN_1403113499584_pin_it_above { margin-top: 20px!important; }
+a.PIN_1403113499584_pin_it_button_28 { cursor: pointer!important; background-repeat: none!important; background-size: 56px 84px!important; height: 28px!important; padding: 0!important; vertical-align: baseline!important; text-decoration: none!important; width: 56px!important; background-position: 0 -28px }
+a.PIN_1403113499584_pin_it_button_28:hover { background-position: 0 0px }
+a.PIN_1403113499584_pin_it_button_28:active, a.PIN_1403113499584_pin_it_button_28.PIN_1403113499584_hazClick { background-position: 0 -56px }
+a.PIN_1403113499584_pin_it_button_inline_28 { cursor: pointer!important; position: relative!important; display: inline-block!important; }
+a.PIN_1403113499584_pin_it_button_floating_28 { cursor: pointer!important; position: absolute!important; }
+a.PIN_1403113499584_pin_it_beside_28_pad { margin-right: 50px!important;}
+a.PIN_1403113499584_pin_it_button_en_28_red { background-image: url(http://passets.pinterest.com/images/pidgets/pinit_bg_en_rect_red_28_1.png)!important; }
+a.PIN_1403113499584_pin_it_button_en_28_white { background-image: url(http://passets.pinterest.com/images/pidgets/pinit_bg_en_rect_white_28_1.png)!important; }
+a.PIN_1403113499584_pin_it_button_en_28_gray { background-image: url(http://passets.pinterest.com/images/pidgets/pinit_bg_en_rect_gray_28_1.png)!important; }
+a.PIN_1403113499584_pin_it_button_ja_28_red { background-image: url(http://passets.pinterest.com/images/pidgets/pinit_bg_ja_rect_red_28_1.png)!important; }
+a.PIN_1403113499584_pin_it_button_ja_28_white { background-image: url(http://passets.pinterest.com/images/pidgets/pinit_bg_ja_rect_white_28_1.png)!important; }
+a.PIN_1403113499584_pin_it_button_ja_28_gray { background-image: url(http://passets.pinterest.com/images/pidgets/pinit_bg_ja_rect_gray_28_1.png)!important; }
+a.PIN_1403113499584_pin_it_button_en_16_red_round, a.PIN_1403113499584_pin_it_button_en_32_red_round { background-repeat: none!important; margin: 0!important; padding: 0!important; vertical-align: baseline!important; text-decoration: none!important; }
+a.PIN_1403113499584_pin_it_button_en_16_red_round { height: 16px!important; width: 16px!important; background-size: 16px 16px!important; background-image: url(http://passets.pinterest.com/images/pidgets/pinit_bg_en_round_red_16_1.png)!important;}
+a.PIN_1403113499584_pin_it_button_en_32_red_round { height: 32px!important; width: 32px!important; background-size: 32px 32px!important; background-image: url(http://passets.pinterest.com/images/pidgets/pinit_bg_en_round_red_32_1.png)!important;}
+a.PIN_1403113499584_pin_it_button_inline_en_16_red_round, a.PIN_1403113499584_pin_it_button_inline_en_32_red_round { position: relative!important; display: inline-block!important; }
+a.PIN_1403113499584_pin_it_button_floating_en_16_red_round, a.PIN_1403113499584_pin_it_button_floating_en_32_red_round  { position: absolute!important; }
+a.PIN_1403113499584_pin_it_button_28 span.PIN_1403113499584_pin_it_button_count { position: absolute!important; color: #777!important; text-align: center!important; text-indent: 0!important; }
+a.PIN_1403113499584_pin_it_above_28 span.PIN_1403113499584_pin_it_button_count { background: transparent url(http://passets.pinterest.com/images/pidgets/count_north_white_rect_28_1.png) 0 0 no-repeat!important; background-size: 56px 37px!important; position: absolute!important; bottom: 29px!important; left: 0px!important; height: 37px!important; width: 56px!important; font: 15px Arial, Helvetica, sans-serif!important; line-height: 28px!important; text-indent: 0!important;}
+a.PIN_1403113499584_pin_it_beside_28 span.PIN_1403113499584_pin_it_button_count, a.PIN_1403113499584_pin_it_beside_28 span.PIN_1403113499584_pin_it_button_count i { background-color: transparent!important; background-repeat: no-repeat!important; background-image: url(http://passets.pinterest.com/images/pidgets/count_east_white_rect_28_1.png)!important; }
+a.PIN_1403113499584_pin_it_beside_28 span.PIN_1403113499584_pin_it_button_count { padding: 0 3px 0 10px!important; background-size: 63px 28px!important; background-position: 0 0!important; position: absolute!important; top: 0!important; left: 57px!important; height: 28px!important; font: 12px Arial, Helvetica, sans-serif!important; line-height: 28px!important; }
+a.PIN_1403113499584_pin_it_beside_28 span.PIN_1403113499584_pin_it_button_count i { background-position: 100% 0!important; position: absolute!important; top: 0!important; right: -2px!important; height: 28px!important; width: 2px!important; }
+a.PIN_1403113499584_pin_it_button_28.PIN_1403113499584_pin_it_above { margin-top: 28px!important; }
+a.PIN_1403113499584_follow_me_button, a.PIN_1403113499584_follow_me_button i { cursor: pointer!important; background-size: 200px 60px!important; background: transparent url(http://passets.pinterest.com/images/pidgets/bfs1.png) 0 0 no-repeat }
+a.PIN_1403113499584_follow_me_button { color: #444!important; display: inline-block!important; font: bold normal normal 11px/20px "Helvetica Neue",helvetica,arial,san-serif!important; height: 20px!important; margin: 0!important; padding: 0!important; position: relative!important; text-decoration: none!important; text-indent: 19px!important; vertical-align: baseline!important;}
+a.PIN_1403113499584_follow_me_button:hover { background-position: 0 -20px}
+a.PIN_1403113499584_follow_me_button:active  { background-position: 0 -40px}
+a.PIN_1403113499584_follow_me_button b { position: absolute!important; top: 3px!important; left: 3px!important; height: 14px!important; width: 14px!important; background-size: 14px 14px!important; background-image: url(http://passets.pinterest.com/images/pidgets/log1.png)!important; }
+a.PIN_1403113499584_follow_me_button i { position: absolute!important; top: 0!important; right: -4px!important; height: 20px!important; width: 4px!important; background-position: 100% 0px!important; }
+a.PIN_1403113499584_follow_me_button:hover i { background-position: 100% -20px!important;  }
+a.PIN_1403113499584_follow_me_button:active i { background-position: 100% -40px!important; }
+a.PIN_1403113499584_follow_me_button_tall, a.PIN_1403113499584_follow_me_button_tall i { background-size: 400px 84px!important; background: transparent url(http://passets.pinterest.com/images/pidgets/bft1.png) 0 0 no-repeat }
+a.PIN_1403113499584_follow_me_button_tall { color: #444!important; display: inline-block!important; font: bold normal normal 13px/28px "Helvetica Neue",helvetica,arial,san-serif!important; height: 28px!important; margin: 0!important; padding: 0!important; position: relative!important; text-decoration: none!important; text-indent: 33px!important; vertical-align: baseline!important;}
+a.PIN_1403113499584_follow_me_button_tall:hover { background-position: 0 -28px}
+a.PIN_1403113499584_follow_me_button_tall:active  { background-position: 0 -56px}
+a.PIN_1403113499584_follow_me_button_tall b { position: absolute!important; top: 5px!important; left: 10px!important; height: 18px!important; width: 18px!important; background-size: 18px 18px!important; background-image: url(http://passets.pinterest.com/images/pidgets/smt1.png)!important; }
+a.PIN_1403113499584_follow_me_button_tall i { position: absolute!important; top: 0!important; right: -10px!important; height: 28px!important; width: 10px!important; background-position: 100% 0px!important; }
+a.PIN_1403113499584_follow_me_button_tall:hover i { background-position: 100% -28px!important;  }
+a.PIN_1403113499584_follow_me_button_tall:active i { background-position: 100% -56px!important; }
+span.PIN_1403113499584_embed_pin { -webkit-font-smoothing: antialiased!important; cursor: pointer!important; display: inline-block!important; text-align: center!important; width: 237px!important; overflow: hidden!important; vertical-align: top!important; }
+span.PIN_1403113499584_embed_pin.PIN_1403113499584_fancy { background: #fff!important; box-shadow: 0 1px 3px rgba(0, 0, 0, .33)!important; border-radius: 3px!important; }
+span.PIN_1403113499584_embed_pin a.PIN_1403113499584_embed_pin_link { display: block!important;  margin: 0 auto!important; padding: 0!important; position: relative!important;  line-height: 0}
+span.PIN_1403113499584_embed_pin img.PIN_1403113499584_embed_pin_link_img { border: 0!important; margin: 0!important; padding: 0!important; border-bottom: 1px solid rgba(0, 0, 0, .09)!important;}
+span.PIN_1403113499584_embed_pin a.PIN_1403113499584_embed_pin_link i.PIN_1403113499584_repin { left: 12px!important; top: 12px!important; position: absolute!important; height: 20px!important; width: 40px!important; background-size: 40px 60px!important;  background: transparent url(http://passets.pinterest.com/images/pidgets/pinit_bg_en_rect_red_20_1.png) }
+span.PIN_1403113499584_embed_pin a.PIN_1403113499584_embed_pin_link i.PIN_1403113499584_repin_ja { left: 12px!important; top: 12px!important; position: absolute!important; height: 20px!important; width: 40px!important; background-size: 40px 60px!important; background: transparent url(http://passets.pinterest.com/images/pidgets/pinit_bg_ja_rect_red_20_1.png) }
+span.PIN_1403113499584_embed_pin a.PIN_1403113499584_embed_pin_link i.PIN_1403113499584_repin:hover, span.PIN_1403113499584_embed_pin a.PIN_1403113499584_embed_pin_link i.PIN_1403113499584_repin_ja:hover { background-position: 0 -20px!important; }
+span.PIN_1403113499584_embed_pin a.PIN_1403113499584_embed_pin_link i.PIN_1403113499584_repin.PIN_1403113499584_hazClick, span.PIN_1403113499584_embed_pin a.PIN_1403113499584_embed_pin_link i.PIN_1403113499584_repin_ja.PIN_1403113499584_hazClick { background-position: 0 -40px!important; }
+span.PIN_1403113499584_embed_pin a.PIN_1403113499584_embed_pin_link i.PIN_1403113499584_play { display: block!important; width: 50px!important; white-space: pre!important; font-family: "Helvetica Neue",helvetica,arial,san-serif!important; font-weight: bold!important; font-style: normal!important; font-size: 9px!important; line-height: 12px!important; margin: 0!important; position: absolute!important; bottom: 12px!important; left: 12px!important; text-decoration: none!important; background: rgba(0, 0, 0, .4)!important; color: rgba(255, 255, 255, 1)!important; border-radius: 13px!important; padding: 5px 0!important; box-shadow: 0 0 2px rgba(0, 0, 0, .2)!important; border: 2px solid rgba(255, 255, 255, .68)!important;}
+span.PIN_1403113499584_embed_pin a.PIN_1403113499584_embed_pin_link i.PIN_1403113499584_play:hover { background: rgba(0, 0, 0, .8)!important; color: #fff!important; }
+span.PIN_1403113499584_embed_pin span.PIN_1403113499584_embed_pin_desc { color: #363636!important; white-space: normal!important; border-bottom: 1px solid rgba(0, 0, 0, .09)!important;!important; display: block!important; font-family: "Helvetica Neue", arial, sans-serif!important; font-size: 13px!important; line-height: 17px!important; padding: 12px!important; text-align: left!important; }
+span.PIN_1403113499584_embed_pin span.PIN_1403113499584_embed_pin_attrib { color: #a8a8a8!important; font-family: "Helvetica Neue", sans-serif!important; font-size: 11px!important; line-height: 18px!important; margin-top: 12px!important; font-weight: bold!important; display: block!important;}
+span.PIN_1403113499584_embed_pin span.PIN_1403113499584_embed_pin_attrib img.PIN_1403113499584_embed_pin_attrib_icon { height: 16px!important; width: 16px!important; vertical-align: middle!important; padding: 0!important; margin: 0 5px 0 0!important; float: left!important;}
+span.PIN_1403113499584_embed_pin span.PIN_1403113499584_embed_pin_attrib a { color: #a8a8a8!important; text-decoration: none!important;}
+span.PIN_1403113499584_embed_pin span.PIN_1403113499584_embed_pin_stats { display: block!important; }
+span.PIN_1403113499584_embed_pin span.PIN_1403113499584_embed_pin_stats span.PIN_1403113499584_embed_pin_stats_repin_count, span.PIN_1403113499584_embed_pin span.PIN_1403113499584_embed_pin_stats span.PIN_1403113499584_embed_pin_stats_like_count { display: inline-block!important; padding-left: 17px!important; padding-right: 10px!important; color: #a8a8a8!important; font-family: "Helvetica Neue", sans-serif!important; font-size: 11px!important; line-height: 12px!important; margin-top: 12px!important; font-weight: bold!important; }
+span.PIN_1403113499584_embed_pin span.PIN_1403113499584_embed_pin_stats span.PIN_1403113499584_embed_pin_stats_repin_count { background: url(data:image/png!important;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAALCAAAAABq7uO+AAAASklEQVQI10WNMQrAMBRCvf/Z3pQcImPplsIPdqhNXOSJqLxVtnWQsuUO9IM3cHlV8dSSDZQHAOPH2YA2FU+qtH7MRhaVh/xt/PQCEW6N4EV+CPEAAAAASUVORK5CYII=) 0 0 no-repeat!important; }
+span.PIN_1403113499584_embed_pin span.PIN_1403113499584_embed_pin_stats span.PIN_1403113499584_embed_pin_stats_like_count { background: url(data:image/png!important;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAKCAAAAAClR+AmAAAAUElEQVR4AT2HMQpFIQwEc/+zbXhFLBW8QUihIAT2E8Q/xe6M0Jv2zK7NKUcBzAlAjzjqtdZl4c8S2nOjMPS6BoWMr/wLVnAbYJs3mGMkXzx+OeRqUf5HHRoAAAAASUVORK5CYII=) 0 2px no-repeat!important; }
+span.PIN_1403113499584_embed_pin a.PIN_1403113499584_embed_pin_text { padding: 12px!important; position: relative!important; text-decoration: none!important; display: block!important; font-weight: bold!important; color: #b7b7b7!important; font-family: "Helvetica Neue", arial, sans-serif!important; font-size: 11px!important; line-height: 14px!important; height: 30px!important; text-align: left!important; }
+span.PIN_1403113499584_embed_pin a.PIN_1403113499584_embed_pin_text:hover { background: #eee!important;}
+span.PIN_1403113499584_embed_pin a.PIN_1403113499584_embed_pin_text img.PIN_1403113499584_embed_pin_text_avatar { border-radius: 15px!important; overflow: hidden!important; height: 30px!important; width: 30px!important; vertical-align: middle!important; margin: 0 8px 12px 0!important; float: left!important;}
+span.PIN_1403113499584_embed_pin a.PIN_1403113499584_embed_pin_text span.PIN_1403113499584_embed_pin_text_container_pinner, span.PIN_1403113499584_embed_pin a.PIN_1403113499584_embed_pin_text span.PIN_1403113499584_embed_pin_text_container_board { display: block!important; width: 175px!important; white-space: nowrap!important; overflow: hidden!important; text-overflow: ellipsis!important;}
+span.PIN_1403113499584_embed_pin a.PIN_1403113499584_embed_pin_text span.PIN_1403113499584_embed_pin_text_container_pinner { color: #777!important;}
+span.PIN_1403113499584_embed_pin a.PIN_1403113499584_embed_pin_text b.PIN_1403113499584_embed_pin_link_shield { position: absolute!important; top: 0!important; left: 0!important; height: 100%!important; width: 100%!important; }
+span.PIN_1403113499584_embed_grid { display: inline-block!important; margin: 0!important; padding:10px 0!important; position: relative!important; text-align: center}
+span.PIN_1403113499584_embed_grid.PIN_1403113499584_fancy { background: #fff!important; box-shadow: 0 0 3px #aaa!important; border-radius: 3px!important; }
+span.PIN_1403113499584_embed_grid span.PIN_1403113499584_embed_grid_hd { display: block!important; margin: 0 10px!important; padding: 0!important; height: 45px!important; position: relative!important; background: #fff}
+span.PIN_1403113499584_embed_grid span.PIN_1403113499584_embed_grid_hd a.PIN_1403113499584_avatar { position: absolute!important; top: 0!important; left: 0!important; height: 36px!important; width: 36px!important; }
+span.PIN_1403113499584_embed_grid span.PIN_1403113499584_embed_grid_hd a.PIN_1403113499584_avatar::before { position: absolute!important; content:""!important; z-index: 2!important; top: 0!important; left: 0!important; right: 0!important; bottom: 0!important; box-shadow: inset 0 0 2px #888!important;  border-radius: 3px!important; }
+span.PIN_1403113499584_embed_grid span.PIN_1403113499584_embed_grid_hd a.PIN_1403113499584_avatar img { position: relative!important; height: 36px!important; width: 36px!important; margin: 0!important; padding: 0!important; border-radius: 3px!important; border: none!important;}
+span.PIN_1403113499584_embed_grid span.PIN_1403113499584_embed_grid_hd a { text-decoration: none!important; background: transparent!important; cursor: pointer!important; white-space: nowrap!important; position: absolute!important; left: 44px!important; text-align: left!important; overflow: hidden!important; text-overflow: ellipsis!important; }
+span.PIN_1403113499584_embed_grid span.PIN_1403113499584_embed_grid_hd a:hover { text-decoration: none!important; background: #fff!important; }
+span.PIN_1403113499584_embed_grid span.PIN_1403113499584_embed_grid_hd a:active { text-decoration: none!important; background: #fff!important; }
+span.PIN_1403113499584_embed_grid span.PIN_1403113499584_embed_grid_hd a.PIN_1403113499584_embed_grid_first { top: 2px!important; font-family: helvetica, sans-serif!important; font-weight: bold!important; color:#333!important; font-size: 14px!important; line-height: 16px!important; }
+span.PIN_1403113499584_embed_grid span.PIN_1403113499584_embed_grid_hd a.PIN_1403113499584_embed_grid_second { bottom: 11px!important; font-family: helvetica, sans-serif!important; color:#8e8e8e!important; font-size: 12px!important; line-height: 14px!important; }
+span.PIN_1403113499584_embed_grid span.PIN_1403113499584_embed_grid_hd a.PIN_1403113499584_embed_grid_mid { top: 12px!important; font-family: helvetica, sans-serif!important; font-weight: bold!important; color:#333!important; font-size: 14px!important; line-height: 16px!important; }
+span.PIN_1403113499584_embed_grid span.PIN_1403113499584_embed_grid_bd { display:block!important; margin: 0 10px!important; border-radius: 2px!important; position: relative!important; overflow: hidden }
+span.PIN_1403113499584_embed_grid span.PIN_1403113499584_embed_grid_scrolling_okay { overflow: auto!important; }
+span.PIN_1403113499584_embed_grid span.PIN_1403113499584_embed_grid_bd span.PIN_1403113499584_embed_grid_ct { display:block!important; position: relative!important; overflow: hidden!important; }
+span.PIN_1403113499584_embed_grid span.PIN_1403113499584_embed_grid_bd a.PIN_1403113499584_embed_grid_th { cursor: pointer!important; display: inline-block!important; position: absolute!important; overflow: hidden!important; }
+span.PIN_1403113499584_embed_grid span.PIN_1403113499584_embed_grid_bd a.PIN_1403113499584_embed_grid_th::before { position: absolute!important; content:""!important; z-index: 2!important; top: 0!important; left: 0!important; right: 0!important; bottom: 0!important; box-shadow: inset 0 0 2px #888!important; }
+span.PIN_1403113499584_embed_grid span.PIN_1403113499584_embed_grid_bd a.PIN_1403113499584_embed_grid_th img.PIN_1403113499584_embed_grid_img { border: none!important; position: absolute!important; top: 50%!important; left: 0!important; }
+a.PIN_1403113499584_embed_grid_ft { cursor: pointer!important; text-shadow: 0 1px #fff!important; display: block!important; text-align: center!important; border: 1px solid #ccc!important; margin: 10px 10px 0!important; height: 31px!important; line-height: 30px!important;border-radius: 2px!important; text-decoration: none!important; font-family: Helvetica!important; font-weight: bold!important; font-size: 13px!important; color: #746d6a!important; background: #f4f4f4 url(http://passets.pinterest.com/images/pidgets/board_button_link.png) 0 0 repeat-x}
+a.PIN_1403113499584_embed_grid_ft:hover { text-decoration: none!important; background: #fefefe url(http://passets.pinterest.com/images/pidgets/board_button_hover.png) 0 0 repeat-x}
+a.PIN_1403113499584_embed_grid_ft:active { text-decoration: none!important; background: #e4e4e4 url(http://passets.pinterest.com/images/pidgets/board_button_active.png) 0 0 repeat-x}
+a.PIN_1403113499584_embed_grid_ft span.PIN_1403113499584_embed_grid_ft_logo { vertical-align: top!important; display: inline-block!important; margin-left: 2px!important; height: 30px!important; width: 66px!important; background: transparent url(http://passets.pinterest.com/images/pidgets/board_button_logo.png) 50% 48% no-repeat!important; }
+.PIN_1403113499584_hidden { display:none!important; }</style><style type="text/css">.fb_hidden{position:absolute;top:-10000px;z-index:10001}.fb_invisible{display:none}.fb_reset{background:none;border:0;border-spacing:0;color:#000;cursor:auto;direction:ltr;font-family:"lucida grande", tahoma, verdana, arial, sans-serif;font-size:11px;font-style:normal;font-variant:normal;font-weight:normal;letter-spacing:normal;line-height:1;margin:0;overflow:visible;padding:0;text-align:left;text-decoration:none;text-indent:0;text-shadow:none;text-transform:none;visibility:visible;white-space:normal;word-spacing:normal}.fb_reset>div{overflow:hidden}.fb_link img{border:none}
+.fb_dialog{background:rgba(82, 82, 82, .7);position:absolute;top:-10000px;z-index:10001}.fb_reset .fb_dialog_legacy{overflow:visible}.fb_dialog_advanced{padding:10px;-moz-border-radius:8px;-webkit-border-radius:8px;border-radius:8px}.fb_dialog_content{background:#fff;color:#333}.fb_dialog_close_icon{background:url(http://static.xx.fbcdn.net/rsrc.php/v2/yq/r/IE9JII6Z1Ys.png) no-repeat scroll 0 0 transparent;_background-image:url(http://static.xx.fbcdn.net/rsrc.php/v2/yL/r/s816eWC-2sl.gif);cursor:pointer;display:block;height:15px;position:absolute;right:18px;top:17px;width:15px}.fb_dialog_mobile .fb_dialog_close_icon{top:5px;left:5px;right:auto}.fb_dialog_padding{background-color:transparent;position:absolute;width:1px;z-index:-1}.fb_dialog_close_icon:hover{background:url(http://static.xx.fbcdn.net/rsrc.php/v2/yq/r/IE9JII6Z1Ys.png) no-repeat scroll 0 -15px transparent;_background-image:url(http://static.xx.fbcdn.net/rsrc.php/v2/yL/r/s816eWC-2sl.gif)}.fb_dialog_close_icon:active{background:url(http://static.xx.fbcdn.net/rsrc.php/v2/yq/r/IE9JII6Z1Ys.png) no-repeat scroll 0 -30px transparent;_background-image:url(http://static.xx.fbcdn.net/rsrc.php/v2/yL/r/s816eWC-2sl.gif)}.fb_dialog_loader{background-color:#f2f2f2;border:1px solid #606060;font-size:24px;padding:20px}.fb_dialog_top_left,.fb_dialog_top_right,.fb_dialog_bottom_left,.fb_dialog_bottom_right{height:10px;width:10px;overflow:hidden;position:absolute}.fb_dialog_top_left{background:url(http://static.xx.fbcdn.net/rsrc.php/v2/ye/r/8YeTNIlTZjm.png) no-repeat 0 0;left:-10px;top:-10px}.fb_dialog_top_right{background:url(http://static.xx.fbcdn.net/rsrc.php/v2/ye/r/8YeTNIlTZjm.png) no-repeat 0 -10px;right:-10px;top:-10px}.fb_dialog_bottom_left{background:url(http://static.xx.fbcdn.net/rsrc.php/v2/ye/r/8YeTNIlTZjm.png) no-repeat 0 -20px;bottom:-10px;left:-10px}.fb_dialog_bottom_right{background:url(http://static.xx.fbcdn.net/rsrc.php/v2/ye/r/8YeTNIlTZjm.png) no-repeat 0 -30px;right:-10px;bottom:-10px}.fb_dialog_vert_left,.fb_dialog_vert_right,.fb_dialog_horiz_top,.fb_dialog_horiz_bottom{position:absolute;background:#525252;filter:alpha(opacity=70);opacity:.7}.fb_dialog_vert_left,.fb_dialog_vert_right{width:10px;height:100%}.fb_dialog_vert_left{margin-left:-10px}.fb_dialog_vert_right{right:0;margin-right:-10px}.fb_dialog_horiz_top,.fb_dialog_horiz_bottom{width:100%;height:10px}.fb_dialog_horiz_top{margin-top:-10px}.fb_dialog_horiz_bottom{bottom:0;margin-bottom:-10px}.fb_dialog_iframe{line-height:0}.fb_dialog_content .dialog_title{background:#6d84b4;border:1px solid #3b5998;color:#fff;font-size:14px;font-weight:bold;margin:0}.fb_dialog_content .dialog_title>span{background:url(http://static.xx.fbcdn.net/rsrc.php/v2/yd/r/Cou7n-nqK52.gif) no-repeat 5px 50%;float:left;padding:5px 0 7px 26px}body.fb_hidden{-webkit-transform:none;height:100%;margin:0;overflow:visible;position:absolute;top:-10000px;left:0;width:100%}.fb_dialog.fb_dialog_mobile.loading{background:url(http://static.xx.fbcdn.net/rsrc.php/v2/ya/r/3rhSv5V8j3o.gif) white no-repeat 50% 50%;min-height:100%;min-width:100%;overflow:hidden;position:absolute;top:0;z-index:10001}.fb_dialog.fb_dialog_mobile.loading.centered{max-height:590px;min-height:590px;max-width:500px;min-width:500px}#fb-root #fb_dialog_ipad_overlay{background:rgba(0, 0, 0, .45);position:absolute;left:0;top:0;width:100%;min-height:100%;z-index:10000}#fb-root #fb_dialog_ipad_overlay.hidden{display:none}.fb_dialog.fb_dialog_mobile.loading iframe{visibility:hidden}.fb_dialog_content .dialog_header{-webkit-box-shadow:white 0 1px 1px -1px inset;background:-webkit-gradient(linear, 0% 0%, 0% 100%, from(#738ABA), to(#2C4987));border-bottom:1px solid;border-color:#1d4088;color:#fff;font:14px Helvetica, sans-serif;font-weight:bold;text-overflow:ellipsis;text-shadow:rgba(0, 30, 84, .296875) 0 -1px 0;vertical-align:middle;white-space:nowrap}.fb_dialog_content .dialog_header table{-webkit-font-smoothing:subpixel-antialiased;height:43px;width:100%}.fb_dialog_content .dialog_header td.header_left{font-size:12px;padding-left:5px;vertical-align:middle;width:60px}.fb_dialog_content .dialog_header td.header_right{font-size:12px;padding-right:5px;vertical-align:middle;width:60px}.fb_dialog_content .touchable_button{background:-webkit-gradient(linear, 0% 0%, 0% 100%, from(#4966A6), color-stop(.5, #355492), to(#2A4887));border:1px solid #29447e;-webkit-background-clip:padding-box;-webkit-border-radius:3px;-webkit-box-shadow:rgba(0, 0, 0, .117188) 0 1px 1px inset, rgba(255, 255, 255, .167969) 0 1px 0;display:inline-block;margin-top:3px;max-width:85px;line-height:18px;padding:4px 12px;position:relative}.fb_dialog_content .dialog_header .touchable_button input{border:none;background:none;color:#fff;font:12px Helvetica, sans-serif;font-weight:bold;margin:2px -12px;padding:2px 6px 3px 6px;text-shadow:rgba(0, 30, 84, .296875) 0 -1px 0}.fb_dialog_content .dialog_header .header_center{color:#fff;font-size:16px;font-weight:bold;line-height:18px;text-align:center;vertical-align:middle}.fb_dialog_content .dialog_content{background:url(http://static.xx.fbcdn.net/rsrc.php/v2/y9/r/jKEcVPZFk-2.gif) no-repeat 50% 50%;border:1px solid #555;border-bottom:0;border-top:0;height:150px}.fb_dialog_content .dialog_footer{background:#f2f2f2;border:1px solid #555;border-top-color:#ccc;height:40px}#fb_dialog_loader_close{float:left}.fb_dialog.fb_dialog_mobile .fb_dialog_close_button{text-shadow:rgba(0, 30, 84, .296875) 0 -1px 0}.fb_dialog.fb_dialog_mobile .fb_dialog_close_icon{visibility:hidden}
+.fb_iframe_widget{display:inline-block;position:relative}.fb_iframe_widget span{display:inline-block;position:relative;text-align:justify}.fb_iframe_widget iframe{position:absolute}.fb_iframe_widget_lift{z-index:1}.fb_hide_iframes iframe{position:relative;left:-10000px}.fb_iframe_widget_loader{position:relative;display:inline-block}.fb_iframe_widget_fluid{display:inline}.fb_iframe_widget_fluid span{width:100%}.fb_iframe_widget_loader iframe{min-height:32px;z-index:2;zoom:1}.fb_iframe_widget_loader .FB_Loader{background:url(http://static.xx.fbcdn.net/rsrc.php/v2/y9/r/jKEcVPZFk-2.gif) no-repeat;height:32px;width:32px;margin-left:-16px;position:absolute;left:50%;z-index:4}
+.fb_connect_bar_container div,.fb_connect_bar_container span,.fb_connect_bar_container a,.fb_connect_bar_container img,.fb_connect_bar_container strong{background:none;border-spacing:0;border:0;direction:ltr;font-style:normal;font-variant:normal;letter-spacing:normal;line-height:1;margin:0;overflow:visible;padding:0;text-align:left;text-decoration:none;text-indent:0;text-shadow:none;text-transform:none;visibility:visible;white-space:normal;word-spacing:normal;vertical-align:baseline}.fb_connect_bar_container{position:fixed;left:0 !important;right:0 !important;height:42px !important;padding:0 25px !important;margin:0 !important;vertical-align:middle !important;border-bottom:1px solid #333 !important;background:#3b5998 !important;z-index:99999999 !important;overflow:hidden !important}.fb_connect_bar_container_ie6{position:absolute;top:expression(document.compatMode=="CSS1Compat"? document.documentElement.scrollTop+"px":body.scrollTop+"px")}.fb_connect_bar{position:relative;margin:auto;height:100%;width:100%;padding:6px 0 0 0 !important;background:none;color:#fff !important;font-family:"lucida grande", tahoma, verdana, arial, sans-serif !important;font-size:13px !important;font-style:normal !important;font-variant:normal !important;font-weight:normal !important;letter-spacing:normal !important;line-height:1 !important;text-decoration:none !important;text-indent:0 !important;text-shadow:none !important;text-transform:none !important;white-space:normal !important;word-spacing:normal !important}.fb_connect_bar a:hover{color:#fff}.fb_connect_bar .fb_profile img{height:30px;width:30px;vertical-align:middle;margin:0 6px 5px 0}.fb_connect_bar div a,.fb_connect_bar span,.fb_connect_bar span a{color:#bac6da;font-size:11px;text-decoration:none}.fb_connect_bar .fb_buttons{float:right;margin-top:7px}
+.fbpluginrecommendationsbarleft,.fbpluginrecommendationsbarright{position:fixed !important;bottom:0;z-index:999}.fbpluginrecommendationsbarleft{left:10px}.fbpluginrecommendationsbarright{right:10px}</style></head>
+
+<body data-twttr-rendered="true" class="single single-post postid-590 single-format-standard custom-background">
+<div id="page" class="hfeed site">
+		<header id="masthead" class="site-header" role="banner">
+		<div class="site-branding">
+			<div class="site-title-group">
+				<h1 class="site-title"><a href="http://harizanov.com/" title="Martin's corner on the web" rel="home">Martin's corner on the web</a></h1>
+				<h2 class="site-description">Martin's Hobby Projects</h2>
+			</div>
+		</div>
+
+		<nav id="site-navigation" class="navigation-main" role="navigation">
+			<h1 class="menu-toggle">Menu</h1>
+			<div class="screen-reader-text skip-link"><a href="#content" title="Skip to content">Skip to content</a></div>
+
+			<div class="menu-menu-container"><ul id="menu-menu" class="menu"><li id="menu-item-267" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-267"><a href="http://harizanov.com/">Home</a></li>
+<li id="menu-item-1370" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-has-children menu-item-1370"><a href="http://harizanov.com/shop/">Shop</a>
+<ul class="sub-menu">
+	<li id="menu-item-1410" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-1410"><a href="http://harizanov.com/shop/">Shop home</a></li>
+	<li id="menu-item-1374" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-1374"><a href="http://harizanov.com/shop/cart/">Cart</a></li>
+	<li id="menu-item-1371" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-1371"><a href="http://harizanov.com/shop/checkout/">Checkout</a></li>
+	<li id="menu-item-1373" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-1373"><a href="http://harizanov.com/shop/order-tracking/">Track your order</a></li>
+	<li id="menu-item-1376" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-1376"><a href="http://harizanov.com/shop/terms/">Terms</a></li>
+</ul>
+</li>
+<li id="menu-item-1106" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-has-children menu-item-1106"><a href="http://harizanov.com/forums/">Forum</a>
+<ul class="sub-menu">
+	<li id="menu-item-1389" class="menu-item menu-item-type-post_type menu-item-object-forum menu-item-1389"><a href="http://harizanov.com/forums/forum/general-talk/">General Talk</a></li>
+</ul>
+</li>
+<li id="menu-item-269" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-269"><a href="http://harizanov.com/about/">About</a></li>
+</ul></div>					</nav><!-- #site-navigation -->
+	</header><!-- #masthead -->
+
+	<div id="main" class="site-main">
+
+	<div id="primary" class="content-area">
+		<div id="content" class="site-content" role="main">
+
+		
+			
+<article id="post-590" class="post-590 post type-post status-publish format-standard hentry category-attiny84 category-attiny85">
+	<header class="entry-header">
+		<h1 class="entry-title">Setting up Arduino IDE for working with Attinys</h1>
+
+		<div class="entry-meta">
+			<a class="author" rel="author" href="http://harizanov.com/author/admin/">Martin</a> / <a class="entry-date" href="http://harizanov.com/2012/08/setting-up-arduino-ide-for-working-with-attinys/">August 2, 2012</a>		</div><!-- .entry-meta -->
+	</header><!-- .entry-header -->
+
+	<div class="entry-content">
+		<p>There are a number of posts on the subject already, but I’d like to
+ share my experience as well. Here are the steps I undertook to set up 
+my environment for working with Attiny84 and Attiny85:</p>
+<ol>
+<li>As a first step, of course get the latest Arduino IDE. You can keep 
+your old environment intact by installing it in a new folder – I do that
+ myself so I can work with old libraries that are not ported to IDE 1.0 
+or newer. You get the latest IDE from the <a href="http://arduino.cc/en/Main/Software" onclick="javascript:_gaq.push(['_trackEvent','outbound-article','http://arduino.cc']);" target="_blank">official web site.</a></li>
+<li>I am running a 64bit Windows 7 laptop and freshly installed Arduino 
+IDE is&nbsp;terribly&nbsp;slow to open the menus. This is due some bug 
+that has been carried over for ever since at least IDE #17, but 
+fortunately there is a fix. Read all about it <a href="http://www.e-shore.com.my/homepage/installation-guide/arduino/108-arduino-ide-slow-respond-error-rxtxserialdll-fix.html" onclick="javascript:_gaq.push(['_trackEvent','outbound-article','http://www.e-shore.com.my']);" target="_blank">here</a>, the fix is to replace a faulty DLL that gives you trouble on 64bit Windows systems.</li>
+<li>Next, get the latest Arduino Tiny Core from <a href="http://code.google.com/p/arduino-tiny/downloads/list" onclick="javascript:_gaq.push(['_trackEvent','outbound-article','http://code.google.com']);" target="_blank">here</a>. The included in the archive Readme gives you all you need to know on installing the core:</li>
+</ol>
+<pre>* Ensure the Arduino IDE is NOT running.
+* Download the Arduino-Tiny archive (ZIP-file).
+* Locate the Arduino Sketch folder.  This is the folder where the Arduino IDE stores Sketches.
+
+* Ensure the "hardware" folder exists under the Arduino Sketch folder.  For example, if the Arduino Sketch folder is...
+
+      C:\Projects\Arduino\
+
+  Ensure this folder exists...
+
+      C:\Projects\Arduino\hardware\
+
+* Extract the contents of the archive into the "hardware" folder.  For example, if the Arduino Sketch folder is...
+
+      C:\Projects\Arduino
+
+  After extracting, the following two files should exist...
+
+    C:\Projects\Arduino\hardware\tiny\boards.txt
+    C:\Projects\Arduino\hardware\tiny\bootloaders\attiny84\empty.hex
+
+  And the following folder should contain the Arduino-Tiny core...
+
+      C:\Projects\Arduino\hardware\tiny\cores\tiny\
+
+* Open the "boards.txt" file and change both of the "upload.using" entries to
+  the appropriate value for your setup.  Following from the examples above, the
+  file would be here...
+
+      C:\Projects\Arduino\hardware\tiny\boards.txt
+
+* Start the Arduino IDE and ensure there are two new boards listed under the 
+  [Tools] [Board] menu...
+
+      "ATtiny84 @ 8 MHz"
+      "ATtiny84 @ 1 MHz"
+
+You are now ready to use Arduino-Tiny!</pre>
+<p>4. I have found that many of the compiler errors that you will 
+stumble upon, if you leave it here are related to not updating the avr 
+toolchain. Most probably you will be seeing error messages relating to 
+R_AVR_13_PCREL.&nbsp;There is a good explanation on how to update the 
+avr toolchain that comes bundled with the Arduino IDE to the latest 
+version <a href="http://arduino.cc/forum/index.php/topic,51984.msg371307.html#msg371307" onclick="javascript:_gaq.push(['_trackEvent','outbound-article','http://arduino.cc']);" target="_blank">here</a>.</p>
+<p>5. &nbsp;We are almost there <img src="ArduinoIDE-Attinys_files/icon_smile.gif" alt=":)" class="wp-smiley">
+  . There is some nasty incompatibility between the Jeelib that we 
+heavily rely on and the Tiny Core, luckily there is a solution as well. 
+Follow the instructions <a href="http://arduino.cc/forum/index.php/topic,109081.msg857129.html#msg857129" onclick="javascript:_gaq.push(['_trackEvent','outbound-article','http://arduino.cc']);" target="_blank">here</a>
+ if you get errors like “hardware\tiny\cores\tiny/Print.h:71: 
+error:&nbsp; &nbsp;overriding ‘virtual void Print::write(uint8_t)’” . 
+The fix requires editing a bit the Ports.h and Ports.cpp so that they 
+work and don’t give you trouble.</p>
+<p>So with these steps you do have a fully operational Arduino IDE that supports Attinys.</p>
+<p>I program the little guys with an USBTiny ISP programmer, just be 
+careful when you program them and have 3.3V components on the board as 
+well, such as the RFM12B module. Most ISP programmers (like the USBTiny )
+ do have a jumper that when removed does not power the board with 5V, 
+thus you can use a battery or other 3.3V power source and not fry the 
+other components. If you don’t own an ISP programmer, I do recommend you
+ get one. They are quite cheap and available on ebay for example. I work
+ with USBTinyISP v3.0.</p>
+<p>Alternatively you can program the ATTinys with an Arduino as a 
+programmer, but that is rather masochistic approach given that an ISP 
+programmer costs $9 delivered. (5998)</p>
+<div id="end_post_ad" class="ads"><script type="text/javascript">
+							google_ad_client	=	"pub-6012209009932982";
+							google_ad_width		=	468;
+							google_ad_height	=	60;
+							google_ad_format	=	"468x60_as";
+							google_ad_type = "text";
+							google_color_border	=	"#FFFFFF";
+							google_color_bg		=	"#FFFFFF";
+							google_color_link	=	"#0000FF";
+							google_color_text	=	"#000000";
+							google_color_url	=	"#008000";
+							
+						</script><script type="text/javascript" src="ArduinoIDE-Attinys_files/show_ads.js"></script><ins style="display:inline-table;border:none;height:60px;margin:0;padding:0;position:relative;visibility:visible;width:468px;background-color:transparent"><ins id="aswift_0_anchor" style="display:block;border:none;height:60px;margin:0;padding:0;position:relative;visibility:visible;width:468px;background-color:transparent"><iframe marginwidth="0" marginheight="0" vspace="0" hspace="0" allowtransparency="true" scrolling="no" onload="var i=this.id,s=window.google_iframe_oncopy,H=s&amp;&amp;s.handlers,h=H&amp;&amp;H[i],w=this.contentWindow,d;try{d=w.document}catch(e){}if(h&amp;&amp;d&amp;&amp;(!d.body||!d.body.firstChild)){if(h.call){setTimeout(h,0)}else if(h.match){try{h=s.upd(h,i)}catch(e){}w.location.replace(h)}}" id="aswift_0" name="aswift_0" style="left:0;position:absolute;top:0;" frameborder="0" height="60" width="468"></iframe></ins></ins><input value="Version: 1.11" type="hidden"></div><!-- Social Ring Buttons Start --><div class="social-ring">
+<div class="social-ring-button"><fb:like fb-iframe-plugin-query="action=like&amp;app_id=&amp;href=http%3A%2F%2Fharizanov.com%2F2012%2F08%2Fsetting-up-arduino-ide-for-working-with-attinys%2F&amp;layout=button_count&amp;locale=en_US&amp;sdk=joey&amp;show_faces=false" fb-xfbml-state="rendered" class=" fb_iframe_widget" href="http://harizanov.com/2012/08/setting-up-arduino-ide-for-working-with-attinys/" showfaces="false" layout="button_count" action="like"><span style="vertical-align: bottom; width: 78px; height: 20px;"><iframe class="" src="ArduinoIDE-Attinys_files/like.htm" style="border: medium none; visibility: visible; width: 78px; height: 20px;" title="fb:like Facebook Social Plugin" scrolling="no" allowtransparency="true" name="fcb8f5adf597a8" frameborder="0" height="1000px" width="1000px"></iframe></span></fb:like></div>
+<div class="social-ring-button"><a href="https://www.facebook.com/sharer/sharer.php?s=100&amp;p[url]=http://harizanov.com/2012/08/setting-up-arduino-ide-for-working-with-attinys/" target="_blank" onclick="window.open('https://www.facebook.com/sharer/sharer.php?s=100&amp;p[url]=http://harizanov.com/2012/08/setting-up-arduino-ide-for-working-with-attinys/', 'newwindow', 'width=600, height=450'); return false;">
+							<img style="display:block; background: none; padding: 0px; border:0px;" src="ArduinoIDE-Attinys_files/sr-fb-share.png" alt="Share">
+						</a></div>
+<div class="social-ring-button"><iframe style="width: 109px; height: 20px;" data-twttr-rendered="true" title="Twitter Tweet Button" class="sr-twitter-button twitter-share-button twitter-tweet-button twitter-share-button twitter-count-horizontal" src="ArduinoIDE-Attinys_files/tweet_button.htm" allowtransparency="true" scrolling="no" id="twitter-widget-0" frameborder="0"></iframe></div>
+<div class="social-ring-button"><div id="___plusone_0" style="text-indent: 0px; margin: 0px; padding: 0px; background: none repeat scroll 0% 0% transparent; border-style: none; float: none; line-height: normal; font-size: 1px; vertical-align: baseline; display: inline-block; width: 90px; height: 20px;"><iframe title="+1" data-gapiattached="true" src="ArduinoIDE-Attinys_files/fastbutton.htm" name="I0_1403113499361" id="I0_1403113499361" vspace="0" tabindex="0" style="position: static; top: 0px; width: 90px; margin: 0px; border-style: none; left: 0px; visibility: visible; height: 20px;" scrolling="no" marginwidth="0" marginheight="0" hspace="0" frameborder="0" width="100%"></iframe></div></div>
+<div class="social-ring-button"><a data-pin-config="beside" data-pin-log="button_pinit" data-pin-href="//www.pinterest.com/pin/create/button/?url=http%3A%2F%2Fharizanov.com%2F2012%2F08%2Fsetting-up-arduino-ide-for-working-with-attinys%2F&amp;media=&amp;guid=EufaK_ugwKH_-0&amp;description=Setting+up+Arduino+IDE+for+working+with+Attinys" class="PIN_1403113499584_pin_it_button_20 PIN_1403113499584_pin_it_button_en_20_gray PIN_1403113499584_pin_it_button_inline_20 PIN_1403113499584_pin_it_beside_20"><span id="PIN_1403113499584_pin_count_0" class="PIN_1403113499584_hidden"><i></i></span></a></div>
+</div><!-- Social Ring Buttons End -->
+			</div><!-- .entry-content -->
+
+	<footer class="entry-meta">
+		<a class="entry-date" href="http://harizanov.com/2012/08/setting-up-arduino-ide-for-working-with-attinys/">August 2, 2012</a> in <a href="http://harizanov.com/category/attiny84/" title="View all posts in ATtiny84" rel="category tag">ATtiny84</a>, <a href="http://harizanov.com/category/attiny85/" title="View all posts in Attiny85" rel="category tag">Attiny85</a>. 	</footer><!-- .entry-meta -->
+</article><!-- #post-## -->
+			<div class="related-content">
+	<h3 class="related-content-title">Related posts</h3>
+	
+		<article id="post-2130" class="post-2130 post type-post status-publish format-standard hentry category-attiny84 category-home-automation">
+
+			
+			<header class="entry-header">
+				<h3 class="entry-title"><a href="http://harizanov.com/2013/05/low-power-serial-keypad/" title="Permalink to Low power serial keypad" rel="bookmark">Low power serial keypad</a></h3>
+			</header><!-- .entry-header -->
+
+		</article>
+
+	
+		<article id="post-1055" class="post-1055 post type-post status-publish format-standard has-post-thumbnail hentry category-attiny84 category-raspberry-pi has-post-thumbnail">
+
+						<div class="entry-thumbnail">
+				<a href="http://harizanov.com/2012/12/rfm2pi-firmware-updates/"><img src="ArduinoIDE-Attinys_files/minicom.png" class="attachment-expound-mini wp-post-image" alt="minicom" height="31" width="50"></a>
+			</div>
+			
+			<header class="entry-header">
+				<h3 class="entry-title"><a href="http://harizanov.com/2012/12/rfm2pi-firmware-updates/" title="Permalink to RFM2Pi firmware updates" rel="bookmark">RFM2Pi firmware updates</a></h3>
+			</header><!-- .entry-header -->
+
+		</article>
+
+	
+		<article id="post-1026" class="post-1026 post type-post status-publish format-standard has-post-thumbnail hentry category-attiny84 category-funky has-post-thumbnail">
+
+						<div class="entry-thumbnail">
+				<a href="http://harizanov.com/2012/12/funky-led-candle/"><img src="ArduinoIDE-Attinys_files/IMG_1756.jpg" class="attachment-expound-mini wp-post-image" alt="IMG_1756" height="37" width="50"></a>
+			</div>
+			
+			<header class="entry-header">
+				<h3 class="entry-title"><a href="http://harizanov.com/2012/12/funky-led-candle/" title="Permalink to Funky LED candle" rel="bookmark">Funky LED candle</a></h3>
+			</header><!-- .entry-header -->
+
+		</article>
+
+	</div>
+
+				<nav role="navigation" id="nav-below" class="navigation-post">
+		<h1 class="screen-reader-text">Post navigation</h1>
+
+	
+		<div class="nav-previous"><a href="http://harizanov.com/2012/08/diy-soil-moisture-project/" rel="prev"><span class="meta-nav">←</span> DIY soil moisture sensor project</a></div>		<div class="nav-next"><a href="http://harizanov.com/2012/08/tinysensor-1-4-pcb-is-ready/" rel="next">TinySensor 1.4 PCB is ready <span class="meta-nav">→</span></a></div>
+	
+	</nav><!-- #nav-below -->
+	
+			
+	<div id="comments" class="comments-area">
+
+	
+			<h2 class="comments-title">
+			12 thoughts on “<span>Setting up Arduino IDE for working with Attinys</span>”		</h2>
+
+		
+		<ol class="comment-list">
+				<li class="comment even thread-even depth-1" id="li-comment-198">
+		<article id="comment-198" class="comment">
+			<footer>
+				<div class="comment-author vcard">
+					<img alt="" src="ArduinoIDE-Attinys_files/0499f82d85716b3219c65946d863c67d.png" class="avatar avatar-40 photo" height="40" width="40">					<cite class="fn"><a href="http://rancidbacon.com/" onclick="javascript:_gaq.push(['_trackEvent','outbound-commentauthor','http://rancidbacon.com']);" rel="external nofollow" class="url">follower</a></cite> <span class="says">says:</span>				</div><!-- .comment-author .vcard -->
+				
+				<div class="comment-meta commentmetadata">
+					<a href="http://harizanov.com/2012/08/setting-up-arduino-ide-for-working-with-attinys/#comment-198"><time datetime="2012-09-09T06:58:13+00:00">
+					September 9, 2012 at 6:58 am					</time></a>
+									</div><!-- .comment-meta .commentmetadata -->
+			</footer>
+
+			<div class="comment-content"><p>FWIW I had success using this alternate core source: <a href="http://hlt.media.mit.edu/?p=1695" onclick="javascript:_gaq.push(['_trackEvent','outbound-comment','http://hlt.media.mit.edu']);" rel="nofollow">http://hlt.media.mit.edu/?p=1695</a></p>
+<p>It didn’t require any modifications to get it working.</p>
+</div>
+
+			<div class="reply">
+			<a class="comment-reply-link" href="http://harizanov.com/2012/08/setting-up-arduino-ide-for-working-with-attinys/?replytocom=198#respond" onclick='return addComment.moveForm("comment-198", "198", "respond", "590")'>Reply</a>			</div><!-- .reply -->
+		</article><!-- #comment-## -->
+
+	<ul class="children">
+	<li class="comment byuser comment-author-admin bypostauthor odd alt depth-2" id="li-comment-199">
+		<article id="comment-199" class="comment">
+			<footer>
+				<div class="comment-author vcard">
+					<img alt="" src="ArduinoIDE-Attinys_files/069359cec57dc9cd7cb6ea51cc6212f5.png" class="avatar avatar-40 photo" height="40" width="40">					<cite class="fn"><a href="http://harizanov.com/" rel="external nofollow" class="url">admin</a></cite> <span class="says">says:</span>				</div><!-- .comment-author .vcard -->
+				
+				<div class="comment-meta commentmetadata">
+					<a href="http://harizanov.com/2012/08/setting-up-arduino-ide-for-working-with-attinys/#comment-199"><time datetime="2012-09-09T09:19:53+00:00">
+					September 9, 2012 at 9:19 am					</time></a>
+									</div><!-- .comment-meta .commentmetadata -->
+			</footer>
+
+			<div class="comment-content"><p>Thanks, this is good to know</p>
+</div>
+
+			<div class="reply">
+			<a class="comment-reply-link" href="http://harizanov.com/2012/08/setting-up-arduino-ide-for-working-with-attinys/?replytocom=199#respond" onclick='return addComment.moveForm("comment-199", "199", "respond", "590")'>Reply</a>			</div><!-- .reply -->
+		</article><!-- #comment-## -->
+
+	</li><!-- #comment-## -->
+</ul><!-- .children -->
+</li><!-- #comment-## -->
+	<li class="post pingback">
+		<p>Pingback: <a href="http://harizanov.com/2012/11/atmega32u4-based-micro-node-with-rfm12b/" rel="external nofollow" class="url">Atmega32U4 based micro node with RFM12B | Martin's corner on the web</a></p>
+	</li><!-- #comment-## -->
+	<li class="comment even thread-odd thread-alt depth-1" id="li-comment-1217">
+		<article id="comment-1217" class="comment">
+			<footer>
+				<div class="comment-author vcard">
+					<img alt="" src="ArduinoIDE-Attinys_files/c8d5a3b9ab7f9425f9949cfe9199da4c.png" class="avatar avatar-40 photo" height="40" width="40">					<cite class="fn">Mike Alport</cite> <span class="says">says:</span>				</div><!-- .comment-author .vcard -->
+				
+				<div class="comment-meta commentmetadata">
+					<a href="http://harizanov.com/2012/08/setting-up-arduino-ide-for-working-with-attinys/#comment-1217"><time datetime="2013-05-04T20:50:04+00:00">
+					May 4, 2013 at 8:50 pm					</time></a>
+									</div><!-- .comment-meta .commentmetadata -->
+			</footer>
+
+			<div class="comment-content"><p>Hi Martin,<br>
+I have made up a number of your SuperFunky and RFMtoPi boards but am currently tearing my hair out!</p>
+<p>If you can give me any pointers on the following problem, I would be grateful:<br>
+I am running OSX 10.8.3 with Arduino IDE 1.0.4.<br>
+I have downloaded arduino-tiny-0100-0015.zip and put the two folders, tiny and tools in the Arduino hardware directory.<br>
+I am using an Arduino Duemilanove as an ISP.<br>
+I can compile, upload and run the blink.ino fine.<br>
+But when I try and compile any softwareSerial program such as 
+SoftwareSerialExample of your TinySensor_RF_Demo I get a bunch of 
+compile errors when I select the ATTiny84. Interestingly I don’t get 
+these errors when I select the Arduino Duemilanove w/ ATmega328.</p>
+<p>The compile errors are:<br>
+/Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr/bin/../lib/gcc/avr/4.3.2/../../../../avr/lib/avr25/crttn84.o:
+ In function `__vector_default’:<br>
+(.vectors+0×2): relocation truncated to fit: R_AVR_13_PCREL against 
+symbol `__vector_1′ defined in .text.__vector_1 section in 
+core.a(WInterrupts.c.o)<br>
+/Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr/bin/../lib/gcc/avr/4.3.2/../../../../avr/lib/avr25/crttn84.o:
+ In function `__vector_default’:<br>
+(.vectors+0×16): relocation truncated to fit: R_AVR_13_PCREL against 
+symbol `__vector_11′ defined in .text.__vector_11 section in 
+core.a(wiring.c.o)<br>
+/Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr/bin/../lib/gcc/avr/4.3.2/../../../../avr/lib/avr25/crttn84.o:(.init9+0×0):
+ relocation truncated to fit: R_AVR_13_PCREL against symbol `main’ 
+defined in .text.main section in core.a(main.cpp.o)<br>
+/Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr/bin/../lib/gcc/avr/4.3.2/../../../../avr/lib/avr25/crttn84.o:(.init9+0×2):
+ relocation truncated to fit: R_AVR_13_PCREL against symbol `exit’ 
+defined in .fini9 section in 
+/Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr/bin/../lib/gcc/avr/4.3.2/avr25/libgcc.a(_exit.o)<br>
+TinySensor_RF12_Demo.cpp.o: In function `saveConfig’:<br>
+/Applications/TinySensor_RF12_Demo.ino:82: relocation truncated to fit: 
+R_AVR_13_PCREL against symbol `Print::println(char const*)’ defined in 
+.text._ZN5Print7printlnEPKc section in core.a(Print.cpp.o)<br>
+TinySensor_RF12_Demo.cpp.o: In function `showString’:<br>
+/Applications/TinySensor_RF12_Demo.ino:106: relocation truncated to fit:
+ R_AVR_13_PCREL against symbol `Print::print(char, int)’ defined in 
+.text._ZN5Print5printEci section in core.a(Print.cpp.o)<br>
+/Applications/TinySensor_RF12_Demo.ino:107: relocation truncated to fit:
+ R_AVR_13_PCREL against symbol `Print::print(char, int)’ defined in 
+.text._ZN5Print5printEci section in core.a(Print.cpp.o)<br>
+TinySensor_RF12_Demo.cpp.o: In function `showHelp’:<br>
+/Applications/TinySensor_RF12_Demo.ino:113: relocation truncated to fit:
+ R_AVR_13_PCREL against symbol `Print::println(char const*)’ defined in 
+.text._ZN5Print7printlnEPKc section in core.a(Print.cpp.o)<br>
+/Applications/TinySensor_RF12_Demo.ino:132: relocation truncated to fit:
+ R_AVR_13_PCREL against symbol `Print::print(int, int)’ defined in 
+.text._ZN5Print5printEii section in core.a(Print.cpp.o)<br>
+/Applications/TinySensor_RF12_Demo.ino:133: relocation truncated to fit:
+ R_AVR_13_PCREL against symbol `Print::print(char const*)’ defined in 
+.text._ZN5Print5printEPKc section in core.a(Print.cpp.o)<br>
+/Applications/TinySensor_RF12_Demo.ino:134: additional relocation overflows omitted from the output</p>
+</div>
+
+			<div class="reply">
+			<a class="comment-reply-link" href="http://harizanov.com/2012/08/setting-up-arduino-ide-for-working-with-attinys/?replytocom=1217#respond" onclick='return addComment.moveForm("comment-1217", "1217", "respond", "590")'>Reply</a>			</div><!-- .reply -->
+		</article><!-- #comment-## -->
+
+	<ul class="children">
+	<li class="comment byuser comment-author-admin bypostauthor odd alt depth-2" id="li-comment-1218">
+		<article id="comment-1218" class="comment">
+			<footer>
+				<div class="comment-author vcard">
+					<img alt="" src="ArduinoIDE-Attinys_files/069359cec57dc9cd7cb6ea51cc6212f5.png" class="avatar avatar-40 photo" height="40" width="40">					<cite class="fn"><a href="http://harizanov.com/" rel="external nofollow" class="url">Martin</a></cite> <span class="says">says:</span>				</div><!-- .comment-author .vcard -->
+				
+				<div class="comment-meta commentmetadata">
+					<a href="http://harizanov.com/2012/08/setting-up-arduino-ide-for-working-with-attinys/#comment-1218"><time datetime="2013-05-04T20:56:04+00:00">
+					May 4, 2013 at 8:56 pm					</time></a>
+									</div><!-- .comment-meta .commentmetadata -->
+			</footer>
+
+			<div class="comment-content"><p>Mike,<br>
+did you complete step 4 outlined in the post? I was getting the same 
+errors, but that was fixed for me once I followed the simple 
+instructions that are linked to item 4.</p>
+</div>
+
+			<div class="reply">
+			<a class="comment-reply-link" href="http://harizanov.com/2012/08/setting-up-arduino-ide-for-working-with-attinys/?replytocom=1218#respond" onclick='return addComment.moveForm("comment-1218", "1218", "respond", "590")'>Reply</a>			</div><!-- .reply -->
+		</article><!-- #comment-## -->
+
+	<ul class="children">
+	<li class="comment even depth-3" id="li-comment-1276">
+		<article id="comment-1276" class="comment">
+			<footer>
+				<div class="comment-author vcard">
+					<img alt="" src="ArduinoIDE-Attinys_files/b8d6d6d8854637d2bc3c87f5b31ae42f.jpg" class="avatar avatar-40 photo" height="40" width="40">					<cite class="fn">Troy Miller</cite> <span class="says">says:</span>				</div><!-- .comment-author .vcard -->
+				
+				<div class="comment-meta commentmetadata">
+					<a href="http://harizanov.com/2012/08/setting-up-arduino-ide-for-working-with-attinys/#comment-1276"><time datetime="2013-05-10T09:12:45+00:00">
+					May 10, 2013 at 9:12 am					</time></a>
+									</div><!-- .comment-meta .commentmetadata -->
+			</footer>
+
+			<div class="comment-content"><p>I tried to follow the post but on my 
+version of the jeelib library that change has already been made. I tried
+ just replacing the section but still I get the same error. Using 
+arduino 1.0.1 and 1.0.2, and 1.04.</p>
+</div>
+
+			<div class="reply">
+			<a class="comment-reply-link" href="http://harizanov.com/2012/08/setting-up-arduino-ide-for-working-with-attinys/?replytocom=1276#respond" onclick='return addComment.moveForm("comment-1276", "1276", "respond", "590")'>Reply</a>			</div><!-- .reply -->
+		</article><!-- #comment-## -->
+
+	<ul class="children">
+	<li class="comment byuser comment-author-admin bypostauthor odd alt depth-4" id="li-comment-1277">
+		<article id="comment-1277" class="comment">
+			<footer>
+				<div class="comment-author vcard">
+					<img alt="" src="ArduinoIDE-Attinys_files/069359cec57dc9cd7cb6ea51cc6212f5.png" class="avatar avatar-40 photo" height="40" width="40">					<cite class="fn"><a href="http://harizanov.com/" rel="external nofollow" class="url">Martin</a></cite> <span class="says">says:</span>				</div><!-- .comment-author .vcard -->
+				
+				<div class="comment-meta commentmetadata">
+					<a href="http://harizanov.com/2012/08/setting-up-arduino-ide-for-working-with-attinys/#comment-1277"><time datetime="2013-05-10T09:18:27+00:00">
+					May 10, 2013 at 9:18 am					</time></a>
+									</div><!-- .comment-meta .commentmetadata -->
+			</footer>
+
+			<div class="comment-content"><p>Pls see if this helps: </p>
+<p><a href="https://code.google.com/p/arduino-tiny/issues/detail?id=58#c7" onclick="javascript:_gaq.push(['_trackEvent','outbound-comment','http://code.google.com']);" rel="nofollow">https://code.google.com/p/arduino-tiny/issues/detail?id=58#c7</a></p>
+</div>
+
+			<div class="reply">
+			<a class="comment-reply-link" href="http://harizanov.com/2012/08/setting-up-arduino-ide-for-working-with-attinys/?replytocom=1277#respond" onclick='return addComment.moveForm("comment-1277", "1277", "respond", "590")'>Reply</a>			</div><!-- .reply -->
+		</article><!-- #comment-## -->
+
+	<ul class="children">
+	<li class="comment even depth-5" id="li-comment-1319">
+		<article id="comment-1319" class="comment">
+			<footer>
+				<div class="comment-author vcard">
+					<img alt="" src="ArduinoIDE-Attinys_files/b8d6d6d8854637d2bc3c87f5b31ae42f.jpg" class="avatar avatar-40 photo" height="40" width="40">					<cite class="fn">Troy Miller</cite> <span class="says">says:</span>				</div><!-- .comment-author .vcard -->
+				
+				<div class="comment-meta commentmetadata">
+					<a href="http://harizanov.com/2012/08/setting-up-arduino-ide-for-working-with-attinys/#comment-1319"><time datetime="2013-05-13T09:35:12+00:00">
+					May 13, 2013 at 9:35 am					</time></a>
+									</div><!-- .comment-meta .commentmetadata -->
+			</footer>
+
+			<div class="comment-content"><p>I was able to get this to work but I 
+used xming on my laptop, SSHd into my Pi, followed your directions, and 
+followed a change to the attiny core wiring.h file.</p>
+<p><a href="http://ubuntuforums.org/showthread.php?t=1862537" onclick="javascript:_gaq.push(['_trackEvent','outbound-comment','http://ubuntuforums.org']);" rel="nofollow">http://ubuntuforums.org/showthread.php?t=1862537</a></p>
+</div>
+
+			<div class="reply">
+						</div><!-- .reply -->
+		</article><!-- #comment-## -->
+
+	</li><!-- #comment-## -->
+</ul><!-- .children -->
+</li><!-- #comment-## -->
+</ul><!-- .children -->
+</li><!-- #comment-## -->
+</ul><!-- .children -->
+</li><!-- #comment-## -->
+</ul><!-- .children -->
+</li><!-- #comment-## -->
+	<li class="comment odd alt thread-even depth-1" id="li-comment-1223">
+		<article id="comment-1223" class="comment">
+			<footer>
+				<div class="comment-author vcard">
+					<img alt="" src="ArduinoIDE-Attinys_files/c8d5a3b9ab7f9425f9949cfe9199da4c.png" class="avatar avatar-40 photo" height="40" width="40">					<cite class="fn">Mike Alport</cite> <span class="says">says:</span>				</div><!-- .comment-author .vcard -->
+				
+				<div class="comment-meta commentmetadata">
+					<a href="http://harizanov.com/2012/08/setting-up-arduino-ide-for-working-with-attinys/#comment-1223"><time datetime="2013-05-05T11:00:41+00:00">
+					May 5, 2013 at 11:00 am					</time></a>
+									</div><!-- .comment-meta .commentmetadata -->
+			</footer>
+
+			<div class="comment-content"><p>I couldn’t figure how to implement the AVR-tools upgrade in OSX from your link.</p>
+<p>But did find a pointer at:<br>
+<a href="https://github.com/pbrook/minimus-arduino/wiki" onclick="javascript:_gaq.push(['_trackEvent','outbound-comment','http://github.com']);" rel="nofollow">https://github.com/pbrook/minimus-arduino/wiki</a><br>
+using CrossPack and the following instructions:</p>
+<p>avr-gcc used by the Arduino IDE is too old to support atmega32u2, 
+luckily there are nice people that maintain an AVR Crosspack for OSX 
+here: <a href="http://www.obdev.at/products/crosspack" onclick="javascript:_gaq.push(['_trackEvent','outbound-comment','http://www.obdev.at']);" rel="nofollow">http://www.obdev.at/products/crosspack</a> Download and install that</p>
+<p>By default it install into /usr/local/CrossPack-AVR while the Arduino
+ IDE expects it to be in its app directory, so we do the ‘ol switcharoo</p>
+<p>cd /Applications/Arduino.app/Contents/Resources/Java/hardware/tools/<br>
+mv avr avr-original<br>
+ln -s /usr/local/CrossPack-AVR /Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr<br>
+Rejoice</p>
+</div>
+
+			<div class="reply">
+			<a class="comment-reply-link" href="http://harizanov.com/2012/08/setting-up-arduino-ide-for-working-with-attinys/?replytocom=1223#respond" onclick='return addComment.moveForm("comment-1223", "1223", "respond", "590")'>Reply</a>			</div><!-- .reply -->
+		</article><!-- #comment-## -->
+
+	</li><!-- #comment-## -->
+	<li class="comment even thread-odd thread-alt depth-1" id="li-comment-1224">
+		<article id="comment-1224" class="comment">
+			<footer>
+				<div class="comment-author vcard">
+					<img alt="" src="ArduinoIDE-Attinys_files/c8d5a3b9ab7f9425f9949cfe9199da4c.png" class="avatar avatar-40 photo" height="40" width="40">					<cite class="fn">Mike Alport</cite> <span class="says">says:</span>				</div><!-- .comment-author .vcard -->
+				
+				<div class="comment-meta commentmetadata">
+					<a href="http://harizanov.com/2012/08/setting-up-arduino-ide-for-working-with-attinys/#comment-1224"><time datetime="2013-05-05T11:14:46+00:00">
+					May 5, 2013 at 11:14 am					</time></a>
+									</div><!-- .comment-meta .commentmetadata -->
+			</footer>
+
+			<div class="comment-content"><p>Now trying to compile TinySensor_RF12_Demo.ino only get 1x compile error:<br>
+TinySensor_RF12_Demo.ino:86:18: error: variable ‘helpText1′ must be 
+const in order to be put into read-only section by means of 
+‘__attribute__((progmem))’</p>
+</div>
+
+			<div class="reply">
+			<a class="comment-reply-link" href="http://harizanov.com/2012/08/setting-up-arduino-ide-for-working-with-attinys/?replytocom=1224#respond" onclick='return addComment.moveForm("comment-1224", "1224", "respond", "590")'>Reply</a>			</div><!-- .reply -->
+		</article><!-- #comment-## -->
+
+	<ul class="children">
+	<li class="comment byuser comment-author-admin bypostauthor odd alt depth-2" id="li-comment-1227">
+		<article id="comment-1227" class="comment">
+			<footer>
+				<div class="comment-author vcard">
+					<img alt="" src="ArduinoIDE-Attinys_files/069359cec57dc9cd7cb6ea51cc6212f5.png" class="avatar avatar-40 photo" height="40" width="40">					<cite class="fn"><a href="http://harizanov.com/" rel="external nofollow" class="url">Martin</a></cite> <span class="says">says:</span>				</div><!-- .comment-author .vcard -->
+				
+				<div class="comment-meta commentmetadata">
+					<a href="http://harizanov.com/2012/08/setting-up-arduino-ide-for-working-with-attinys/#comment-1227"><time datetime="2013-05-05T16:33:56+00:00">
+					May 5, 2013 at 4:33 pm					</time></a>
+									</div><!-- .comment-meta .commentmetadata -->
+			</footer>
+
+			<div class="comment-content"><p>That’s odd, no idea how to fix it (check what google has to say).<br>
+BTW, why not set Arduino IDE on your Raspberry Pi?</p>
+</div>
+
+			<div class="reply">
+			<a class="comment-reply-link" href="http://harizanov.com/2012/08/setting-up-arduino-ide-for-working-with-attinys/?replytocom=1227#respond" onclick='return addComment.moveForm("comment-1227", "1227", "respond", "590")'>Reply</a>			</div><!-- .reply -->
+		</article><!-- #comment-## -->
+
+	</li><!-- #comment-## -->
+</ul><!-- .children -->
+</li><!-- #comment-## -->
+	<li class="comment even thread-even depth-1" id="li-comment-2343">
+		<article id="comment-2343" class="comment">
+			<footer>
+				<div class="comment-author vcard">
+					<img alt="" src="ArduinoIDE-Attinys_files/f35242c8d6c95d440638dc50907cada2.png" class="avatar avatar-40 photo" height="40" width="40">					<cite class="fn">casestudies</cite> <span class="says">says:</span>				</div><!-- .comment-author .vcard -->
+				
+				<div class="comment-meta commentmetadata">
+					<a href="http://harizanov.com/2012/08/setting-up-arduino-ide-for-working-with-attinys/#comment-2343"><time datetime="2013-10-04T05:17:13+00:00">
+					October 4, 2013 at 5:17 am					</time></a>
+									</div><!-- .comment-meta .commentmetadata -->
+			</footer>
+
+			<div class="comment-content"><p>I’m having a lot of trouble compiling
+  an Arduino  sketch for the ATtiny84 chip. I followed the above, and 
+many other hints on the web, but can’t seem to get it to compile when 
+using the attiny84at8 settings. I’m using a program called “ino” for 
+compiling Arduino sketches on the command line so that I can get the hex
+ file to burn to the chip. Running on a Raspberry Pi Arduino v 1.0.1</p>
+<p>I was wondering if you have happened to come across the following error message during compiling.</p>
+<p>pi@emoncmspi ~/TinyTX/TinyTX_RX_Simple/ino $ ino build -m attiny84at8<br>
+src/TinyTX_RX_Simple.cpp<br>
+In file included from /usr/share/arduino/libraries/jeelib/JeeLib.h:7:0,<br>
+                 from .build/attiny84at8/src/TinyTX_RX_Simple.cpp:2:<br>
+/usr/share/arduino/libraries/jeelib/Ports.h:696:49: error: âSerialâ was not declared in this scope<br>
+/usr/share/arduino/libraries/jeelib/Ports.h:697:60: error: âSerialâ was not declared in this scope<br>
+make: *** [.build/attiny84at8/src/TinyTX_RX_Simple.o] Error 1</p>
+<p>Any hints would be great! Thanks.</p>
+</div>
+
+			<div class="reply">
+			<a class="comment-reply-link" href="http://harizanov.com/2012/08/setting-up-arduino-ide-for-working-with-attinys/?replytocom=2343#respond" onclick='return addComment.moveForm("comment-2343", "2343", "respond", "590")'>Reply</a>			</div><!-- .reply -->
+		</article><!-- #comment-## -->
+
+	</li><!-- #comment-## -->
+		</ol><!-- .comment-list -->
+
+		
+	
+	
+									<div id="respond" class="comment-respond">
+				<h3 id="reply-title" class="comment-reply-title">Leave a Reply <small><a rel="nofollow" id="cancel-comment-reply-link" href="http://harizanov.com/2012/08/setting-up-arduino-ide-for-working-with-attinys/#respond" style="display:none;">Cancel reply</a></small></h3>
+									<form action="http://harizanov.com/wp-comments-post.php" method="post" id="commentform" class="comment-form">
+																			<p class="comment-notes">Your email address will not be published. Required fields are marked <span class="required">*</span></p>							<p class="comment-form-author"><label for="author">Name <span class="required">*</span></label> <input id="author" name="author" size="30" aria-required="true" type="text"></p>
+<p class="comment-form-email"><label for="email">Email <span class="required">*</span></label> <input id="email" name="email" size="30" aria-required="true" type="text"></p>
+<p class="comment-form-url"><label for="url">Website</label> <input id="url" name="url" size="30" type="text"></p>
+<p class="cptch_block"><br>		<input name="cptch_result" value="9BM=" type="hidden">
+		<input name="cptch_time" value="1403113491" type="hidden">
+		<input value="Version: 2.4" type="hidden">
+		two + <input id="cptch_input" autocomplete="off" name="cptch_number" maxlength="2" size="2" aria-required="true" required="required" style="margin-bottom:0;display:inline;font-size: 12px;width: 40px;" type="text"> = 9	</p>												<p class="comment-form-comment"><label for="comment">Comment</label> <textarea id="comment" name="comment" cols="45" rows="8" aria-required="true"></textarea></p>						<p class="form-allowed-tags">You may use these <abbr title="HyperText Markup Language">HTML</abbr> tags and attributes:  <code>&lt;a
+ href="" title=""&gt; &lt;abbr title=""&gt; &lt;acronym title=""&gt; 
+&lt;b&gt; &lt;blockquote cite=""&gt; &lt;cite&gt; &lt;code&gt; &lt;del 
+datetime=""&gt; &lt;em&gt; &lt;i&gt; &lt;q cite=""&gt; &lt;strike&gt; 
+&lt;strong&gt; </code></p>						<p class="form-submit">
+							<input name="submit" id="submit" value="Post Comment" type="submit">
+							<input name="comment_post_ID" value="590" id="comment_post_ID" type="hidden">
+<input name="comment_parent" id="comment_parent" value="0" type="hidden">
+						</p>
+						<p style="display: none;"><input id="akismet_comment_nonce" name="akismet_comment_nonce" value="fc535c045f" type="hidden"></p><script type="text/javascript" src="ArduinoIDE-Attinys_files/form.js"></script>
+<p style="display: none;"></p>					<input id="ak_js" name="ak_js" value="1403113499682" type="hidden"></form>
+							</div><!-- #respond -->
+			        <script type="text/javascript">
+            jQuery(document).ready(function () {
+                jQuery('#commentform').submit(function () {
+                    _gaq.push(
+                            ['_setAccount', 'UA-20531689-1'],
+                            ['_trackEvent', 'comment', 'submit']
+                    );
+                });
+            });
+        </script>
+		
+</div><!-- #comments -->
+
+		
+		</div><!-- #content -->
+	</div><!-- #primary -->
+
+	<div id="secondary" class="widget-area" role="complementary">
+				<aside id="search-3" class="widget widget_search"><h1 class="widget-title">Search</h1>	<form method="get" id="searchform" class="searchform" action="http://harizanov.com/" role="search">
+		<label for="s" class="screen-reader-text">Search</label>
+		<input class="field" name="s" id="s" placeholder="Search …" type="search">
+		<input class="submit" id="searchsubmit" value="Search" type="submit">
+	</form>
+</aside><aside id="text-3" class="widget widget_text"><h1 class="widget-title">Follow me on TWiTTER</h1>			<div class="textwidget"><iframe style="width: 138px; height: 20px;" data-twttr-rendered="true" title="Twitter Follow Button" class="twitter-follow-button twitter-follow-button" src="ArduinoIDE-Attinys_files/follow_button.htm" allowtransparency="true" scrolling="no" id="twitter-widget-1" frameborder="0"></iframe>
+<script type="text/javascript">// <![CDATA[
+!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src="//platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");
+// ]]></script></div>
+		</aside><aside id="jigoshop_cart-2" class="widget jigoshop_cart"><h1 class="widget-title">Cart</h1><span class="empty">No products in the cart.</span></aside><aside id="jigoshop_featured_products-2" class="widget jigoshop_featured_products"><h1 class="widget-title">FEATURED</h1><ul class="product_list_widget"><li><a href="http://harizanov.com/product/daikin-internet-remote-control-unit/" title="DAIKIN Internet remote control unit"><img src="ArduinoIDE-Attinys_files/IMG_2232-36x27.jpg" class="attachment-shop_tiny wp-post-image" alt="IMG_2232" height="27" width="36"><span class="js_widget_product_title">DAIKIN Internet remote control unit</span></a><span class="js_widget_product_price">€55.00</span></li><li><a href="http://harizanov.com/product/1-8-tft-display-for-raspberry-pi/" title="1.8″ TFT Display for Raspberry Pi"><img src="ArduinoIDE-Attinys_files/IMG_1980-e1362079459902-27x36.jpg" class="attachment-shop_tiny wp-post-image" alt="IMG_1980" height="36" width="27"><span class="js_widget_product_title">1.8″ TFT Display for Raspberry Pi</span></a><span class="js_widget_product_price">€12.00</span></li><li><a href="http://harizanov.com/product/funky-v2/" title="Funky v2 rev 2"><img src="ArduinoIDE-Attinys_files/IMG_2724-36x27.jpg" class="attachment-shop_tiny wp-post-image" alt="IMG_2724" height="27" width="36"><span class="js_widget_product_title">Funky v2 rev 2</span></a><span class="js_widget_product_price">Price Not Announced</span></li></ul></aside>		<aside id="most-viewed-posts-2" class="widget widget_most_viewed_entries">		<h1 class="widget-title">Most viewed this week</h1>		<ul>
+						<li><a href="http://harizanov.com/2013/06/dht22-accuracy-test-part-1/" title="DHT22 accuracy test part 1">DHT22 accuracy test part 1 (801)</a></li>
+						<li><a href="http://harizanov.com/about/" title="About">About (206)</a></li>
+						<li><a href="http://harizanov.com/2012/10/funky-as-remote-temperature-sensing-node-with-ds18b20/" title="Funky as remote temperature sensing node with DS18B20">Funky as remote temperature sensing node with DS18B20 (127)</a></li>
+						<li><a href="http://harizanov.com/2013/07/raspberry-pi-emalsms-doorbell-notifier-picture-of-the-person-ringing-it/" title="Raspberry Pi email/SMS doorbell notifier + picture of the person ringing it">Raspberry Pi email/SMS doorbell notifier + picture of the person ringing it (125)</a></li>
+						<li><a href="http://harizanov.com/2013/06/nrf24l01-range-testing/" title="nRF24L01+ range testing">nRF24L01+ range testing (83)</a></li>
+				</ul>
+		</aside>			</div><!-- #secondary -->
+	</div><!-- #main -->
+
+	<footer id="colophon" class="site-footer" role="contentinfo">
+		<div class="site-info">
+			<a href="http://wordpress.org/" rel="generator">Proudly powered by WordPress</a><span class="sep"> | </span>Theme: Expound by <a href="http://kovshenin.com/" rel="designer">Konstantin Kovshenin</a>		</div><!-- .site-info -->
+	</footer><!-- #colophon -->
+</div><!-- #page -->
+
+			<!-- Social Ring JS Start -->
+			<div class=" fb_reset" id="fb-root"><div style="position: absolute; top: -10000px; height: 0px; width: 0px;"><div><iframe src="ArduinoIDE-Attinys_files/V80PAcvrynR.htm" style="border: medium none;" tabindex="-1" title="Facebook Cross Domain Communication Frame" aria-hidden="true" id="fb_xdm_frame_http" scrolling="no" allowtransparency="true" name="fb_xdm_frame_http" frameborder="0"></iframe><iframe src="ArduinoIDE-Attinys_files/V80PAcvrynR_002.htm" style="border: medium none;" tabindex="-1" title="Facebook Cross Domain Communication Frame" aria-hidden="true" id="fb_xdm_frame_https" scrolling="no" allowtransparency="true" name="fb_xdm_frame_https" frameborder="0"></iframe></div></div><div style="position: absolute; top: -10000px; height: 0px; width: 0px;"><div></div></div></div><script src="ArduinoIDE-Attinys_files/all.js"></script><script type="text/javascript" src="ArduinoIDE-Attinys_files/widgets.js"></script><script type="text/javascript">
+								window.___gcfg = {
+								  lang: 'en-US'
+								};
+								(function() {
+									var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
+									po.src = 'https://apis.google.com/js/plusone.js';
+									var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+								})();
+							</script>
+							<script gapi_processed="true" type="text/javascript" src="ArduinoIDE-Attinys_files/plusone.js"></script><iframe tabindex="-1" style="width: 1px; height: 1px; position: absolute; top: -100px;" src="ArduinoIDE-Attinys_files/postmessageRelay.htm" id="oauth2relay1116549176" name="oauth2relay1116549176"></iframe>		<!-- Social Ring JS End -->
+	<script type="text/javascript">
+/* <![CDATA[ */
+var jigoshop_params = {"ajax_url":"http:\/\/harizanov.com\/wp-admin\/admin-ajax.php","assets_url":"http:\/\/harizanov.com\/wp-content\/plugins\/jigoshop","checkout_url":"http:\/\/harizanov.com\/wp-admin\/admin-ajax.php?action=jigoshop-checkout","currency_symbol":"\u20ac","get_variation_nonce":"7d0c05fc21","load_fancybox":"","option_guest_checkout":"yes","select_state_text":"Select a state\u2026","state_text":"state","ratings_message":"Please select a star to rate your review.","update_order_review_nonce":"2c200a16f9","billing_state":"","shipping_state":"","is_checkout":""};
+/* ]]> */
+</script>
+<script type="text/javascript" src="ArduinoIDE-Attinys_files/global.js"></script>
+<script type="text/javascript" src="ArduinoIDE-Attinys_files/editor.js"></script>
+<script type="text/javascript">
+/* <![CDATA[ */
+var MTBrushParams = {"baseUrl":"http:\/\/harizanov.com\/wp-content\/plugins\/syntax-highlighter-mt"};
+/* ]]> */
+</script>
+<script type="text/javascript" src="ArduinoIDE-Attinys_files/brushTypes.js"></script>
+<script type="text/javascript" src="ArduinoIDE-Attinys_files/navigation.js"></script>
+<script type="text/javascript" src="ArduinoIDE-Attinys_files/skip-link-focus-fix.js"></script>
+<script type="text/javascript" src="ArduinoIDE-Attinys_files/comment-reply.js"></script>
+
+
+</body></html>
