@@ -152,14 +152,14 @@ uint8_t OneWire::read() {
     return r;
 }
 
-void OneWire::vwrite(uint8_t *d, uint8_t n)
+void OneWire::write(uint8_t *d, uint8_t n)
 {
     uint8_t i;
 
     for (i=0; i < n; i++)   write(d[i]);
 }
 
-void OneWire::vread(uint8_t *d, uint8_t n)
+void OneWire::read(uint8_t *d, uint8_t n)
 {
     uint8_t i;
 
@@ -168,69 +168,39 @@ void OneWire::vread(uint8_t *d, uint8_t n)
 
 void OneWire::start()
 {
-    uint8_t i;
-    
     srchJ = -1;
     srchE = 0;
-    for( i = 8; i--;) adr[i] = 0;
+    for(int i = 8; i--;) adr[i] = 0x00;
 }
 
-//
-// Perform a search. If this function returns a '1' then it has
-// enumerated the next device and you may retrieve the ROM from the
-// OneWire::address variable. If there are no devices, no further
-// devices, or something horrible happens in the middle of the
-// enumeration then a 0 is returned.  If a new device is found then
-// its address is copied to newAddr.  Use OneWire::reset_search() to
-// start over.
-// 
 uint8_t OneWire::discover(uint8_t *newAddr)
 {
-    uint8_t i;
-    char lastJunction = -1;
-    uint8_t done = 1;
-    
-    if (srchE) return 0;
-    for(i = 0; i < 64; i++) {
-	uint8_t a = read_bit();
-	uint8_t nota = read_bit();
-	uint8_t ibyte = i/8;
-	uint8_t ibit = 1<<(i&7);
-	
-        // This should not happen, this means nothing responded, but maybe if
-        // something vanishes during the search it will come up.
-	if (a && nota) return 0;
+   int8_t lastZJ = -1;
 
-	if ( !a && !nota) {
-	    if ( i == srchJ) {   // this is our time to decide differently, we went zero last time, go one.
-		a = 1;
-		srchJ = lastJunction;
-	    } else if ( i < srchJ) {   // take whatever we took last time, look in address
-		if (adr[ibyte]&ibit)
-			a = 1;
-		else { // Only 0s count as pending junctions, we've already exhasuted the 0 side of 1s
-		    a = 0;
-		    done = 0;
-		    lastJunction = i;
-		}
-	    } else {   // we are blazing new tree, take the 0
-		a = 0;
-		srchJ = i;
-		done = 0;
-	    }
-	    lastJunction = i;
+   if (srchE) return 0;
+
+   for(int i = 0; i < 64; i++)  {
+	char msk = 1<<(i&7), ptr = i>>3;
+	uint8_t  a = read_bit();
+	uint8_t _a = read_bit();
+
+	if (a && _a ) return 0;
+	if (a == _a) {
+                if (i==srchJ) a=1;   // if (i < srchJ) a = ((adr[ptr]&msk) != 0)?1:0;
+	   else if(adr[ptr]&msk) a=1;// else           a = (i==srchJ)?1:0;
+	   else lastZJ = i;          // if (a == 0) lastZJ = i;
 	}
 
-	if (a) adr[ibyte] |= ibit;
-	else adr[ibyte] &= ~ibit;
-	
-	write_bit(a);
-    }
+	if(a) adr[ptr] |=  msk;
+	else  adr[ptr] &= ~msk;
+    	write_bit(a);
+   }
 
-    if (done) srchE = 1;
-    for (i=8; i--;) newAddr[i]=adr[i];
-
-    return 1;  
+   srchJ = lastZJ;
+   if (lastZJ == -1) srchE = 1;
+   
+   for (int m = 8; m--;) newAddr[m] = adr[m];
+   return 1;
 }
 
 uint8_t OneWire::crc8( uint8_t *addr, uint8_t len)
@@ -253,3 +223,20 @@ uint8_t OneWire::crc8( uint8_t *addr, uint8_t len)
     }
     return crc;
 }
+
+uint8_t OneWire::search(uint8_t *newAddr)
+{
+    if (!reset()) return 0;
+    write(0xF0); // search rom
+    if (discover(newAddr)) return 1;
+    start(); // no devices, start over
+    return 0;
+}
+
+void OneWire::select(uint8_t *newAddr)
+{
+    if (!reset()) return;
+    write(0x55);  // match rom
+    write(newAddr, 8); 
+}
+
