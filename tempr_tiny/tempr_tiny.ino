@@ -3,6 +3,15 @@
 #include <SoftwareSerial.h>
 #include <EEPROM.h>
 
+/* 
+ * Enable EEPROM save over reprograming flash:
+ *
+ * C:\Program Files (x86)\Arduino\hardware/tools/avr/bin/avrdude 
+ * -CC:\Program Files (x86)\Arduino\hardware/tools/avr/etc/avrdude.conf
+ * -v -v -v -v -pattiny85 -cusbtiny -Pusb -e 
+ * -Uefuse:w:0xff:m -Uhfuse:w:0xd7:m -Ulfuse:w:0xe2:m 
+ */
+
 byte eerd(int a) { 
   return EEPROM.read(a); 
 }
@@ -57,7 +66,7 @@ void setup()
 {
   mySerial.begin(9600);
   ltime = millis()-tinterval;
-  sprint(":INI?\r\n"); 
+  sprint(":INI\r\n"); 
   if (!lpar())
     sprint(":eeprom?\r\n"); 
 }
