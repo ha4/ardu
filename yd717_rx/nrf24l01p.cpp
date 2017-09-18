@@ -55,6 +55,7 @@ uint8_t nrf24l01p::rxMode(uint8_t initialFreq)
   const uint8_t* rx_tx_addr = 
     reinterpret_cast<const uint8_t *>("\x60\x60\x60\x60\x60");
   writeRegister(RX_ADDR_P0, rx_tx_addr, 5);
+  writeRegister(TX_ADDR, rx_tx_addr, 5);
   delay(50);
   flushTx();
   flushRx();
