@@ -54,7 +54,10 @@ void setup()
   Serial.begin(9600);
   enable_irrecv(2);
   attachPinChangeInterrupt(irparams.recvpin, irisr, CHANGE);
-  L1.inv = L2.inv = L3.inv = L4.inv = 1;
+  L1.inverse();
+  L2.inverse();
+  L3.inverse();
+  L4.inverse();
   ch=0;
   seq_cmd(SEQ_PON);
   t_20ms=0;
