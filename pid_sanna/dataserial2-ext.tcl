@@ -4,6 +4,7 @@ set config_vars {ConfPort ConfMode ConfFile ConfGenerateFn sertime}
 
 set chan ""
 set sertime 3000
+set ConfPrint 0
 
 proc ser_cmd {cmd} {
 	global chan
@@ -85,12 +86,15 @@ proc ser_stop {} {
 proc data_in {s} {             
 	global chart
 	global datax
-	global avg_do
-	global avg
+        global ConfPrint
 
 # timing
 	set t [get_clock]
 	if {$s == ""} { return }
+
+        if {$ConfPrint} {
+                puts "$t $s"
+        }
 
 # parse
 	if {[string match "\#*" $s]} {
@@ -114,12 +118,8 @@ proc data_in {s} {
 
 # processing
 
-	if {$avg_do} {
-		set avg [expr $avg + $x]
-	 	set datax "$avg"
-	} else {
-	 	set datax "$s"
-	}
+# 	set datax "$x"
+        set datax "$x $x2"
 
 
 # plot	
