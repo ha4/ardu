@@ -108,7 +108,7 @@ proc data_in {s} {
 	put_log "$t $s"
 
 	if {[string match ":*" $s]} {
-		set_status "$s"
+		set_status2 "$s"
 		return
 	}
 
@@ -157,11 +157,12 @@ proc cmd_setup {} {
 # -- STATUSBAR
 
 label .statusbar.msg -bd 1 -relief sunken -width 55 -anchor w -text "wait.."
-label .statusbar.msg2 -bd 1 -relief sunken -width 65 -anchor w
+#label .statusbar.msg2 -bd 1 -relief sunken -width 65 -anchor w
+tk_optionMenu .statusbar.msg2 x500 nothing
 pack .statusbar.msg  -before .statusbar.fill -side left -expand false -fill x 
 pack .statusbar.msg2 -before .statusbar.fill -side left -expand false -fill x 
-proc set_status {s} { .statusbar.msg configure -text $s }
-proc set_status2 {s} { .statusbar.msg2 configure -text $s }
+proc set_status  {s} { .statusbar.msg configure -text $s }
+proc set_status2 {s} { .statusbar.msg2.menu insert 0 radiobutton -label $s }
 
 
 # -- SERIAL COMMANDS PUSHER
