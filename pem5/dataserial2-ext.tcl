@@ -85,8 +85,9 @@ proc data_in {s} {
 	if {![string is double -strict $s]} { return }
 	set datav [format "%.3f" [expr 2500.0*($s-100000.0)/800000.0]]
 	set datai [format "%.4f" [expr $datav*0.1317]]
-	set datax "$s,$datav,$datai"
-	$chart $t $datai
+	set datax "$s,$datav"
+# ",$datai"
+	$chart $t $datav
 }
 
 # -- SERIAL DATA COMMANDS
