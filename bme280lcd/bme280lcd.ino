@@ -19,11 +19,15 @@
 #include <SPI.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
-#include <LiquidCrystal.h>
+//#include <LiquidCrystal.h>
+#include <LiquidCrystal_I2C.h>
+
 
 // initialize the library with the numbers of the interface pins
-LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
-#define LCD_VO 6
+//LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
+//#define LCD_VO 6
+
+LiquidCrystal_I2C lcd(0x27,20,2);  // set the LCD address to 0x20 for a 16 chars and 2 line display
 
 #define BME_SCK 13
 #define BME_MISO 12
@@ -37,9 +41,11 @@ Adafruit_BME280 bme; // I2C
 //Adafruit_BME280 bme(BME_CS, BME_MOSI, BME_MISO,  BME_SCK);
 
 void setup() {
-  analogWrite(LCD_VO,1);
+//  analogWrite(LCD_VO,1);
   Serial.begin(9600);
-  lcd.begin(20, 2);
+//  lcd.begin(20, 2);
+  lcd.init();
+
   Serial.println(F("BME280 test"));
 
   if (!bme.begin()) {
