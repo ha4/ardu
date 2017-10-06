@@ -1,0 +1,253 @@
+//  Bell 103A2 Modem
+//  ================
+
+#define ModemMode false // Answer Modem -> Receives Low Channel
+#define Baud        300 // Baud rate
+#define TimerConst   30 // 8065 Hz sample rate
+// Phase steps based on PWM frequency of 31372.5 Hz (=16000000/510)
+#define BaudPhase   627 // Baud phase increment
+#define OriFspace  2235 // Originate modem Space frequency 1070 Hz
+#define OriFmark   2653 // Originate modem Mark  frequency 1270 Hz
+#define AnsFspace  4230 // Answer modem    Space frequency 2025 Hz
+#define AnsFmark   4648 // Answer modem    Mark  frequency 2225 Hz
+
+// Define various ADC prescaler
+const byte PS_16=(1<<ADPS2);
+const byte PS_32=(1<<ADPS2)|(1<<ADPS0);
+const byte PS_64=(1<<ADPS2)|(1<<ADPS1);
+const byte PS_128=(1<<ADPS2)|(1<<ADPS1)|(1<<ADPS0);
+
+// A 64 step byte sized sine table
+const byte iSin[64] = {
+  128,140,153,165,177,188,199,209,
+  218,226,234,240,245,250,253,254,
+  255,254,253,250,245,240,234,226,
+  218,209,199,188,177,165,153,140,
+  128,116,103, 91, 79, 68, 57, 47,
+   38, 30, 22, 16, 11,  6,  3,  2,
+    1,  2,  3,  6, 11, 16, 22, 30,
+   38, 47, 57, 68, 79, 91,103,116
+};
+
+// Debug variables
+// volatile int I=0;
+// volatile int D0[324];
+// volatile int D1[324];
+
+// Get a signal sample
+volatile bool dataAvailable=false;
+volatile int SX0=0;
+volatile int SX1=0;
+volatile int SX2=0;
+ISR(TIMER0_COMPA_vect) {
+  // Roll the samples
+  SX2=SX1;SX1=SX0;
+  // SX0=analogRead(A0)-512;
+  // SX0=OCR2A-128;
+  SX0=OCR1A-128;
+  // Flag new sample available
+  dataAvailable=true;
+}
+
+// TRANSMIT
+volatile byte DataOut=1;
+volatile bool baudUpdate=true;  
+volatile unsigned int baudTick=0;
+ISR(TIMER2_OVF_vect) {
+  static unsigned int phase=0;
+  // OCR2A = iSin[(phase>>10)]; // Output on pin 11
+  OCR1A = iSin[(phase>>10)]; // Output on pin PB1
+  if (!ModemMode) {          // Set true for Answer modem - Invert for audio loopback test
+    // Answer modem
+    if (DataOut==0) {
+      phase+=AnsFspace;
+    } else {
+      phase+=AnsFmark;
+    }
+  } else {
+    // Originate modem
+    if (DataOut==0) {
+      phase+=OriFspace;
+    } else {
+      phase+=OriFmark;
+    }      
+  }
+  // Update baud tick
+  baudTick+=BaudPhase;
+  if (baudTick<BaudPhase) baudUpdate=true;
+}
+
+void setup() {
+  pinMode(A0,INPUT);                               // Audio input
+  pinMode(12,OUTPUT);                              // Digital data output
+  pinMode(11,OUTPUT);                              // Audio output (PWM)
+  pinMode(10,OUTPUT);                              // Digital data input
+  // pinMode(LED_BUILTIN,OUTPUT);                     // Signal detected
+  // digitalWrite(LED_BUILTIN,LOW);
+  
+  // Set ADC prescaler (assume a 16 MHz clock)
+  ADCSRA&=~PS_128;                                 // Remove bits set by Arduino library
+  ADCSRA|=PS_16;                                   // 16 prescaler (1 MHz)
+
+  // Disable interrupts
+  cli();
+  
+  // ATmega48A/PA/88A/PA/168A/PA/328/P 
+  // Use Timer 0 for sample rate (8065 Hz)
+  // TIMSK0 = 0;                                      // Timer interrupts off
+  // TCCR0A = (2 << WGM00);                           // CTC mode
+  // TCCR0B = (3 << CS00);                            // prescaler 64, 16 MHz clock
+  // TIMSK0 = (1 << OCIE0A);                          // COMPA interrupt
+  // OCR0A = TimerConst;                              // Sample rate: 8065 Hz = 250 kHz / (30+1)
+
+  // ATmega48A/PA/88A/PA/168A/PA/328/P
+  // Use Timer 2 for Audio PWM
+  // TIMSK2 = 0;                                      // Timer interrupts off
+  // TCCR2A = (2 << COM2A0)|(1 << WGM20);             // Phase correct PWM (31.25 kHz), toggle output on OC2A (PB3/D11)
+  // TCCR2B = (0 << WGM22)|(1 << CS20);               // 16 MHz clock (no pre-scaler)
+  // OCR2A = 128;                                     // Set 50% duty
+  // TIMSK2 = (1<<TOIE2);                             // Set interrupt on overflow (=BOTTOM)
+
+  // ATTiny85
+  TIMSK = 0;
+  // Use Timer 0 for Audio PWM
+  TCCR0A = (2 << COM0A0)|(1 << WGM00);                 // Toggle output on OC1A (PB1)
+  TCCR0B = (0 << WGM02)|(1 << CS00);                  // 16 MHz clock (no pre-scaler),Phase correct PWM (31.25 kHz), t
+  OCR0A = 128;                                        // Set 50% duty
+  TIMSK |= (1<<TOIE0);                                // Set interrupt on overflow (=BOTTOM)
+  
+  // Use Timer 1 for sample rate (8065 Hz)
+  TCCR0A = (2 << WGM00);                              // CTC mode
+  TCCR0B  = (3 << CS00);                              // prescaler 64, 16 MHz clock
+  TIMSK |= (1 << OCIE0A);                             // COMPA interrupt
+  OCR0A = TimerConst;                                 // Sample rate: 8065 Hz = 250 kHz / (30+1)
+
+  // Enable interrupts 
+  sei();                                           
+}
+
+int Demodulate(bool Mode) {
+  static unsigned int K=0;    // PLL Gain
+  static unsigned int SX=0;   // Signal
+  static unsigned int PX=0;   // PLL Frequency
+  static unsigned int PA=0;   // PLL Phase Accumulator
+  static unsigned int PM=0;   // PLL Phase Increment
+  static unsigned int PD=0;   // PLL Phase Detector
+  static unsigned int LP=0;   // VCO Control
+  static unsigned int OP=0;   // Output filter
+  // Bandpass filter
+  static unsigned int BA0=0;
+  static unsigned int BA1=0;
+  static unsigned int BA2=0;
+  static unsigned int BB0=0;
+  static unsigned int BB1=0;
+  static unsigned int BB2=0;
+  static unsigned int BP0=0;
+  static unsigned int BP1=0;
+  static unsigned int BP2=0;
+
+  // SIGNAL DECODER
+  BA2=BA1;BA1=BA0;
+  BB2=BB1;BB1=BB0;
+  BP2=BP1;BP1=BP0;
+  if (Mode) {                         // Set true for Answer modem
+    // PLL magic numbers
+    K=2031;
+    PM=8288;
+    // Answer modem bandpass filter (Fc = 1170 Hz)
+    BA0=(8*(SX0-SX2)+7*BA1-4*BA2)>>3;
+    BB0=(3*(BA0-BA2)+7*BB1-4*BB2)>>3;
+    BP0=(2*(BB0-BB2)+7*BP1-4*BP2)>>3;
+  } else {
+    // PLL magic numbers
+    K=2031;
+    PM=16049;
+    // Originate modem bandpass (Fc = 2125 Hz)
+    BA0=(8*(SX0-SX2)-BA1-4*BA2)>>3;
+    BB0=(3*(BA0-BA2)-BB1-4*BB2)>>3;
+    BP0=(2*(BB0-BB2)-BP1-4*BP2)>>3;
+  }
+
+  // BINARY SIGNAL 
+  SX=(BP0>=0)?1:0;
+  
+  // PLL VC0
+  PA=PA+PM+LP;
+  PX=PA>>15;
+  
+  // XOR PHASE DETECTOR
+  PD=(SX==PX)?PD=0:PD=K;
+  
+  // LOW PASS FILTER
+  LP=PD+7*(LP-PD)>>3;
+
+  // OUTPUT FILTER
+  OP=OP+7*(OP-LP)>>3;
+  
+  // Debug: Record data for post analysis
+  // if (I<324) {
+  //   D0[I]=SX0;
+  //   D1[I]=BP0;
+  //   I++;
+  // }
+
+  // Return correlation flag
+  if (OP>=0) {
+    return(1);
+  } else {
+    return(0);    
+  }  
+}
+
+void loop() {
+  static bool Mode=ModemMode;
+  static byte DataIn=1;
+  static byte i=0;
+
+  // SEND DATA
+  if (baudUpdate) { // Counter has overflowed
+    i++;
+    if (i==1) DataOut=1;
+    if (i==2) DataOut=0;
+    if (i==3) DataOut=1;
+    if (i==4) DataOut=1;
+    if (i==5) DataOut=0;
+    if (i==6) DataOut=0;
+    if (i==7) DataOut=1;
+    if (i==8) DataOut=1;
+    if (i==9) DataOut=1;
+    if (i==10) DataOut=0;
+    if (i==11) DataOut=0;
+    if (i==12) DataOut=0;
+    if (i>=12) i=0;
+    baudUpdate=false;
+    // digitalWrite(10,DataOut);
+  }
+  
+  // RECEIVE DATA
+  if (dataAvailable) {
+    // Demodulate signal and set D12
+    DataIn=Demodulate(Mode);
+    digitalWrite(12,DataIn);
+    // Done, wait for next sample tick
+    dataAvailable=false;
+  }
+  
+  // Debug output
+  // if (I>=324) {
+  //   cli(); 
+  //   Serial.begin(9600);
+  //   for (I=0;I<324;I++) {
+  //     Serial.print(I);
+  //     Serial.print(",");
+  //     Serial.print(D0[I]);
+  //     Serial.print(",");
+  //     Serial.println(D1[I]);
+  //   }
+  //   Serial.flush();
+  //   Serial.end();
+  //   while (true);  
+  // }
+
+}
+
