@@ -2,8 +2,8 @@
 
 enum { stb = 9, zcd = 8 };
 
-volatile int  e,q;
-volatile byte sy, disp, tmr, syncx, syncy;
+volatile int  e,q,flashc;
+volatile byte sy, disp, tmr, syncx, syncy, aa, ab, modeflash,fm;
 volatile uint16_t  prev, prev90, sync, period, nextz, angle, prevg, delta, phs, zc90, eprev, znext;
 volatile uint32_t  ft;
 int32_t  fp,fe,fd;
@@ -43,6 +43,18 @@ const PROGMEM  uint16_t firea[] = {
     3129, 2968, 2787, 2582, 2341, 2040, 1615, 200 /* full angle correction 200*/
 };
 
+void flasher()
+{
+  if (flashc > 0) {
+    if  (--flashc) return;
+    flashc = -20 + random(18); // 150ms dark
+    angle = pgm_read_word_near(firea + 255-fm);
+  } else {
+    if  (++flashc) return;
+    flashc = 2+random(aa*10); // random 0..10aa-1
+    angle = pgm_read_word_near(firea + fm);
+  }
+}
 
 int16_t dfiltr(int32_t *y, int16_t x)
 {
@@ -97,6 +109,8 @@ ISR(TIMER1_COMPB_vect)
     digitalWrite(stb, HIGH);
     syncx=1;
   }
+  interrupts(); // enable
+  if (modeflash) flasher();
 }
 
 void setup()
@@ -105,6 +119,11 @@ void setup()
   pinMode(stb, OUTPUT);
   digitalWrite(stb, HIGH);
   pinMode(zcd, INPUT);
+  aa = analogRead(A0) >> 2;
+  ab = analogRead(A0) >> 2;
+  modeflash=0;
+  flashc=0;
+  fm=255;
   TCCR1A = 0;
   TCCR1B = 2 << CS10; // clk/8
   TCCR1C = 0;
@@ -114,7 +133,7 @@ void setup()
   TIMSK1 &= ~((1<<OCIE1A)|(OCIE1B)); // disable OC
 //  TIMSK1 |=  (1<<OCIE1A); // enable OCA
   TIMSK1 |=  (1<<OCIE1A)|(1<<OCIE1B); // enable OC
-  disp=1;
+  disp=0;
   angle = 40;
   ft=0;
   period=20000;
@@ -132,6 +151,8 @@ void loop()
     switch(Serial.read()) {
       case 'a': angle = Serial.parseInt(); break;
       case 'l': angle = pgm_read_word_near(firea + Serial.parseInt()); break;
+      case 'f': fm = Serial.parseInt(); break;
+      case 'm': modeflash = !modeflash; break;
       case '+': period++; break;
       case '-': period--; break;
       case 'p': period  = Serial.parseInt(); break;
@@ -141,9 +162,14 @@ void loop()
         sprintf(buf,"d:%5u\n",delta); Serial.print(buf);
         sprintf(buf,"p:%5u\n",period); Serial.print(buf);
         sprintf(buf,"e:%5u\n",e); Serial.print(buf);
+        sprintf(buf,"fm:%3u\n",(int)fm); Serial.print(buf);
+        sprintf(buf,"disp%d flash%d\n",disp,modeflash); Serial.print(buf);
         break;
     }
   }
+  analogRead(A0);
+  aa = analogRead(A0) >> 2;
+  if (!modeflash) if (aa != ab) { ab = aa; angle = pgm_read_word_near(firea + aa); }
   if (disp && sy) { sy=0; 
 //    sprintf(buf,"%5u ", delta);  Serial.print(buf); 
   sprintf(buf,"sync d:%5u p:%5u e:%6d q:%6d a:%6u\n", delta, period, e, q, angle);  Serial.print(buf); 
