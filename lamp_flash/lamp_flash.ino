@@ -8,6 +8,7 @@ volatile uint16_t  prev, prev90, sync, period, nextz, angle, prevg, delta, phs, 
 volatile uint32_t  ft;
 int32_t  fp,fe,fd;
 
+// 19100*RootOf(_Z - sin(_Z) + 2*Pi*p/255 - 2*Pi)/2/Pi, p=0..255
 const PROGMEM  uint16_t firea[] = {
     19004, 17485, 17059, 16758, 16518, 16312, 16132, 15970,
     15822, 15685, 15558, 15438, 15324, 15216, 15113, 15015,
