@@ -1,5 +1,5 @@
 enum {pwmin=2,
-ch_a=4, ch_b=5, ch_pwm=3};
+ch_a=3, ch_b=4, ch_pwm=5};
 
 int32_t fx;
 
