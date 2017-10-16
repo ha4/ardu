@@ -1,0 +1,21 @@
+Run the tiny @16MHz (CKSEL[3:0]=0001).
+
+    Set timer0 prescaler to /8 (CS0[2:0]=010) => 0.5µs per tick.
+    Set timer1 prescaler to /2048 (CS1[3:0]=1100) => 256x0.5=128µs per tick
+    Set PSR[1:0]=11 to reset both prescalers and synchronize timers.
+
+You now have a 16bit timer running (no timer OVF interrupt needed).
+
+ 
+
+On PCINT0:
+
+    Set PSR0=1 to give yourself 8 clock cycles
+    Copy TCNT0 and TCNT1 to counter registers.
+    Go back to sleep.
+
+At most you introduce a 0.5µs lag per PCINT (250ns in average). That should be insignificant enough? If not, you can do otherwise.
+
+As Lee mentioned, use 16bit unsigned subtraction to get intervals between events.
+
+ 
