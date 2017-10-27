@@ -132,23 +132,18 @@ double convT2V(double T) { return ratpoly4(k2v+4, T-t2v[2])+t2v[3]; }
 double convV2T(double V) { return pwrp4(k2c, 4, V); }
 
 
-byte ref_t()
+uint16_t ref_t()
 {
 	byte data[12];
-	int  tu;
-	byte rc = 0;
+	uint16_t rc = 0xFFFF;
 
 	if (ds.reset()) {
 		ds.power(false);
 		ds.write(0xCC);     // skip rom
 		ds.write(0xBE);         // Read Scratchpad
 		ds.read(data, 9);
-		if (ds.crc(data, 9)==0) {
-			tu = data[0] + 256*data[1];
-			tinp = (double)tu/16;
-			uinp = convT2V(tinp);
-			rc=1;
-		}
+		if (ds.crc(data, 9)==0)
+			rc = data[0] + 256*data[1];
 	}
 
 	ds.reset();
@@ -158,19 +153,16 @@ byte ref_t()
 	return rc;
 }
 
-unsigned int read_mcp3201()
+uint16_t read_mcp3201()
 {
-	 unsigned int result;
-	 byte inByte;
+	uint16_t result;
 
 	digitalWrite(chipSelectPinADC, LOW);
-	result = SPI.transfer(0x00);
-	result = result << 8;
-	inByte = SPI.transfer(0x00);
-	result = result | inByte;
+	result = SPI.transfer(0x00) << 8;
+	result = result | SPI.transfer(0x00);
 	digitalWrite(chipSelectPinADC, HIGH);
 	result = result >> 1;
-	result = result & 0b0000111111111111;
+	result = result & 0x3FF;
   
 	return result;
 }
@@ -193,29 +185,49 @@ void setup()
 }
  
 
+#define ADC_OFFS   1.7    /*code*/
+#define ADC_REF    4072.5 /*mV*/
+#define AMP_SHIFT  516.0  /*521.2mV*/
+#define AMP_FACTOR 1.830936e-2 /* A=54.61687 -1.67175% nominal=122.2/2.2=55.(54) */
+#define BAT_REF    1.076  /* V, nominal 1.1V -2.18%*/
+#define BAT_FACTOR 4.0121 /* K=4 +0.3025%. 300->1.266v 315->1.328 Ktot=4.21584e-3 */
+
 void loop()
 {
 	double mv,te;
 	byte n;
-	unsigned int result;
+	uint16_t result;
 
+	analogRead(0);
+	result=analogRead(0);
+        mv=result*BAT_REF*BAT_FACTOR/1024;
+	Serial.print(mv);
+	Serial.print(' ');
+	lcd.setCursor(0,1);
+        lcd.print("Vb");
+        lcd.print(mv,3);
   
 	for(mv=0, n=8; n--;) {
 		result=read_mcp3201();
 		mv += result;
 	}
 	mv/=8;
-	mv=map(mv*10, 0, 40960, 17, 17+40725)/10;
+        mv = mv * ADC_REF / 4096 + ADC_OFFS;
 
 	Serial.print(mv);
 	Serial.print(' ');
-	mv = 1.830936e-2 * (mv-516.0);
+	mv = AMP_FACTOR * (mv-AMP_SHIFT);
 
 	Serial.print(mv,3);
 	Serial.print(' ');
 
-	if(ref_t()) {
+	if((result=ref_t()) != 0xFFFF) {
+		tinp=result/16.0;
+		uinp = convT2V(tinp);
         	Serial.print(tinp);
+        	lcd.setCursor(10,1);
+                lcd.print("Tenv");
+                lcd.print(tinp,3);
 	} else
 		Serial.print('-');
 
