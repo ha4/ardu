@@ -122,14 +122,14 @@ double pwrp4(float *t, int sz, double x) /* picewise ration polynomial 4-degree 
 	for(; i < sz; i++, t+=12) if (x<t[0] || (x>=t[0] && x<t[1])) break;
 	if (i==sz) t-=12;
 	if (x<t[0]) x=t[0]; else if (x>t[1]) x=t[1];
-	return ratpoly4(t+2, x-t[2])+t[3];
+	return ratpoly4(t+4, x-t[2])+t[3];
 }
 
 /* input: C, output mV */
 double convT2V(double T) { return ratpoly4(k2v+4, T-t2v[2])+t2v[3]; }
 
 /* input: mV, output C */
-double convV2T(double V) { return pwrp4(k2c, 4, V); }
+double convV2T(double V) { return pwrp4(k2c, 5, V); }
 
 
 uint16_t ref_t()
@@ -138,18 +138,18 @@ uint16_t ref_t()
 	uint16_t rc = 0xFFFF;
 
 	if (ds.reset()) {
-		ds.power(false);
 		ds.write(0xCC);     // skip rom
 		ds.write(0xBE);         // Read Scratchpad
 		ds.read(data, 9);
 		if (ds.crc(data, 9)==0)
 			rc = data[0] + 256*data[1];
+		// restart conversion
+		ds.reset();
+		ds.write(0xCC);     // skip rom
+		ds.write(0x44);     // start conversion
+		ds.power(true);
 	}
 
-	ds.reset();
-	ds.write(0xCC);     // skip rom
-	ds.write(0x44);     // start conversion
-	ds.power(true);
 	return rc;
 }
 
@@ -191,6 +191,8 @@ void setup()
 #define AMP_FACTOR 1.830936e-2 /* A=54.61687 -1.67175% nominal=122.2/2.2=55.(54) */
 #define BAT_REF    1.076  /* V, nominal 1.1V -2.18%*/
 #define BAT_FACTOR 4.0121 /* K=4 +0.3025%. 300->1.266v 315->1.328 Ktot=4.21584e-3 */
+
+char buf[32];
 
 void loop()
 {
@@ -237,7 +239,9 @@ void loop()
 
 	te = convV2T(mv+uinp);
 	Serial.println(te);
-	lcd.setCursor(0,0);
-	lcd.print(te); lcd.print(' ');
+	lcd.setCursor(0,0); lcd.print('T'); 
+        lcd.print(dtostrf(te,7,2,buf));
+        lcd.print(" mV");
+        lcd.print(dtostrf(mv,0,3,buf));
 	delay(1000);
 }
