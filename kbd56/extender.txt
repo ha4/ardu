@@ -1,0 +1,63 @@
+// only with standard TWI
+#include <Wire.h>
+
+// with own i2c.cpp 
+void i2c_init(long freq);
+byte i2c_send(byte addr, byte data);
+byte i2c_recv(byte addr);
+
+// use extender for NKRO, Vcc 2.00v
+// failed for 1ms scan time
+
+// extender PCF8574A
+#define EXTENDER_A 0x3f
+// extender PCF8574
+//#define EXTENDER_A 0x2f
+
+
+byte bit_erase(byte x, byte mask)
+{
+  return ((x>>1)&(~mask)) | (x&mask);
+}
+
+
+/* @100kHz
+ * 4bit scan: 2070 us 
+ * 8bit scan: 3900 us
+ */
+byte kbd_scan_extender()
+{
+  byte c = 0;
+  for(byte i=0; i < ROWS; i++) {
+    // scan row N
+    Wire.beginTransmission(EXTENDER_A);
+    Wire.write(~(1<<i));
+    Wire.endTransmission();
+    Wire.requestFrom(EXTENDER_A,1);
+    if (Wire.available()) tmpmap[i] = bit_erase(~Wire.read(),(1<<i)-1);
+    c |= kbdmap[i]^tmpmap[i]; 
+  }
+  Wire.beginTransmission(EXTENDER_A);
+  Wire.write(0xFF);
+  Wire.endTransmission();
+  return c;
+}
+
+
+/* 4bit@400K:514us 8bit@400K:980us */
+byte kbd_scan_twi()
+{
+  byte x;
+  byte c = 0;
+  for(byte i=0; i < ROWS; i++) {
+    // scan row N
+    x=~(1<<i);
+    i2c_send(EXTENDER_A, x);
+    tmpmap[i] = bit_erase(~i2c_recv(EXTENDER_A), (~x)-1);
+    c |= kbdmap[i]^tmpmap[i]; 
+  }
+  i2c_send(EXTENDER_A, 0xFF);
+  return c;
+}
+
+

@@ -1,0 +1,71 @@
+#include <Arduino.h>
+
+void i2c_init(long freq);
+byte i2c_send(byte addr, byte data);
+byte i2c_recv(byte addr);
+
+
+#define I2C_FREQ 400000L
+#define START 0x08
+#define repSTART 0x10
+#define MT_SLA_ACK 0x18
+#define MT_DATA_ACK 0x28
+#define MR_SLA_ACK 0x40
+#define MR_DATA_ACK 0x50
+#define MR_DATA_NACK 0x58
+#define STATUS (TWSR & 0xF8)
+
+#define i2c_waitint(m) TWCR = m ; while (!(TWCR & _BV(TWINT)))
+#define i2c_setstop() TWCR = _BV(TWINT)|_BV(TWEN)|_BV(TWSTO)
+
+void i2c_init(long freq)
+{
+  pinMode(A5, INPUT_PULLUP); // internal pullups SCL.
+  pinMode(A4, INPUT_PULLUP); // SDA
+  
+  // initialize twi prescaler and bit rate
+  TWSR &= ~(_BV(TWPS1)|_BV(TWPS0));
+  TWBR = ((F_CPU / freq) - 16) / 2;
+
+  TWCR = _BV(TWEN); // disable interrupt
+}
+
+// 26us @400kHz
+// 98us @100kHz 
+byte i2c_sendstart(byte slarw)
+{
+  i2c_waitint(_BV(TWINT)|_BV(TWSTA)|_BV(TWEN)); //start
+  if (STATUS != START) return 0; //error start
+  TWDR = slarw; // SLA+R/W
+  i2c_waitint(_BV(TWINT)|_BV(TWEN));
+  return 1;
+}
+
+// 52us @400kHz
+byte  i2c_send(byte addr, byte data)
+{
+  i2c_sendstart((addr<<1)|0); // SLA+W
+  if (STATUS == MT_SLA_ACK) { // slave acknowlage
+    TWDR = data;
+    i2c_waitint(_BV(TWINT)|_BV(TWEN));
+    if (STATUS == MT_DATA_ACK) // error ack
+      { i2c_setstop(); return 1; }
+  }
+  i2c_setstop();
+  return 0;
+}
+
+// 52us @400kHz
+byte i2c_recv(byte addr)
+{
+  i2c_sendstart((addr<<1)|1);  // SLA+R
+  if (STATUS == MR_SLA_ACK) { // slave acknowlage
+    i2c_waitint(_BV(TWINT)|_BV(TWEN));
+    if (STATUS == MR_DATA_NACK) // read data no ack, 1 byte
+      { byte r = TWDR; i2c_setstop(); return r; }
+  }
+  i2c_setstop();
+  return 0xff;
+}
+
+
