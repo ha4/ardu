@@ -1,0 +1,15 @@
+
+                 
+ 0RX A5 A4 A3 A2 A1 A0       0RX=D0,RX       #30 28 27 26 25 24 23 
+ 1TX RES   /^\   A7 AREF     1TX=D1,TX       #31 29    /^\  #22 20 
+  D2     /     \    A6     A0..5=D14..19     #32     /     \    19 
+  D3  o< mega328 >* D13   *=AVcc-pin, cut     #1  o< mega328 > *17 
+  D4     \     /    D12     o = first pin     #2     \     /    16 
+ GND +5    \_/   D9 D11                       #3 #4    \_/  #13 15 
+  X1 X2 D5 D6 D7 D8 D10  X1,2=Xtal1,2=PB6,7   #7 #8 #9 10 11 12 14 
+
+  A5=SCL A4=SDA
+  D13=SCK D12=MiSo D11=MoSi D10=~SS
+  PWM: 3 5 6 9 10 11    
+
+
