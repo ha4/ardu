@@ -1,9 +1,9 @@
 
   uint32_t x1,x0;
 
-enum { 
+enum { // A7+D2, A6+D3 connectted
   ROW0=14, ROW1=15, ROW2=16, ROW3=17, 
-  ROW4=9, ROW5=10, ROW6=11, ROW7=12, 
+  ROW4=18, ROW5=19, ROW6=3, ROW7=2, 
   ROWS=8 };
 
 byte kbdmap[ROWS];
