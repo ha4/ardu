@@ -1,8 +1,8 @@
+#include <Arduino.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include "config.h"
 #include "keycode.h"
-#include "keymap.h"
-
 #include "keymap_common.h"
 
 // Caps Gui RCTL, RALT RSFT
@@ -39,7 +39,7 @@ const uint8_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
      *           `-----------------------------------------'
      */
     KEYMAP(
-        GUI,  F1,  F2,  F3,  F4,  F5,  F6,  F7,  F8,  F9,  F10, F11, F12,TRNS, INS, \
+        LGUI, F1,  F2,  F3,  F4,  F5,  F6,  F7,  F8,  F9,  F10, F11, F12,TRNS, INS, \
         TRNS,TRNS,TRNS,TRNS,TRNS,TRNS,TRNS,HOME, UP, END, PSCR,SLCK,PAUS, DEL, \
         RCTL,TRNS,TRNS,TRNS,TRNS,TRNS,PGUP,LEFT,DOWN,RGHT, UP, TRNS,TRNS, \
         RSFT,TRNS,TRNS,TRNS,TRNS,SPC, PGDN,TRNS,TRNS,TRNS,TRNS,LSFT, \
