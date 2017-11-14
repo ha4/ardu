@@ -1,12 +1,3 @@
-/*
-*/
-
-#ifndef MATRIX_H
-#define MATRIX_H
-
-#include <stdint.h>
-#include <stdbool.h>
-
 
 typedef  uint8_t    matrix_row_t;
 
@@ -36,6 +27,4 @@ void matrix_power_down(void);
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

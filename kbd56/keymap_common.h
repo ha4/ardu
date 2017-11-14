@@ -1,8 +1,3 @@
-/*
-*/
-#ifndef KEYMAP_COMMON_H
-#define KEYMAP_COMMON_H
-
 /* keymap definition macro
  * note: K3B equal K30, K42 equal K20
  */
@@ -23,4 +18,3 @@
 /*7*/    { KC_##K0D, KC_##K0C, KC_##K0B, KC_##K0A, KC_##K09, KC_##K08, KC_##K07 }  \
 }
 
-#endif

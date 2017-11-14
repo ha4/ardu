@@ -1,10 +1,3 @@
-/*
-*/
-
-#ifndef CONFIG_H
-#define CONFIG_H
-
-
 /* key matrix size */
 #define MATRIX_ROWS 8
 #define MATRIX_COLS 7
@@ -22,4 +15,9 @@
 /* disable print */
 #define NO_PRINT
 
-#endif
+#define NO_ACTION_LAYER
+#define NO_ACTION_TAPPING
+#define NO_ACTION_ONESHOT
+#define NO_ACTION_MACRO
+#define NO_ACTION_FUNCTION
+
