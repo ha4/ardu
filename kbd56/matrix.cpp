@@ -2,10 +2,13 @@
 /*
  * scan matrix
  */
+#include <Arduino.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <avr/io.h>
-#include <util/delay.h>
+//#include <avr/io.h>
+//#include <util/delay.h>
+
+#include "config.h"
 #include "matrix.h"
 
 
@@ -62,7 +65,6 @@ uint8_t matrix_scan(void)
     return 1;
 }
 
-inline
 matrix_row_t matrix_get_row(uint8_t row)
 {
     return matrix[row];
@@ -104,6 +106,7 @@ static matrix_row_t read_cols(void)
         r <<= 1;
         if (ACSR & (1<<ACO)) r |= 1;
       }
+    }
     return r;
 }
 
