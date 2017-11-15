@@ -24,6 +24,8 @@
 //#include "hook.h"
 //#include "wait.h"
 
+#include "ps2device.h"
+
 //#ifdef DEBUG_ACTION
 //#include "debug.h"
 //#else
@@ -52,8 +54,19 @@ void process_action(keyrecord_t *record)
     if (IS_NOEVENT(event)) { return; }
 
     action_t action = layer_switch_get_action(event);
+
   Serial.print("action:");
   Serial.println(action.kind.id);
+  
+      if (event.key.col != 255) {
+        if(event.pressed) {
+          /*if (ps2_txClear()) */ps2_txSet(0x1C);
+        } else {
+          /*if (ps2_txClear()) */ps2_txSet(0xF0);
+//          while(!ps2_txClear());
+//          ps2_txSet(0x1C);
+        }
+      }
 
     switch (action.kind.id) {
         /* Key and Mods */
