@@ -26,6 +26,10 @@
 #include "action_macro.h"
 #include "action.h"
 
+/* Tick event */
+#define TICK   (keyevent_t){ (keypos_t){255, 255}, false, (millis() | 1) }
+
+
 void keyboard_setup(void)
 {
     matrix_setup();

@@ -44,10 +44,6 @@ static inline bool IS_NOEVENT(keyevent_t event) { return event.time == 0 || (eve
 static inline bool IS_PRESSED(keyevent_t event) { return (!IS_NOEVENT(event) && event.pressed); }
 static inline bool IS_RELEASED(keyevent_t event) { return (!IS_NOEVENT(event) && !event.pressed); }
 
-/* Tick event */
-#define TICK   (keyevent_t){ (keypos_t){255, 255}, false, (millis() | 1) }
-
-
 /* it runs once at early stage of startup before keyboard_init. */
 void keyboard_setup(void);
 /* it runs once after initializing host side protocol, debug and MCU peripherals. */
