@@ -3,9 +3,13 @@
 #include <Arduino.h>
 #include <stdint.h>
 #include <stdbool.h>
+
 #include "config.h"
+
 #include "keyboard.h"
+
 #include "matrix.h"
+
 //#include "keymap.h"
 
 //#include "host.h"
@@ -22,9 +26,9 @@
 //#include "backlight.h"
 //#include "hook.h"
 
-#include "action_code.h"
-#include "action_macro.h"
-#include "action.h"
+//#include "action_code.h"
+//#include "action_macro.h"
+//#include "action.h"
 
 /* Tick event */
 #define TICK   (keyevent_t){ (keypos_t){255, 255}, false, (millis() | 1) }
@@ -61,7 +65,7 @@ void keyboard_task(void)
                 if (matrix_change & ((matrix_row_t)1<<c)) {
                     keyevent_t e = { (keypos_t){ r, c }, (matrix_row & ((matrix_row_t)1<<c)),
                         (millis() | 1) }; /* time should not be 0 */
-                    action_exec(e);
+                    //action_exec(e);
                     // record a processed key
                     matrix_prev[r] ^= ((matrix_row_t)1<<c);
                 }
@@ -69,7 +73,7 @@ void keyboard_task(void)
         }
     }
     // call with pseudo tick event when no real key event.
-    action_exec(TICK);
+    //action_exec(TICK);
 
 }
 

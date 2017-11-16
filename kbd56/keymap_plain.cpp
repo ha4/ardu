@@ -1,13 +1,15 @@
 #include <Arduino.h>
 #include <stdint.h>
 #include <stdbool.h>
+
 #include "config.h"
-#include "keyboard.h"
+
 #include "keycode.h"
 #include "keymap_common.h"
-#include "action_code.h"
-#include "action_macro.h"
-#include "action.h"
+
+//#include "action_code.h"
+//#include "action_macro.h"
+//#include "action.h"
 
 // Caps Gui RCTL, RALT RSFT
 const uint8_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
@@ -52,6 +54,6 @@ const uint8_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 };
 
 // correct it
-const action_t PROGMEM fn_actions[] = {
-	/* [0] = */ ACTION_LAYER_MOMENTARY(1)
-};
+//const action_t PROGMEM fn_actions[] = {
+//	/* [0] = */ ACTION_LAYER_MOMENTARY(1)
+//};
