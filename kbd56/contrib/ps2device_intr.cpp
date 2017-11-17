@@ -20,6 +20,37 @@
 #endif
 
 
+
+
+static void clkHi(void)
+{
+  PS2_CLK_DDR  &= ~_BV(PS2_CLK_PIN);
+  PS2_CLK_PORT |= _BV(PS2_CLK_PIN);
+}
+
+static void clkLo(void)
+{
+  PS2_CLK_PORT &= ~_BV(PS2_CLK_PIN);
+  PS2_CLK_DDR  |= _BV(PS2_CLK_PIN);
+}
+
+static void dataHi(void)
+{
+  PS2_DATA_DDR  &= ~_BV(PS2_DATA_PIN);
+  PS2_DATA_PORT |= _BV(PS2_DATA_PIN);
+}
+
+static void dataLo(void)
+{
+  PS2_DATA_PORT &= ~_BV(PS2_DATA_PIN);
+  PS2_DATA_DDR  |= _BV(PS2_DATA_PIN);
+}
+
+#define clkPin() (PS2_CLK_IN & _BV(PS2_CLK_PIN))
+#define dataPin() (PS2_DATA_IN & _BV(PS2_DATA_PIN))
+
+
+
 static volatile unsigned char   ps2_rx;
 static volatile unsigned char   ps2_tx;
 static volatile unsigned char   ps2_shift;
@@ -53,41 +84,13 @@ enum enum_state {
   TX_PARITY, TX_STOP, TX_AFTER_STOP, TX_END
 };
 
-
-static void clockHigh(void)
-{
-  PS2_CLK_DDR  &= ~_BV(PS2_CLK_PIN);
-  PS2_CLK_PORT |= _BV(PS2_CLK_PIN);
-}
-
-static void clockLow(void)
-{
-  PS2_CLK_PORT &= ~_BV(PS2_CLK_PIN);
-  PS2_CLK_DDR  |= _BV(PS2_CLK_PIN);
-}
-
-static void dataHigh(void)
-{
-  PS2_DATA_DDR  &= ~_BV(PS2_DATA_PIN);
-  PS2_DATA_PORT |= _BV(PS2_DATA_PIN);
-}
-
-static void dataLow(void)
-{
-  PS2_DATA_PORT &= ~_BV(PS2_DATA_PIN);
-  PS2_DATA_DDR  |= _BV(PS2_DATA_PIN);
-}
-
-#define readClockPin() (PS2_CLK_IN & _BV(PS2_CLK_PIN))
-#define readDataPin() (PS2_DATA_IN & _BV(PS2_DATA_PIN))
-
 void ps2_init(void)
 {
   ps2_state = IDLE_START;
   ps2_flags = PS2_CLOCK_HIGH | PS2_TX_OK;
 
-  clockHigh();
-  dataHigh();
+  clkHi();
+  dataHi();
 }
 
 void ps2_txSet(unsigned char d)
@@ -121,15 +124,15 @@ bool ps2_txClear(void)
 void ps2_process(void)
 {
   if (ps2_state < IDLE_END) { /* start, wait_rel or ready to tx */
-    dataHigh();
+    dataHi();
     if (!(ps2_flags & PS2_CLOCK_HIGH)) /* clock low */
     {
       ps2_flags |= PS2_CLOCK_HIGH;
-      clockHigh();
+      clkHi();
       return;
     }
     /* if clock held low, then we must prepare to start rxing */
-    if (!readClockPin()) {
+    if (!clkPin()) {
       ps2_state = IDLE_WAIT_REL;
       return;
     }
@@ -139,12 +142,12 @@ void ps2_process(void)
       return;
     case IDLE_OK_TO_TX:
       if (ps2_flags & PS2_TX_BYTE) {
-        dataLow();
+        dataLo();
         ps2_state = TX_START;
       }
       return;
     case IDLE_WAIT_REL:
-      if (!readDataPin()) {
+      if (!dataPin()) {
         /* PC wants to transmit */
         ps2_state = RX_START;
         return;
@@ -159,13 +162,13 @@ void ps2_process(void)
     if (ps2_state < RX_END) {
       if (!(ps2_flags & PS2_CLOCK_HIGH)) {
         ps2_flags |= PS2_CLOCK_HIGH;
-        clockHigh();
+        clkHi();
         return;
       }
       /* at this point clock is high in preparation to going low */
-      if (!readClockPin()) /* PC is still holding clock down */
+      if (!clkPin()) /* PC is still holding clock down */
       { 
-        dataHigh();  
+        dataHi();  
         ps2_state = IDLE_WAIT_REL; 
         return; 
       }
@@ -179,7 +182,7 @@ void ps2_process(void)
         break; /* now PC has seen clock high, show it some low */
       case RX_DATA0:
         ps2_flags &= ~PS2_RX_BYTE;
-        if (readDataPin()) { 
+        if (dataPin()) { 
           ps2_rx = 0x80; 
           ps2_parity = 1; 
         } 
@@ -196,32 +199,32 @@ void ps2_process(void)
       case RX_DATA6: 
       case RX_DATA7: 
         ps2_rx >>= 1;
-        if (readDataPin()) { 
+        if (dataPin()) { 
           ps2_rx |= 0x80; 
           ps2_parity++; 
         }
         break; /* end clk hi 2 to 8 */
       case RX_PARITY: 
-        if (readDataPin()) ps2_parity++;
+        if (dataPin()) ps2_parity++;
         if (!(ps2_parity & 1)) /* faulty, not odd parity */
           ps2_flags |= PS2_RX_BAD;
         break; /* end clk hi 9 */
       case RX_STOP: 
-        if (!readDataPin()) /* if stop bit not seen */
+        if (!dataPin()) /* if stop bit not seen */
           ps2_flags |= PS2_RX_BAD;
         if (!(ps2_flags & PS2_RX_BAD)) { 
-          dataLow();  
+          dataLo();  
           ps2_flags |= PS2_RX_BYTE; 
         }
         break; /* end clk hi 10 */
       case RX_SENT_ACK: 
-        dataHigh();  
+        dataHi();  
         ps2_state = IDLE_START; 
         return;
         /* remains in clk hi 11 */
 
       }
-      clockLow(); 
+      clkLo(); 
       ps2_flags &= ~(PS2_CLOCK_HIGH);
       ps2_state++;
       return;
@@ -229,19 +232,19 @@ void ps2_process(void)
     else
       if (ps2_state < TX_END) {
         if (ps2_flags & PS2_CLOCK_HIGH) {
-          if (!readClockPin()) { /* PC is still holding clock down */
-            dataHigh();
+          if (!clkPin()) { /* PC is still holding clock down */
+            dataHi();
             ps2_state = IDLE_WAIT_REL;
             ps2_flags |= PS2_TX_ERR|PS2_TX_OK;
             return;
           }
           ps2_flags &= ~PS2_CLOCK_HIGH;
-          clockLow();
+          clkLo();
           return;
         }
         /* at this point clock is low in preparation to going high */
         ps2_flags |= PS2_CLOCK_HIGH;
-        clockHigh();
+        clkHi();
         switch(ps2_state) {
         case TX_START:
           ps2_flags &= ~PS2_TX_ERR;  
@@ -255,20 +258,20 @@ void ps2_process(void)
         case TX_DATA6: 
         case TX_DATA7:
           if (ps2_shift & 1) { 
-            dataHigh(); 
+            dataHi(); 
             ps2_parity++; 
           }
-          else dataLow();
+          else dataLo();
           ps2_shift >>= 1;
           break; /* clock hi 1 to 8 */
         case TX_PARITY: 
-          if (ps2_parity & 1) dataLow();
-          else  dataHigh();
+          if (ps2_parity & 1) dataLo();
+          else  dataHi();
           ps2_flags &= ~PS2_TX_BYTE;
           ps2_flags |= PS2_TX_OK;
           break; /* clock hi 9 */
         case TX_STOP: 
-          dataHigh();
+          dataHi();
           break; /* clock hi 10 */
         case TX_AFTER_STOP:
           ps2_state = IDLE_START;
