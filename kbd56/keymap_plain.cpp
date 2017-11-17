@@ -4,7 +4,7 @@
 
 #include "config.h"
 
-#include "keycode.h"
+#include "keycode_set2.h"
 #include "keymap_common.h"
 
 //#include "action_code.h"
@@ -57,3 +57,9 @@ const uint8_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 //const action_t PROGMEM fn_actions[] = {
 //	/* [0] = */ ACTION_LAYER_MOMENTARY(1)
 //};
+
+uint8_t keymap_get_keycode(uint8_t layer, uint8_t row, uint8_t col)
+{
+  return pgm_read_byte(&keymaps[layer][row][col]);
+}
+
