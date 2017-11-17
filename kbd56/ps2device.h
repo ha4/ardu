@@ -6,7 +6,7 @@ void ps2_init(void);
    a character.
 	test ps2_txClear() before send any data
    */
-void ps2_txSet(unsigned char d);
+bool ps2_txSet(unsigned char d);
 
 /* this routine gets the recently received character. How do you
    know you have a character? Because ps2_flags has PS2_RX_BYTE set.
@@ -14,9 +14,8 @@ void ps2_txSet(unsigned char d);
    was recieved (e.g. bad parity).
 	check ps2_rxAvailable() before call it. This routine
 	resets the PS2_RX_BYTE flag. */
-unsigned char ps2_rxGet(void);
+bool ps2_rxGet(unsigned char * r);
 
 bool ps2_txClear(void);
 bool ps2_rxAvailable(void);
 
-void ps2_process(void);
