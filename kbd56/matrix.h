@@ -24,6 +24,7 @@ void matrix_clear(void);
 /* power control */
 void matrix_power_up(void);
 void matrix_power_down(void);
+void matrix_print(void);
 
 #ifdef __cplusplus
 }
