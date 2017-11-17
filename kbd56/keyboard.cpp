@@ -45,6 +45,7 @@ void keyboard_init(void)
     matrix_init();
 }
 
+void action_exec(keyevent_t e);
 /*
  * Do keyboard routine jobs: scan mantrix, light LEDs, ...
  * This is repeatedly called as fast as possible.
@@ -63,9 +64,9 @@ void keyboard_task(void)
         if (matrix_change) {
             for (uint8_t c = 0; c < MATRIX_COLS; c++) {
                 if (matrix_change & ((matrix_row_t)1<<c)) {
-                    keyevent_t e = { (keypos_t){ r, c }, (matrix_row & ((matrix_row_t)1<<c)),
+                    keyevent_t e = { (keypos_t){ c, r }, (matrix_row & ((matrix_row_t)1<<c)),
                         (millis() | 1) }; /* time should not be 0 */
-                    //action_exec(e);
+                    action_exec(e);
                     // record a processed key
                     matrix_prev[r] ^= ((matrix_row_t)1<<c);
                 }
