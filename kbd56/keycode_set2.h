@@ -2,10 +2,11 @@
 #define IS_ERROR(code)           (0)
 #define IS_ANY(code)             (KC_F9         <= (code) && (code) <= 0xFE)
 #define IS_KEY(code)             ((!IS_MOD(code)) && (!IS_FN(code)))
-#define IS_MOD(code)             (KC_LCTRL == (code) || KC_RGUI == (code) || KC_LALT == (code) || KC_LSHIFT == (code) || \
-                                  KC_RCTRL == (code) || KC_LGUI == (code) || KC_RALT == (code) || KC_RSHIFT == (code) )
+#define IS_MOD(code)             (MOD_INDEX(code)<8)
 
 #define IS_SPECIAL(code)         (KC_FN0 <= (code) && (code) <= KC_FN7))
+#define IS_EXTENDED(code)        (KC_WWW_SEARCH <= (code) && (code) <= KC_PGUP))
+#define IS_EXTRA(code)           (KC_PSCREEN <= (code) && (code) <= KC_F7))
 #define IS_SYSTEM(code)          (KC_PWR == (code) || KC_SLEP == (code) || KC_WAKE==(code))
 #define IS_CONSUMER(code)        (0)
 #define IS_FN(code)              (KC_FN0       <= (code) && (code) <= KC_FN7)
@@ -15,8 +16,12 @@
 #define IS_MOUSEKEY_WHEEL(code)  (0)
 #define IS_MOUSEKEY_ACCEL(code)  (0)
 
+/* MSB:RGUI RALT RSHIFT RCTRL   LGUI LALT LSHIFT LCTRL:LSB */
+/*     A7   91   59     94      9F   11   12     14*/
+#define MT(code,mod,next) (((code)==KC_##mod)?0:1+(next))
+#define MOD_INDEX(c) MT(c,LCTL,MT(c,LSFT,MT(c,LALT,MT(c,LGUI,MT(c,RCTL,MT(c,RSFT,MT(c,RALT,MT(c,RGUI,1))))))))
+//#define MOD_INDEX(code) ((code) & 0x07)
 #define MOD_BIT(code)   (1<<MOD_INDEX(code))
-#define MOD_INDEX(code) ((code) & 0x07)
 
 #define FN_BIT(code)    (1<<FN_INDEX(code))
 #define FN_INDEX(code)  ((code) - KC_FN0)
@@ -154,188 +159,136 @@ enum ps2_set2_keyboard_scancode {
     KC_NO               = 0x00,
 
     KC_F9=0x01,
-
     KC_F5=0x03,
     KC_F3=0x04,
     KC_F1=0x05,
     KC_F2=0x06,
     KC_F12=0x07,
-
     KC_F10=0x09,
     KC_F8=0x0A,
     KC_F6=0x0B,
     KC_F4=0x0C,
     KC_TAB=0x0D,
     KC_GRAVE=0x0E, /* ` ~ */
-
-    KC_WWW_SEARCH=0x80, /* E0 10 Media Control */
-
-    KC_LALT=0x11,
-    KC_RALT=0x81, /* E0 11 */
-
-    KC_LSHIFT=0x12,
-
-    KC_LCTRL=0x14,
-    KC_RCTRL=0x82, /* E0 14 */
-
+    KC_LALT=0x11,        /* MOD */
+    KC_LSHIFT=0x12,      /* MOD */
+    KC_LCTRL=0x14,       /* MOD */
     KC_Q=0x15,
-    KC_MEDIA_PREV_TRACK=0x84, /* E0 15 Media Control */
-
     KC_1=0x16,
-
-    KC_WWW_FAVORITES=0x85, /* E0 18 Media Control */
-
     KC_Z=0x1A,
     KC_S=0x1B,
     KC_A=0x1C,
     KC_W=0x1D,
     KC_2=0x1E,
-    KC_LGUI=0x86, /* E0 1F */,
-    KC_WWW_REFRESH=0x87, /* E0 20 Media Control */
-
     KC_C=0x21,
-    KC_AUDIO_VOL_DOWN=0x88, /* E0 21 Media Control */
-
     KC_X=0x22,
-
     KC_D=0x23,
-    KC_AUDIO_MUTE=0x89,  /* E0 23 Media Control */
-
     KC_E=0x24,
     KC_4=0x25,
     KC_3=0x26,
-    KC_RGUI=0x8A, /* E0 27 */
-    KC_WWW_STOP=0x8B, /* E0 28 Media Control */
     KC_SPACE=0x29,
     KC_V=0x2A,
-
     KC_F=0x2B,
-    KC_CALCULATOR=0x8C, /* E0 2B Media Control */
-
     KC_T=0x2C,
     KC_R=0x2D,
-
     KC_5=0x2E,
-    KC_APPLICATION=0x8D, /* E0 2F */
-
-    KC_WWW_FORWARD=0x8E, /* E0 30 Media Control */
     KC_N=0x31,
-
     KC_B=0x32,
-    KC_AUDIO_VOL_UP=0x8F, /* E0 32 Media Control */
-
     KC_H=0x33,
-
     KC_G=0x34,
-    KC_MEDIA_PLAY_PAUSE=0x90, /* E0 34 Media Control */
-
     KC_Y=0x35,
     KC_6=0x36,
-    KC_SYSTEM_POWER=0x91, /* E0 37 System Control */
-    KC_WWW_BACK=0x92, /* E0 38 Media Control */
-
     KC_M=0x3A,
-    KC_WWW_HOME=0x93, /* E0 3A Media Control */
-
     KC_J=0x3B,
-    KC_MEDIA_STOP=0x94, /* E0 3B Media Control */
-
     KC_U=0x3C,
     KC_7=0x3D,
     KC_8=0x3E,
-    KC_SYSTEM_SLEEP=0x95, /* E0 3F System Control */
-    KC_MY_COMPUTER=0x96, /* E0 40 Media Control */
     KC_COMMA=0x41, /* , < */
     KC_K=0x42,
     KC_I=0x43,
     KC_O=0x44,
     KC_0=0x45,
     KC_9=0x46,
-
-    KC_MAIL=0x97, /* E0 48 Media Control */
     KC_DOT=0x49,   /* .  > */
- 
     KC_SLASH=0x4A, /* /  ? */
-    KC_KP_SLASH=0x98, /* E0 4A */
-
     KC_L=0x4B,
     KC_SCOLON=0x4C,/* ; : */
-
     KC_P=0x4D,
-    KC_MEDIA_NEXT_TRACK=0x99, /* E0 4D Media Control */
-
     KC_MINUS=0x4E,
-
-    KC_MEDIA_SELECT=0x9A, /* E0 50 Media Control */
-
     KC_QUOTE=0x52, /* ' " */
-
     KC_LBRACKET=0x54,
     KC_EQUAL=0x55,
-
-
     KC_CAPSLOCK=0x58,
-    KC_RSHIFT=0x59,
-
+    KC_RSHIFT=0x59, /* MOD */
     KC_ENTER=0x5A,
-    KC_KP_ENTER=0x9B, /* E0 5A */
-
     KC_RBRACKET=0x5B,
-
     KC_BSLASH=0x5D, /* \ | */
-    KC_SYSTEM_WAKE=0x9C, /* E0 5E System Control */
-
     KC_BSPACE=0x66,
-
     KC_KP_1=0x69,
-    KC_END=0x9D, /* E0 69 */
-
     KC_KP_4=0x6B,
-    KC_LEFT=0x9E, /* E0 6B */
-
     KC_KP_7=0x6C,
-    KC_HOME=0x9F, /* E0 6C */
-
     KC_KP_0=0x70,
-    KC_INSERT=0xA0, /* E0 70 */
-
     KC_KP_DOT=0x71,
-    KC_DELETE=0xA1, /* E0 71 */
-
     KC_KP_2=0x72,
-    KC_DOWN=0xA2, /* E0 72 */
-
     KC_KP_5=0x73,
-
     KC_KP_6=0x74,
-    KC_RIGHT=0xA3, /* E0 74 */
-
     KC_KP_8=0x75,
-    KC_UP=0xA4, /*  E0 75 */
-
     KC_ESCAPE=0x76,
     KC_NUMLOCK=0x77,
-
     KC_F11=0x78,
     KC_KP_PLUS=0x79,
-
     KC_KP_3=0x7A,
-    KC_PGDOWN=0xA5, /* E0 7A */ 
-
     KC_KP_MINUS=0x7B,
     KC_KP_ASTERISK=0x7C,
-
     KC_KP_9=0x7D,
-    KC_PGUP=0xA6, /* E0 7D */
-
     KC_SCROLLLOCK=0x7E,
+};
 
-    KC_F7=0x83,
+enum ps2_set2_scancode_extend {
+    KC_PSCREEN=0x81, /* E0 12 E0 7C */
+    KC_PAUSE=0x82, /* E1 14 77 make+brake, CTRL+PAUSE: E0 7E make+break */
+    KC_F7=0x83, /* 83 */
+    KC_WWW_SEARCH=0x90, /* E0 10 Media Control */
+    KC_RALT=0x91, /* E0 11  MOD */
+    KC_RCTRL=0x94, /* E0 14 MOD */
+    KC_MEDIA_PREV_TRACK=0x95, /* E0 15 Media Control */
+    KC_WWW_FAVORITES=0x98, /* E0 18 Media Control */
+    KC_LGUI=0x9F, /* E0 1F MOD */
+    KC_WWW_REFRESH=0xA0, /* E0 20 Media Control */
+    KC_AUDIO_VOL_DOWN=0xA1, /* E0 21 Media Control */
+    KC_AUDIO_MUTE=0xA3,  /* E0 23 Media Control */
+    KC_RGUI=0xA7, /* E0 27 MOD */
+    KC_WWW_STOP=0xA8, /* E0 28 Media Control */
+    KC_CALCULATOR=0xAB, /* E0 2B Media Control */
+    KC_APPLICATION=0xAF, /* E0 2F */
+    KC_WWW_FORWARD=0xB0, /* E0 30 Media Control */
+    KC_AUDIO_VOL_UP=0xB2, /* E0 32 Media Control */
+    KC_MEDIA_PLAY_PAUSE=0xB4, /* E0 34 Media Control */
+    KC_SYSTEM_POWER=0xB7, /* E0 37 System Control */
+    KC_WWW_BACK=0xB8, /* E0 38 Media Control */
+    KC_WWW_HOME=0xBA, /* E0 3A Media Control */
+    KC_MEDIA_STOP=0xBB, /* E0 3B Media Control */
+    KC_SYSTEM_SLEEP=0xBF, /* E0 3F System Control */
+    KC_MY_COMPUTER=0xC0, /* E0 40 Media Control */
+    KC_MAIL=0xC8, /* E0 48 Media Control */
+    KC_KP_SLASH=0xCA, /* E0 4A */
+    KC_MEDIA_NEXT_TRACK=0xCD, /* E0 4D Media Control */
+    KC_MEDIA_SELECT=0xD0, /* E0 50 Media Control */
+    KC_KP_ENTER=0xDA, /* E0 5A */
+    KC_SYSTEM_WAKE=0xDE, /* E0 5E System Control */
 
-    KC_PSCREEN=0xA7, /* make */
-    KC_PAUSE=0xC0, /* make+brake */
-    
-    KC_FN0=0xF0,
+    KC_END=0xE9, /* E0 69 */
+    KC_LEFT=0xEB, /* E0 6B */
+    KC_HOME=0xEC, /* E0 6C */
+    KC_INSERT=0xF0, /* E0 70 */
+    KC_DELETE=0xF1, /* E0 71 */
+    KC_DOWN=0xF2, /* E0 72 */
+    KC_RIGHT=0xF4, /* E0 74 */
+    KC_UP=0xF5, /*  E0 75 */
+    KC_PGDOWN=0xFA, /* E0 7A */ 
+    KC_PGUP=0xFD, /* E0 7D */
+
+    KC_FN0=0xE0,
     KC_FN1,
     KC_FN2,
     KC_FN3,
@@ -345,49 +298,5 @@ enum ps2_set2_keyboard_scancode {
     KC_FN7,
 
     KC_TRANSPARENT=0xFF,
-};
-
-enum ps2_set2_scancode_extend {
-	KE80_WWW_SEARCH=0x10E0, /* Media Control */
-	KE81_RALT=0x11E0,
-	KE82_RCTRL=0x14E0,
-	KE83_F7=0x83, 
-	KE84_MEDIA_PREV_TRACK=0x15E0, /* Media Control */
-	KE85_WWW_FAVORITES=0x18E0, /* Media Control */
-	KE86_LGUI=0x1FE0,
-	KE87_WWW_REFRESH=0x20E0, /* Media Control */
-	KE88_AUDIO_VOL_DOWN=0x21E0, /* Media Control */
-	KE89_AUDIO_MUTE=0x23E0,  /* Media Control */
-	KE8A_RGUI=0x27E0,
-	KE8B_WWW_STOP=0x28E0, /* Media Control */
-	KE8C_CALCULATOR=0x2BE0, /* Media Control */
-	KE8D_APPLICATION=0x2FE0,
-	KE8E_WWW_FORWARD=0x30E0, /* Media Control */
-	KE8F_AUDIO_VOL_UP=0x32E0, /* Media Control */
-	KE90_MEDIA_PLAY_PAUSE=0x34E0, /* Media Control */
-	KE91_SYSTEM_POWER=0x37E0, /* System Control */
-	KE92_WWW_BACK=0x38E0, /* Media Control */
-	KE93_WWW_HOME=0x3AE0, /* Media Control */
-	KE94_MEDIA_STOP=0x3BE0, /* Media Control */
-	KE95_SYSTEM_SLEEP=0x3FE0, /* System Control */
-	KE96_MY_COMPUTER=0x40E0, /* Media Control */
-	KE97_MAIL=0x48E0, /* Media Control */
-	KE98_KP_SLASH=0x4AE0,
-	KE99_MEDIA_NEXT_TRACK=0x4DE0, /* Media Control */
-	KE9A_MEDIA_SELECT=0x50E0, /* Media Control */
-	KE9B_KP_ENTER=0x5AE0,
-	KE9C_SYSTEM_WAKE=0x5EE0,  /* System Control */
-	KE9D_END=0x69E0,
-	KE9E_LEFT=0x6BE0,
-	KE9F_HOME=0x6CE0,
-	KEA0_INSERT=0x70E0,
-	KEA1_DELETE=0x71E0,
-	KEA2_DOWN=0x72E0,
-	KEA3_RIGHT=0x74E0,
-	KEA4_UP=0x75E0,
-	KEA5_PGDOWN=0x7AE0,
-	KEA6_PGUP=0x7DE0,
-	KEA7_PSCREEN=0x7CE012E0, /* make */
-	KEC0_PAUSE=0x7714E1, /* make+brake macro */
 };
 
