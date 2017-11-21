@@ -9,7 +9,7 @@ Microcontroller
 Used ATmega328p from Arduino, but TQFP version, with ability
 to connect A6 and A7. Antighosting reference diode with level shift
 resisor(2.7k) connected to AIN0(+)=D6:
-````
+```
 (D6)---\/\/\--->|--GND
 ```
 Bus pinout (Arduino):
