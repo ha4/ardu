@@ -36,14 +36,8 @@ uint8_t host_keyboard_leds(void)
 /* send report */
 void host_keyboard_send(report_keyboard_t *report)
 {
-//    if (!driver) return;
- //   (*driver->send_keyboard)(report);
-
-        Serial.print("keyboard: ");
-        for (uint8_t i = 0; i < KEYBOARD_REPORT_SIZE; i++)
-            Serial.print(report->raw[i],HEX);
-        Serial.print("\n");
-    
+    if (!driver) return;
+    (*driver->send_keyboard)(report);
 }
 
 void host_mouse_send(report_mouse_t *report)
@@ -59,9 +53,6 @@ void host_system_send(uint16_t report)
 
     if (!driver) return;
     (*driver->send_system)(report);
-
-        Serial.print("system: ");
-        Serial.println(report,HEX);
 }
 
 void host_consumer_send(uint16_t report)
@@ -71,9 +62,6 @@ void host_consumer_send(uint16_t report)
 
     if (!driver) return;
     (*driver->send_consumer)(report);
-
-        Serial.print("consumer: ");
-        Serial.println(report,HEX);
 }
 
 uint16_t host_last_system_report(void)
