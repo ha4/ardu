@@ -246,7 +246,7 @@ enum ps2_set2_keyboard_scancode {
 
 enum ps2_set2_scancode_extend {
     KC_PSCREEN=0x81, /* E0 12 E0 7C */
-    KC_PAUSE=0x82, /* E1 14 77 make+brake, CTRL+PAUSE: E0 7E make+break */
+    KC_PAUSE=0x82, /* E1 14 77 make+break, CTRL+PAUSE: E0 7E make+break */
     KC_F7=0x83, /* 83 */
     KC_WWW_SEARCH=0x90, /* E0 10 Media Control */
     KC_RALT=0x91, /* E0 11  MOD */

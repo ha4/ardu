@@ -82,6 +82,7 @@ static void  init_cols(void) {
     PORTC |=  0b00111111;
     DDRD  &= ~0b01001100; // D6 reference diode pullup
     PORTD |=  0b01001100;
+
     ADCSRB |= (1<<ACME); // analog comp multiplexer enable, AIN1(-)=D7 unused
     ADCSRA &=~(1<<ADEN); // disable ADC to use ADMUX by AC
     ACSR &= ~((1<<ACD)|(1<<ACBG));  // no bangap, external reference  AIN0(+)=D6

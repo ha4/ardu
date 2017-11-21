@@ -19,3 +19,12 @@ bool ps2_rxGet(unsigned char * r);
 bool ps2_txClear(void);
 bool ps2_rxAvailable(void);
 
+
+#define PS2_NORMAL 0
+#define PS2_REPEAT 1
+#define PS2_RESET  2
+
+void ps2_reset();
+
+/* call it if available data */
+uint8_t ps2_host_protocol(void);
