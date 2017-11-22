@@ -29,22 +29,22 @@ const uint8_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
                 LALT,                SPC,                  RCTL, FN0  ),
     /* Overlay 1: FN0
      * ,-----------------------------------------------------------.
-     * |`  | F1| F2| F3| F4| F5| F6| F7| F8| F9|F10|F11|F12|   |Ins|
+     * |GUI| F1| F2| F3| F4| F5| F6| F7| F8| F9|F10|F11|F12|nLK|Ins|
      * |-----------------------------------------------------------|
-     * |     |Hom|Up |End|   |   |   |Hom|Up |End|Psc|Slk|Pau|Del  |
+     * |     |Hom|Up |End|PgU|   |   |Hom| P*|End|Psc|Slk|Pau|Del  |
      * |-----------------------------------------------------------|
-     * |R-Ctrl|Lef|Dow|Rig|   |   |PgU|Lef|Dow|Rig|Up |   |        |
+     * |R-Ctrl|Lef|Dow|Rig|PgD|   |Lef|Dow|Up |Rig|   |   |        |
      * |-----------------------------------------------------------|
-     * |R-Shift |   |   |   |   |Spc|PgD|   |   |   |   |R-Shift   |
+     * |R-Shift |   |   |   |   |PgU|   |   | P-| P+|App|R-Shift   |
      * `-----------------------------------------------------------'
      *           |RAlt|                            |RCtrl|  |
      *           `------------------------------------------'
      */
     KEYMAP(
-        LGUI, F1,  F2,  F3,  F4,  F5,  F6,  F7,  F8,  F9,  F10, F11, F12,TRNS, INS, \
-        TRNS,HOME, UP, END, TRNS,TRNS,TRNS,HOME, UP, END, PSCR,SLCK,PAUS, DEL, \
-        RCTL,LEFT,DOWN,RGHT,TRNS,TRNS,PGUP,LEFT,DOWN,RGHT, UP, TRNS,TRNS, \
-        RSFT,TRNS,TRNS,TRNS,TRNS,SPC, PGDN,TRNS,TRNS,TRNS,TRNS,TRNS, \
+        LGUI, F1,  F2,  F3,  F4,  F5,  F6,  F7,  F8,  F9,  F10, F11, F12,NLCK, INS, \
+        TRNS,HOME, UP, END, PGUP,TRNS,TRNS,HOME,PAST, END,PSCR,SLCK,PAUS, DEL, \
+        RCTL,LEFT,DOWN,RGHT,PGDN,TRNS,LEFT,DOWN, UP, RGHT,TRNS,TRNS,TRNS, \
+        RSFT,TRNS,TRNS,TRNS,TRNS,PGUP,TRNS,TRNS,PMNS,PPLS, APP,TRNS, \
                   RALT,          TRNS,                    TRNS,TRNS),
 
 };
