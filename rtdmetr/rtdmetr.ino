@@ -103,8 +103,18 @@ void setup()
         muxSet(4);
 }
 
-#define UREF 4.309545
-#define UREF_PPM 6960
+/*
+ *  uref: 4319.5mV 1.05456543mv/bit
+ * uoff0: 178003ppm +-50
+ * uoff1: 150561ppm +-50
+ * a0: 16.1936
+ * a1: 30.998
+ * a2: 46.654
+ * a3: 61.4738
+ */
+
+#define UREF 4309.545
+#define UREF_PPM +2310
 #define UOFS0 UREF/(1.0+30.0/6.6)
 #define UOFS1 UREF/(1.0+(30.0+1.0/101.0)/5.6)
 #define UOFS0_PPM -6213
