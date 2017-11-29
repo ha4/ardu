@@ -162,7 +162,7 @@ uint16_t read_mcp3201()
 	result = result | SPI.transfer(0x00);
 	digitalWrite(chipSelectPinADC, HIGH);
 	result = result >> 1;
-	result = result & 0x3FF;
+	result = result & 0xFFF;
   
 	return result;
 }
