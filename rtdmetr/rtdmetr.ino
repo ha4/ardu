@@ -6,6 +6,44 @@ enum { chipSelectPinADC = 9, // mcp3201 #7clk<-sck=D13, #6Dout->MISO=D12, MOSI-n
        muxA = 4, muxB = 2, muxC = 3, // hef4051, A#11, B#10, C#9. A is lsb
 };
 
+#define UPART (1.0/4096)
+#define UREF 4309.545
+#define UOFS0 767.15
+#define UOFS1 648.81
+#define UAMP0 16.1936
+#define UAMP1 30.998
+#define UAMP2 46.654
+#define UAMP3 61.4738
+#define KMUX0 1 /* A rtd */
+#define KMUX1 1 /* B tc */
+#define KMUX2 101 /* B(v) */
+#define KMUX3 5 /* A(mA) */
+#define KMUX4 0 /* zero, no amp */
+#define KMUX5 14.9817 /* t-diode */
+#define KMUX6 1 /* C tc */
+#define KMUX7 1 /* D tc */
+
+enum { ch_code = 8, ch_mv, ch_offs, ch_amp, ch_coeff, ch_err, CHANNELS_SZ };
+
+double channels[CHANNELS_SZ];
+int8_t channel_num;
+
+bool filt;
+double f_sum;
+int32_t f_num;
+double f_err;
+
+double f_flt(double x)
+{
+  double t;
+  if (f_num < 0) { f_num=1; f_sum=x; f_err=0; }
+  else { f_num++; f_sum+=x; }
+  t  = f_sum/f_num;
+  f_err += (x - t - f_err)/f_num; /* err = (err*(num-1) + delta)/num */
+  channels[ch_err]=f_err;
+  return t;
+}
+
 uint16_t read_mcp3201()
 {
 	uint16_t result;
@@ -66,25 +104,50 @@ void muxSet(int s)
 void serial_process()
 {
   switch(Serial.read()) {
-  case 'R': uref(1); break;
-  case 'r': uref(0); break;
+  case 'R': uref(1); channels[ch_offs] = UOFS1; break;
+  case 'r': uref(0); channels[ch_offs] = UOFS0; break;
   case 'O': refSupply(1); break;
   case 'o': refSupply(0); break;
-  case 'a': ampSet(Serial.parseInt()); break;
-  case '0': muxSet(0); break;
-  case '1': muxSet(1); break;
-  case '2': muxSet(2); break;
-  case '3': muxSet(3); break;
-  case '4': muxSet(4); break;
-  case '5': muxSet(5); break;
-  case '6': muxSet(6); break;
-  case '7': muxSet(7); break;
+  case 'a': switch(Serial.read()) {
+    case '0': ampSet(0); channels[ch_amp]=UAMP0; break;
+    case '1': ampSet(1); channels[ch_amp]=UAMP1; break;
+    case '2': ampSet(2); channels[ch_amp]=UAMP2; break;
+    case '3': ampSet(3); channels[ch_amp]=UAMP3; break;
+    }
+    break;
+  case '0': muxSet(0); channel_num=0; channels[ch_coeff]=KMUX0; break;
+  case '1': muxSet(1); channel_num=1; channels[ch_coeff]=KMUX1; break;
+  case '2': muxSet(2); channel_num=2; channels[ch_coeff]=KMUX2; break;
+  case '3': muxSet(3); channel_num=3; channels[ch_coeff]=KMUX3; break;
+  case '4': muxSet(4); channel_num=4; channels[ch_coeff]=KMUX4; break;
+  case '5': muxSet(5); channel_num=5; channels[ch_coeff]=KMUX5; break;
+  case '6': muxSet(6); channel_num=6; channels[ch_coeff]=KMUX6; break;
+  case '7': muxSet(7); channel_num=7; channels[ch_coeff]=KMUX7; break;
+  case 'f': filt = !filt; if (filt) f_num=-1; break;
   }
+}
+
+void report()
+{
+  Serial.print(channel_num);
+  Serial.print(' ');
+  for(int i = 0; i < 8; i++) {
+    Serial.print(channels[i],3);
+    Serial.print(' ');
+  }
+  Serial.print(' ');
+  for(int i = 8; i < CHANNELS_SZ; i++) {
+    Serial.print(channels[i],3);
+    Serial.print(' ');
+  }
+  Serial.println();
 }
 
 void setup()
 {
 	Serial.begin(115200);
+	filt = 0;
+        for(int i=0; i < CHANNELS_SZ; i++) channels[i]=0;
 	SPI.begin();
 	SPI.setBitOrder(MSBFIRST);
 	SPI.setClockDivider(SPI_CLOCK_DIV16);
@@ -97,28 +160,21 @@ void setup()
 	pinMode(muxA, OUTPUT);
 	pinMode(muxB, OUTPUT);
 	pinMode(muxC, OUTPUT);
-        uref(0);
+        uref(0); channels[ch_offs] = UOFS0;
         refSupply(0);
-        ampSet(0);
-        muxSet(4);
+        ampSet(0); channels[ch_amp]=UAMP0;
+        muxSet(4); channel_num=4; channels[ch_coeff]=KMUX4;
 }
 
 /*
  *  uref: 4319.5mV 1.05456543mv/bit
- * uoff0: 178003ppm +-50
- * uoff1: 150561ppm +-50
+ * uoff0: 178003ppm +-50  767.15 mv
+ * uoff1: 150561ppm +-50  648.81 mv
  * a0: 16.1936
  * a1: 30.998
  * a2: 46.654
  * a3: 61.4738
  */
-
-#define UREF 4309.545
-#define UREF_PPM +2310
-#define UOFS0 UREF/(1.0+30.0/6.6)
-#define UOFS1 UREF/(1.0+(30.0+1.0/101.0)/5.6)
-#define UOFS0_PPM -6213
-#define UOFS1_PPM -15789
 
 void loop()
 {
@@ -130,11 +186,18 @@ void loop()
 		result=read_mcp3201();
 		mv += result;
 	}
-	mv/=8;
-//        mv = mv * ADC_REF / 4096 + ADC_OFFS;
+	channels[ch_code] = mv*0.125; // div 8
+        channels[ch_mv] = channels[ch_code] * UREF * UPART;
+        if (channels[ch_coeff] == 0)
+          channels[channel_num] = channels[ch_mv];
+          else {
+          channels[ch_mv] -= channels[ch_offs];
+          channels[channel_num] = channels[ch_mv]/channels[ch_amp]*channels[ch_coeff];
+          }
+        if (filt) channels[channel_num] = f_flt(channels[channel_num]);
+        report();
 
-	Serial.print(mv);
-	Serial.println("#code");
         if (Serial.available()) serial_process();
 	delay(135);
 }
+
