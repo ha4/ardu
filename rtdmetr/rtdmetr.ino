@@ -7,7 +7,7 @@ enum { chipSelectPinADC = 9, // mcp3201 #7clk<-sck=D13, #6Dout->MISO=D12, MOSI-n
 };
 
 #define UPART (1.0/4096)
-#define UREF 4309.545
+#define UREF 4319.2
 #define UOFS0 767.15
 #define UOFS1 648.81
 #define UAMP0 16.1936
