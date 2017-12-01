@@ -7,19 +7,21 @@ enum { chipSelectPinADC = 9, // mcp3201 #7clk<-sck=D13, #6Dout->MISO=D12, MOSI-n
 };
 
 #define UPART (1.0/4096)
-#define UREF 4319.2
-#define UOFS0 767.15
-#define UOFS1 648.81
-#define UAMP0 16.1936
-#define UAMP1 30.998
-#define UAMP2 46.654
-#define UAMP3 61.4738
+#define UREF 4318.7
+#define UADC 1.4265
+#define KADC 1.00574466
+#define UOFS0 774.48
+#define UOFS1 655.22
+#define UAMP0 17.32605  
+#define UAMP1 33.17603
+#define UAMP2 49.92801
+#define UAMP3 65.779736
 #define KMUX0 1 /* A rtd */
 #define KMUX1 1 /* B tc */
 #define KMUX2 101 /* B(v) */
 #define KMUX3 5 /* A(mA) */
 #define KMUX4 0 /* zero, no amp */
-#define KMUX5 14.9817 /* t-diode */
+#define KMUX5 15.91445 /* t-diode */
 #define KMUX6 1 /* C tc */
 #define KMUX7 1 /* D tc */
 
@@ -187,13 +189,12 @@ void loop()
 		mv += result;
 	}
 	channels[ch_code] = mv*0.125; // div 8
-        channels[ch_mv] = channels[ch_code] * UREF * UPART;
+        channels[ch_mv] = (channels[ch_code] * UREF * UPART + UADC)*KADC;
         if (channels[ch_coeff] == 0)
           channels[channel_num] = channels[ch_mv];
-          else {
-          channels[ch_mv] -= channels[ch_offs];
-          channels[channel_num] = channels[ch_mv]/channels[ch_amp]*channels[ch_coeff];
-          }
+          else 
+          channels[channel_num] = (channels[ch_mv]-channels[ch_offs])/channels[ch_amp]*channels[ch_coeff];
+          
         if (filt) channels[channel_num] = f_flt(channels[channel_num]);
         report();
 
