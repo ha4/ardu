@@ -1,4 +1,7 @@
 #include <SPI.h>
+#include "owire.h"
+
+OneWire  ds(14); // on D14
 
 enum { chipSelectPinADC = 9, // mcp3201 #7clk<-sck=D13, #6Dout->MISO=D12, MOSI-nc=D11, #5CS<-D9
        refSelect = 8, // mosfet
@@ -24,8 +27,13 @@ enum { chipSelectPinADC = 9, // mcp3201 #7clk<-sck=D13, #6Dout->MISO=D12, MOSI-n
 #define KMUX5 15.91445 /* t-diode */
 #define KMUX6 1 /* C tc */
 #define KMUX7 1 /* D tc */
+#define UDIODE -573.57055
+#define KDIODE -0.494338
 
-enum { ch_code = 8, ch_mv, ch_offs, ch_amp, ch_coeff, ch_err, CHANNELS_SZ };
+
+enum { ch_code = 8, ch_mv, ch_offs, ch_amp, ch_coeff, ch_err, ch_ext, ch_tref, CHANNELS_SZ };
+
+uint32_t tmr1000, tmr100;
 
 double channels[CHANNELS_SZ];
 int8_t channel_num;
@@ -34,6 +42,11 @@ bool filt;
 double f_sum;
 int32_t f_num;
 double f_err;
+
+void f_clr()
+{
+  f_num=-1;
+}
 
 double f_flt(double x)
 {
@@ -46,7 +59,28 @@ double f_flt(double x)
   return t;
 }
 
-uint16_t read_mcp3201()
+uint16_t read_ds18s20()
+{
+	byte data[12];
+	uint16_t rc = 0xFFFF;
+
+	if (ds.reset()) {
+		ds.write(0xCC);     // skip rom
+		ds.write(0xBE);         // Read Scratchpad
+		ds.read(data, 9);
+		if (ds.crc(data, 9)==0)
+			rc = data[0] + 256*data[1];
+		// restart conversion one second
+		ds.reset();
+		ds.write(0xCC);     // skip rom
+		ds.write(0x44);     // start conversion
+		ds.power(true);
+	}
+
+	return rc;
+}
+
+uint16_t read_mcp3201() /* 30us to convert/read */
 {
 	uint16_t result;
 
@@ -103,6 +137,18 @@ void muxSet(int s)
   Serial.println(s);
 }
 
+void make_report()
+{
+        channels[ch_mv] = (channels[ch_code] * UREF * UPART + UADC)*KADC;
+        if (channels[ch_coeff] == 0)
+          channels[channel_num] = channels[ch_mv];
+          else 
+          channels[channel_num] = (channels[ch_mv]-channels[ch_offs])/channels[ch_amp]*channels[ch_coeff];
+        
+        if (filt) channels[channel_num] = f_flt(channels[channel_num]);
+        channels[ch_tref] = (channels[5] + UDIODE)*KDIODE;
+}
+
 void serial_process()
 {
   switch(Serial.read()) {
@@ -125,7 +171,7 @@ void serial_process()
   case '5': muxSet(5); channel_num=5; channels[ch_coeff]=KMUX5; break;
   case '6': muxSet(6); channel_num=6; channels[ch_coeff]=KMUX6; break;
   case '7': muxSet(7); channel_num=7; channels[ch_coeff]=KMUX7; break;
-  case 'f': filt = !filt; if (filt) f_num=-1; break;
+  case 'f': filt = !filt; if (filt) f_clr(); break;
   }
 }
 
@@ -162,43 +208,42 @@ void setup()
 	pinMode(muxA, OUTPUT);
 	pinMode(muxB, OUTPUT);
 	pinMode(muxC, OUTPUT);
+        f_clr();
         uref(0); channels[ch_offs] = UOFS0;
         refSupply(0);
         ampSet(0); channels[ch_amp]=UAMP0;
         muxSet(4); channel_num=4; channels[ch_coeff]=KMUX4;
+        tmr1000=0;
+        tmr100=0;
 }
-
-/*
- *  uref: 4319.5mV 1.05456543mv/bit
- * uoff0: 178003ppm +-50  767.15 mv
- * uoff1: 150561ppm +-50  648.81 mv
- * a0: 16.1936
- * a1: 30.998
- * a2: 46.654
- * a3: 61.4738
- */
 
 void loop()
 {
-	double mv=0;
-	byte n;
-	uint16_t result;
+        uint32_t ms = millis();
 
-	for(mv=0, n=8; n--;) {
+        if (ms - tmr100 >= 100) {
+          tmr100 = ms;
+          double mv = 0;
+	  uint16_t result;
+	  for(byte n=8; n--;) {
 		result=read_mcp3201();
 		mv += result;
-	}
-	channels[ch_code] = mv*0.125; // div 8
-        channels[ch_mv] = (channels[ch_code] * UREF * UPART + UADC)*KADC;
-        if (channels[ch_coeff] == 0)
-          channels[channel_num] = channels[ch_mv];
-          else 
-          channels[channel_num] = (channels[ch_mv]-channels[ch_offs])/channels[ch_amp]*channels[ch_coeff];
-          
-        if (filt) channels[channel_num] = f_flt(channels[channel_num]);
-        report();
+	  }
+	  channels[ch_code] = mv*0.125; // div 8
+          channels[ch_code] = f_flt(channels[ch_code]);
+
+          if (ms - tmr1000 >= 1000) {
+            tmr1000 = ms;
+            result = read_ds18s20();
+            if (result!=0xFFFF && result!=85*16)
+              channels[ch_ext] = result*0.0625; // div 16
+            f_clr();
+            make_report();
+            report();
+          }
+
+        }
 
         if (Serial.available()) serial_process();
-	delay(135);
 }
 
