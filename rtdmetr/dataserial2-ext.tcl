@@ -1,6 +1,8 @@
 set ConfMode "115200,n,8,1"
 set ::AutoPlotM::dset(set2,yaxis)  "y2"
 set ::AutoPlotM::dset(set2,color)  "red"
+set ::AutoPlotM::dset(set3,yaxis)  "y2"
+set ::AutoPlotM::dset(set3,color)  "magenta"
 set ::AutoPlotM::pscale(y2,tcolor)  "red"
 set ::AutoPlotM::pscale(y2,gcolor)  "pink"
 set ::AutoPlotM::pscale(y2,offset)  126
@@ -105,6 +107,7 @@ proc data_in {s} {
 	if {![string is double -strict $vc]} { return }
 	set vx [lindex $re [expr 1+$vc]]
 	if {![string is double -strict $vx]} { return }
+
 	set vt [lindex $re end-1]
 	if {![string is double -strict $vt]} { return }
 	set vtd [lindex $re end]
@@ -118,8 +121,9 @@ proc data_in {s} {
 	put_log "$t $s"
 
 # plot	
-	$chart $t $vtd
+	$chart $t $vx set1
 	$chart $t $vt set2
+	$chart $t $vtd set3
 }
 
 proc cmd_conn {} {
@@ -138,10 +142,23 @@ proc cmd_send {} {
 	ser_cmd $res
 }
 
+proc replot { arg val } {
+	puts "replot $arg $val"
+	if {$arg ne ""} {
+		set ::AutoPlotM::$arg $val
+	}
+	::AutoPlotM::replot .t.c
+}
+
+proc cmd_replot {} {
+	set res [tk_inputer .cmdrpl "Replot" {"parameter" "value"} {"scale(y,vmin)" "0"}]
+	if {[llength $res]} {replot {*}$res}
+}
 
 proc extension_init {} {
 # -- COMMAND EXTENSTION
 .mbar.fl insert 6 command -label "Reload Extension" -command { source dataserial2-ext.tcl }
+.mbar.dat insert 1 command -label "replot" -command cmd_replot
 .mbar.dat add command -label "Send a2RO5 (diode)" -command { ser_cmd a2RO5 }
-.mbar.dat add command -label "Send command" -command { cmd_send }
+.mbar.dat add command -label "Send command" -command cmd_send
 }
