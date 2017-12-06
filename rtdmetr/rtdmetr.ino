@@ -98,6 +98,7 @@ uint16_t read_mcp3201() /* 30us to convert/read */
 void uref(int mode)
 {
   digitalWrite(refSelect, mode);
+  channels[ch_offs] = (mode==1)?UOFS1:UOFS0;
   Serial.print("Uref ");
   Serial.println(mode);
 }
@@ -115,6 +116,7 @@ void ampSet(int s)
 {
   digitalWrite(amp16, (s&1)?1:0);
   digitalWrite(amp33, (s&2)?1:0);
+  channels[ch_amp]=(s<2)?((s==0)?UAMP0:UAMP1):((s==2)?UAMP2:UAMP3);
   Serial.print("amp ");
   Serial.println(s);
 }
@@ -133,6 +135,8 @@ void muxSet(int s)
   digitalWrite(muxA, (s&1)?1:0);
   digitalWrite(muxB, (s&2)?1:0);
   digitalWrite(muxC, (s&4)?1:0);
+  channel_num=s&7;
+  channels[ch_coeff]=(s<4)?((s<2)?((s==0)?KMUX0:KMUX1):((s==2)?KMUX2:KMUX3)):((s<6)?((s==4)?KMUX4:KMUX5):((s==6)?KMUX6:KMUX7));
   Serial.print("mux ");
   Serial.println(s);
 }
@@ -152,25 +156,28 @@ void make_report()
 void serial_process()
 {
   switch(Serial.read()) {
-  case 'R': uref(1); channels[ch_offs] = UOFS1; break;
-  case 'r': uref(0); channels[ch_offs] = UOFS0; break;
+  case 'R': uref(1); break;
+  case 'r': uref(0); break;
   case 'O': refSupply(1); break;
   case 'o': refSupply(0); break;
-  case 'a': switch(Serial.read()) {
-    case '0': ampSet(0); channels[ch_amp]=UAMP0; break;
-    case '1': ampSet(1); channels[ch_amp]=UAMP1; break;
-    case '2': ampSet(2); channels[ch_amp]=UAMP2; break;
-    case '3': ampSet(3); channels[ch_amp]=UAMP3; break;
+  case 'a':
+    delay(1);
+    switch(Serial.read())
+    {
+    case '0': ampSet(0); break;
+    case '1': ampSet(1); break;
+    case '2': ampSet(2); break;
+    case '3': ampSet(3); break;
     }
     break;
-  case '0': muxSet(0); channel_num=0; channels[ch_coeff]=KMUX0; break;
-  case '1': muxSet(1); channel_num=1; channels[ch_coeff]=KMUX1; break;
-  case '2': muxSet(2); channel_num=2; channels[ch_coeff]=KMUX2; break;
-  case '3': muxSet(3); channel_num=3; channels[ch_coeff]=KMUX3; break;
-  case '4': muxSet(4); channel_num=4; channels[ch_coeff]=KMUX4; break;
-  case '5': muxSet(5); channel_num=5; channels[ch_coeff]=KMUX5; break;
-  case '6': muxSet(6); channel_num=6; channels[ch_coeff]=KMUX6; break;
-  case '7': muxSet(7); channel_num=7; channels[ch_coeff]=KMUX7; break;
+  case '0': muxSet(0); break;
+  case '1': muxSet(1); break;
+  case '2': muxSet(2); break;
+  case '3': muxSet(3); break;
+  case '4': muxSet(4); break;
+  case '5': muxSet(5); break;
+  case '6': muxSet(6); break;
+  case '7': muxSet(7); break;
   case 'f': filt = !filt; if (filt) f_clr(); break;
   }
 }
