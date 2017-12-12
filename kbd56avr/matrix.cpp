@@ -97,7 +97,7 @@ static matrix_row_t read_cols(void)
     uint8_t r = 0;
     for(byte j=0; j < MATRIX_ROWS; j++) {
       ADMUX = (ADMUX & 0xF0) | (j & 0x07);
-      delayMicroseconds(1);
+      delayMicroseconds(5);
       if (j != matrix_selected) { 
         r >>= 1;
         if (ACSR & (1<<ACO)) r |= 0x80;
