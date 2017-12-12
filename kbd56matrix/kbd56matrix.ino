@@ -85,8 +85,8 @@ void setup()
 {
   Serial.begin(115200);
   init_cols();
-//  init_ac();
-  init_adc();
+  init_ac();
+//  init_adc();
   Serial.println("matrix_init()");
 }
 
@@ -99,17 +99,18 @@ void loop()
         Serial.print(i);  Serial.print(':');
         select_row(i);
         for(uint8_t j=0; j < MATRIX_ROWS; j++) {
-		if (j < 6) PORTC |= (1<<j);
-		else if (j==6) PORTD |= (1<<3);
-		else if (j==7) PORTD |= (1<<2);
 		ADMUX = (ADMUX & 0xF0) | (j & 0x07);
-		delayMicroseconds(2);
-//        	sprintf(buf,"%5d",acmp());
-        	sprintf(buf,"%5d",adc());
+//                if (j==i) continue;
+//		if (j < 6) PORTC |= (1<<j);
+//		else if (j==6) PORTD |= (1<<3);
+//		else if (j==7) PORTD |= (1<<2);
+		delayMicroseconds(5);
+        	sprintf(buf,"%5d",acmp());
+//        	sprintf(buf,"%5d",adc());
         	Serial.print(buf);
-		if (j < 6) PORTC &= ~(1<<j);
-		else if (j==6) PORTD &= ~(1<<3);
-		else if (j==7) PORTD &= ~(1<<2);
+//		if (j < 6) PORTC &= ~(1<<j);
+//		else if (j==6) PORTD &= ~(1<<3);
+//		else if (j==7) PORTD &= ~(1<<2);
         }
         unselect_rows();
         Serial.println();
