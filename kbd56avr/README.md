@@ -31,6 +31,10 @@ optional for 9x8 matrix:
 ```
 BUS8 does not implemented in firmware, but it is easy to do.
 
+PS/2 interface connection:
+ DATA  PB2 (D10)
+ CLOCK PB0 (D8)
+
 
 Wiring
 ============
@@ -96,3 +100,35 @@ Control and Shift key switches from left and right are connected together.
         `-------------------------------------------------------------------'
 
 ```
+
+Arduino pro mini 3.3v 8MHz:
+* pro.bootloader.low_fuses=0xc6      # ckdiv=1(no) ckout=1(no) sut=00 (ceramic,fastRizing) cksel=0110(fullswing crystal)  (def=62)
+* pro.bootloader.high_fuses=0xdd     # rstdis=1(no) dwen=1(no) spien=0(en) wdon=1(off) eesav=1(no) bodlvl=101(2.7v) (def=DF)
+* pro.bootloader.extended_fuses=0x00 # bootsz=00(1k) bootres=0(bootloader)
+* pro.bootloader.file=ATmegaBOOT_168_pro_8MHz.hex
+* pro.build.mcu=atmega168
+* pro.build.f_cpu=8000000L
+
+Internal OSC 8Mhz mega168:
+* pro.bootloader.low_fuses=0xe2      # ckdiv=1(no) ckout=1(no) sut=10 (slow rising) cksel=0010(internal)
+* pro.bootloader.high_fuses=0xdf     # default
+* pro.bootloader.extended_fuses=0x00 # bootsz=00(1k) bootres=0(bootloader)
+* pro.bootloader.file=ATmegaBOOT_168_pro_8MHz.hex
+* pro.build.mcu=atmega168
+* pro.build.f_cpu=8000000L
+
+Arduino Pro or Pro Mini (3.3V, 8 MHz) w/ ATmega328:
+pro328.bootloader.low_fuses=0xFF      # ckdiv8=1(no) ckout=1(no) sut=11(xtal,slowRising) cksel=1111(lopwr,8-16mhz) (def=62)
+pro328.bootloader.high_fuses=0xDA     # rstdis=1(no) dwen=1(no) spien=0(en) wdon=1(no) eesav=1(no) bootsz=01(512b) bootrs=0(boot) (def=D9) 
+pro328.bootloader.extended_fuses=0x05 # bodlvl=101 (2.7v)
+pro328.bootloader.file=ATmegaBOOT_168_atmega328_pro_8MHz.hex
+pro328.build.mcu=atmega328p
+pro328.build.f_cpu=8000000L
+
+Internal OSC 8Mhz mega328p:
+pro328.bootloader.low_fuses=0xE2      # ckdiv8=1(no) ckout=1(no) sut=10(slowRising) cksel=0010(internal)
+pro328.bootloader.high_fuses=0xDA     # rstdis=1(no) dwen=1(no) spien=0(en) wdon=1(no) eesav=1(no) bootsz=01(512b) bootrs=0(boot)
+pro328.bootloader.extended_fuses=0x07 # nobodlvl
+pro328.bootloader.file=ATmegaBOOT_168_atmega328_pro_8MHz.hex
+pro328.build.mcu=atmega328p
+pro328.build.f_cpu=8000000L
