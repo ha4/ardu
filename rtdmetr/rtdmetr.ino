@@ -13,8 +13,9 @@ enum { chipSelectPinADC = 9, // mcp3201 #7clk<-sck=D13, #6Dout->MISO=D12, MOSI-n
 #define UREF 4318.7
 #define UADC 1.4265
 #define KADC 1.00574466
-#define UOFS0 774.48
-#define UOFS1 655.22
+#define UINO -0.0117 /* -11.7 input offset */
+#define UOFS0 775.08 /* old: 774.48 */
+#define UOFS1 655.80 /* old: 655.22 */
 #define UAMP0 17.32605  
 #define UAMP1 33.17603
 #define UAMP2 49.92801
@@ -57,6 +58,11 @@ double f_flt(double x)
   f_err += (x - t - f_err)/f_num; /* err = (err*(num-1) + delta)/num */
   channels[ch_err]=f_err;
   return t;
+}
+
+double a_flt(double y, double x, double a)
+{
+  return a*x+(1.0-a)*y;
 }
 
 uint16_t read_ds18s20()
@@ -143,11 +149,13 @@ void muxSet(int s)
 
 void make_report()
 {
+        double r;
         channels[ch_mv] = (channels[ch_code] * UREF * UPART + UADC)*KADC;
         if (channels[ch_coeff] == 0)
-          channels[channel_num] = channels[ch_mv];
+          r = channels[ch_mv];
           else 
-          channels[channel_num] = (channels[ch_mv]-channels[ch_offs])/channels[ch_amp]*channels[ch_coeff];
+          r = ((channels[ch_mv]-channels[ch_offs])/channels[ch_amp]-UINO)*channels[ch_coeff];
+        channels[channel_num] = a_flt(channels[channel_num], r, 0.1);
         
         if (filt) channels[channel_num] = f_flt(channels[channel_num]);
         channels[ch_tref] = (channels[5] + UDIODE)*KDIODE;
@@ -178,7 +186,7 @@ void serial_process()
   case '5': muxSet(5); break;
   case '6': muxSet(6); break;
   case '7': muxSet(7); break;
-  case 'f': filt = !filt; if (filt) f_clr(); break;
+  case 'f': filt = !filt; if (filt) f_clr(); Serial.print("filter o"); Serial.println(filt?"n":"ff");  break;
   }
 }
 
@@ -216,10 +224,10 @@ void setup()
 	pinMode(muxB, OUTPUT);
 	pinMode(muxC, OUTPUT);
         f_clr();
-        uref(0); channels[ch_offs] = UOFS0;
+        uref(0);
         refSupply(0);
-        ampSet(0); channels[ch_amp]=UAMP0;
-        muxSet(4); channel_num=4; channels[ch_coeff]=KMUX4;
+        ampSet(0);
+        muxSet(4);
         tmr1000=0;
         tmr100=0;
 }
@@ -236,18 +244,19 @@ void loop()
 		result=read_mcp3201();
 		mv += result;
 	  }
-	  channels[ch_code] = mv*0.125; // div 8
-          channels[ch_code] = f_flt(channels[ch_code]);
+          channels[ch_code] = mv*0.125;/* div 8 */
 
           if (ms - tmr1000 >= 1000) {
             tmr1000 = ms;
             result = read_ds18s20();
             if (result!=0xFFFF && result!=85*16)
               channels[ch_ext] = result*0.0625; // div 16
-            f_clr();
+            //f_clr();
             make_report();
             report();
-          }
+          } else 
+             make_report();
+
 
         }
 
