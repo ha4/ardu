@@ -5,13 +5,13 @@
 /* http://www.mosaic-industries.com/embedded-systems/microcontroller-projects/temperature-measurement/thermocouple/calibration-table */
 
 /* RTD Pt100 data. European curve. tollerance +/-0.015C. 100Ohm 273.15K R100C=138.51 */
-float rtd2c = {
+float rtd2c[] = {
 	18.52, 390.48, 0, -245.19, // -200,+850
 	2.5293, -6.6046E-2, 4.0422E-3, -2.0697E-6,
 	1,      -2.5422E-2, 1.6883E-3, -1.3601E-6,
 };
 
-float rtd2r = {
+float rtd2r[] = {
 	-200, 850, 0, 100,
 	0.3851, 0, 0, 0,
 	1,      0, 0, 0,
@@ -108,6 +108,8 @@ float t2v[] = {
         1.0,           1.6458102E-02, 0,             0              // Q-denominator
 };
 
+static float *kc=k2c, *kv=k2v;
+static int ktyp=TYP_K, ksz=5;
 
 double poly3(float *a, double x) { return a[0] + x*(a[1] + x*(a[2] + x*a[3])); }
 double ratpoly4(float *a, double x) { return x * poly3(a, x) / poly3(a+4, x); }
@@ -121,21 +123,18 @@ double pwrp4(float *t, int sz, double x) /* picewise ration polynomial 4-degree 
 }
 
 /* input: C, output mV */
-double convT2V(double T) { return ratpoly4(kv+4, T-t2v[2])+t2v[3]; }
+double convT2V(double T) { return ratpoly4(kv+4, T-kv[2])+kv[3]; }
 
 /* input: mV, output C */
 double convV2T(double V) { return pwrp4(kc, ksz, V); }
 
-static float *kc=k2c, *kv=k2v;
-static int ktyp=TYP_K, ksz=5;
-
 int conv_type(int typ)
 {
 	switch(typ) {
-	case TYP_PT100:ktyp=TYP_PT100; kc=j2c; *kv=j2v; ksz=1; break;
-	case TYP_T: ktyp=TYP_T; kc=t2c; *kv=t2v; ksz=4; break;
-	case TYP_K: ktyp=TYP_K; kc=k2c; *kv=k2v; ksz=5; break;
-	case TYP_J: ktyp=TYP_J; kc=j2c; *kv=j2v; ksz=5; break;
+	case TYP_PT100:ktyp=TYP_PT100; kc=j2c; kv=j2v; ksz=1; break;
+	case TYP_T: ktyp=TYP_T; kc=t2c; kv=t2v; ksz=4; break;
+	case TYP_K: ktyp=TYP_K; kc=k2c; kv=k2v; ksz=5; break;
+	case TYP_J: ktyp=TYP_J; kc=j2c; kv=j2v; ksz=5; break;
 	}
 	return ktyp;
 }
