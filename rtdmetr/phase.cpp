@@ -1,65 +1,74 @@
+#include <Arduino.h>
+#include "phase.h"
+#include "PinChangeInt.h"
 
 /*
-  plulse ---------------------.
+    +5v ---[4.7k]-------------.  
+  pulse ----------------------+
             ,--------[15k]----|--------------------.
             `-#1        #4----'                    |
             .-#2 PC814  #3--GND                    |
-            `----------[15k]-----------.           |
-                                       |           |
-  out-[220]--#1         #6----------T1-+-----------|---o L
-  gnd--------#2 MOC3052 #5          T2------HEATER-+---o N
-             #3         #4 -[1.5k]--Gate
+            `----------[15k]------------------.    |
+                                              |    |
+   out -[220]-#1        #6----------T1--------+----|---o L
+   gnd -------#2 MOC052 #5          T2------HEATER-+---o N
+              #3        #4--[1.5k]--Gate
 */
 
-#define DETECT 2  //zero cross detect
-#define GATE 9    //TRIAC gate
-#define PULSE 4   //trigger pulse width (counts)
-int i=483;
+#define DETECT 14  //zero cross detect
+//#define DETECT 2  //zero cross detect
+#define GATE 15    //TRIAC gate
 
-void setup(){
+#define PULSE 4   //trigger pulse width (counts)
+void zeroCrossingInterrupt();
+
+void init_acphase()
+{
 
   // set up pins
   pinMode(DETECT, INPUT);     //zero cross detect
-  digitalWrite(DETECT, HIGH); //enable pull-up resistor
+  digitalWrite(DETECT, 1); //enable pull-up resistor
+  digitalWrite(GATE, 0);
   pinMode(GATE, OUTPUT);      //TRIAC gate control
 
   // set up Timer1 
   //(see ATMEGA 328 data sheet pg 134 for more details)
-  OCR1A = 100;      //initialize the comparator
-  TIMSK1 = 0x03;    //enable comparator A and overflow interrupts
+  set_acphase(545);
+  noInterrupts();
+  TIMSK1 = _BV(TOIE1)|_BV(OCIE1B);    //enable comparator B and overflow interrupts
   TCCR1A = 0x00;    //timer control registers set for
   TCCR1B = 0x00;    //normal operation, timer disabled
+  TCNT1 = 1;
 
-
+  TIFR1=0xff;
+  interrupts();
   // set up zero crossing interrupt
-  attachInterrupt(0,zeroCrossingInterrupt, RISING);    
-    //IRQ0 is pin 2. Call zeroCrossingInterrupt 
-    //on rising signal
+  attachPinChangeInterrupt(DETECT,zeroCrossingInterrupt, FALLING);  
+//    attachInterrupt(0,zeroCrossingInterrupt, FALLING);  
 
 }  
 
-//Interrupt Service Routines
 
-void zeroCrossingInterrupt(){ //zero cross detect   
-  TCCR1B=0x04; //start timer with divide by 256 input
+void zeroCrossingInterrupt()
+{
+  digitalWrite(GATE, 0); //turn off TRIAC gate
+  TCCR1B=_BV(CS12); //start timer with divide by 256 input; 16us
   TCNT1 = 0;   //reset timer - count from zero
 }
 
-ISR(TIMER1_COMPA_vect){ //comparator match
-  digitalWrite(GATE,HIGH);  //set TRIAC gate to high
+ISR(TIMER1_COMPB_vect)
+{
+  digitalWrite(GATE, 1);  //set TRIAC gate to high
   TCNT1 = 65536-PULSE;      //trigger pulse width
 }
 
-ISR(TIMER1_OVF_vect){ //timer1 overflow
-  digitalWrite(GATE,LOW); //turn off TRIAC gate
+ISR(TIMER1_OVF_vect)
+{
+  digitalWrite(GATE, 0); //turn off TRIAC gate
   TCCR1B = 0x00;          //disable timer stopd unintended triggers
 }
 
-void loop(){ // sample code to exercise the circuit
-
-i--;
-OCR1A = i;     //set the compare register brightness desired.
-if (i<65){i=483;}                      
-delay(15);                             
-
+void set_acphase(int i)
+{
+   OCR1B=i;
 }

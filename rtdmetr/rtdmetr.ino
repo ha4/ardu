@@ -1,7 +1,9 @@
 #include <SPI.h>
 #include "owire.h"
+#include "phase.h"
 
 OneWire  ds(14); // on D14
+
 
 enum { chipSelectPinADC = 9, // mcp3201 #7clk<-sck=D13, #6Dout->MISO=D12, MOSI-nc=D11, #5CS<-D9
        refSelect = 8, // mosfet
@@ -187,6 +189,7 @@ void serial_process()
   case '6': muxSet(6); break;
   case '7': muxSet(7); break;
   case 'f': filt = !filt; if (filt) f_clr(); Serial.print("filter o"); Serial.println(filt?"n":"ff");  break;
+  case 'm': set_acphase(Serial.parseInt()); break;
   }
 }
 
@@ -209,6 +212,7 @@ void report()
 void setup()
 {
 	Serial.begin(115200);
+        init_acphase();
 	filt = 0;
         for(int i=0; i < CHANNELS_SZ; i++) channels[i]=0;
 	SPI.begin();
