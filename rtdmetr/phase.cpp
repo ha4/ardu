@@ -21,6 +21,7 @@
 
 #define PULSE 4   //trigger pulse width (counts)
 void zeroCrossingInterrupt();
+static volatile int fangle;
 
 void init_acphase()
 {
@@ -54,6 +55,7 @@ void zeroCrossingInterrupt()
   digitalWrite(GATE, 0); //turn off TRIAC gate
   TCCR1B=_BV(CS12); //start timer with divide by 256 input; 16us
   TCNT1 = 0;   //reset timer - count from zero
+  OCR1B = fangle;
 }
 
 ISR(TIMER1_COMPB_vect)
@@ -70,5 +72,5 @@ ISR(TIMER1_OVF_vect)
 
 void set_acphase(int i)
 {
-   OCR1B=i;
+   fangle=i;
 }
