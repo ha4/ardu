@@ -2,7 +2,7 @@
 #include "owire.h"
 #include "phase.h"
 
-OneWire  ds(14); // on D14
+OneWire  ds(16); // on D14
 
 
 enum { chipSelectPinADC = 9, // mcp3201 #7clk<-sck=D13, #6Dout->MISO=D12, MOSI-nc=D11, #5CS<-D9
