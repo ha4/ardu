@@ -1,8 +1,10 @@
 #include <SPI.h>
 #include "owire.h"
 #include "phase.h"
+#include "rtdmeter.h"
 
 OneWire  ds(16); // on D14
+
 
 
 enum { chipSelectPinADC = 9, // mcp3201 #7clk<-sck=D13, #6Dout->MISO=D12, MOSI-nc=D11, #5CS<-D9
@@ -10,6 +12,35 @@ enum { chipSelectPinADC = 9, // mcp3201 #7clk<-sck=D13, #6Dout->MISO=D12, MOSI-n
        refOut = 7, amp33 = 5, amp16 = 6, // hef4053,  refout #9=C(Z), amp33 #11=A(X), amp16 #10=B(Y)
        muxA = 4, muxB = 2, muxC = 3, // hef4051, A#11, B#10, C#9. A is lsb
 };
+
+#define BV_MUXA 0x10
+#define BV_MUXB 0x04
+#define BV_MUXC 0x08
+#define BV_MUX0 (0x00)
+#define BV_MUX1 (BV_MUXA)
+#define BV_MUX2 (BV_MUXB)
+#define BV_MUX3 (BV_MUXB|BV_MUXA)
+#define BV_MUX4 (BV_MUXC)
+#define BV_MUX5 (BV_MUXC|BV_MUXA)
+#define BV_MUX6 (BV_MUXC|BV_MUXB)
+#define BV_MUX7 (BV_MUXC|BV_MUXB|BV_MUXA)
+#define BV_REFO 0x80
+#define BV_AR16  0x40
+#define BV_AR33  0x20
+#define BV_A17  (0x00)
+#define BV_A33  (BV_AR16)
+#define BV_A50  (BV_AR33)
+#define BV_A66  (BV_AR16|BV_AR33)
+#define BV_REFS 0x01
+#define BV_REF777 0
+#define BV_REF655 (BV_REFS)
+#define BV_EXT  0xFE
+#define BV_END  0xFF
+#define BV_MUXREAD 0xFF
+#define BV_MASKD 0xFC
+#define BV_MASKB 0x01
+#define BV_PORTD PORTD
+#define BV_PORTB PORTB
 
 #define UPART (1.0/4096)
 #define UREF 4318.7
@@ -36,7 +67,7 @@ enum { chipSelectPinADC = 9, // mcp3201 #7clk<-sck=D13, #6Dout->MISO=D12, MOSI-n
 
 enum { ch_code = 8, ch_mv, ch_offs, ch_amp, ch_coeff, ch_err, ch_ext, ch_tref, CHANNELS_SZ };
 
-uint32_t tmr1000, tmr100;
+uint32_t tmr1000, tmr20;
 
 double channels[CHANNELS_SZ];
 int8_t channel_num;
@@ -64,7 +95,7 @@ double f_flt(double x)
 
 double a_flt(double y, double x, double a)
 {
-  return a*x+(1.0-a)*y;
+  return a*(x-y)+y;
 }
 
 uint16_t read_ds18s20()
@@ -88,6 +119,15 @@ uint16_t read_ds18s20()
 	return rc;
 }
 
+void init_mcp3201()
+{
+	SPI.begin();
+	SPI.setBitOrder(MSBFIRST);
+	SPI.setClockDivider(SPI_CLOCK_DIV16);
+	pinMode(chipSelectPinADC, OUTPUT);
+	digitalWrite(chipSelectPinADC, HIGH);
+}
+
 uint16_t read_mcp3201() /* 30us to convert/read */
 {
 	uint16_t result;
@@ -101,6 +141,41 @@ uint16_t read_mcp3201() /* 30us to convert/read */
   
 	return result;
 }
+
+void init_mux()
+{
+	pinMode(refSelect, OUTPUT);
+	pinMode(refOut, OUTPUT);
+	pinMode(amp16, OUTPUT);
+	pinMode(amp33, OUTPUT);
+	pinMode(muxA, OUTPUT);
+	pinMode(muxB, OUTPUT);
+	pinMode(muxC, OUTPUT);
+
+        for(int i=0; i < CHANNELS_SZ; i++) channels[i]=0;
+
+        uref(0);
+        refSupply(0);
+        ampSet(0);
+        muxSet(4);
+}
+
+uint8_t muxmode(uint8_t mode)
+{
+  uint8_t b,d;
+
+  if (mode==BV_MUXREAD) {
+    b = BV_PORTB & BV_MASKB;
+    d = BV_PORTD & BV_MASKD;
+    return b|d;
+  }
+  b = mode & BV_MASKB;
+  d = mode & BV_MASKD;
+  BV_PORTB = (BV_PORTB & ~BV_MASKB) | b;
+  BV_PORTD = (BV_PORTD & ~BV_MASKB) | d;
+  return mode;
+}
+
 
 /* 0->0.777v 1->0.666v */
 void uref(int mode)
@@ -163,6 +238,92 @@ void make_report()
         channels[ch_tref] = (channels[5] + UDIODE)*KDIODE;
 }
 
+void report()
+{
+  Serial.print(channel_num);
+  Serial.print(' ');
+  for(int i = 0; i < 8; i++) {
+    Serial.print(channels[i],3);
+    Serial.print(' ');
+  }
+  Serial.print(' ');
+  for(int i = 8; i < CHANNELS_SZ; i++) {
+    Serial.print(channels[i],3);
+    Serial.print(' ');
+  }
+  Serial.println();
+}
+
+void ds18s20_process()
+{
+   uint16_t result = read_ds18s20();
+   if (result!=0xFFFF && result!=85*16)
+      channels[ch_ext] = result*0.0625; // div 16
+}
+
+static uint8_t mx_lst[] = { BV_MUX4|BV_REFO|BV_REF655|BV_A33, 20,  BV_MUX4|BV_REFO|BV_REF777|BV_A33, 20, BV_END };
+static uint8_t mx_cnt = 0;
+static uint8_t mx_num = 0;
+
+seq_t seq_sample()
+{
+  seq_t r;
+
+  r.mode=mx_lst[mx_cnt];
+  muxmode(r.mode);
+  r.result = read_mcp3201();
+
+  mx_num++;
+  if (mx_num >= mx_lst[mx_cnt+1]) {
+    mx_num=0;
+    mx_cnt+=2;
+    if (mx_lst[mx_cnt]==BV_END) mx_cnt=0;
+  }
+
+  return r;
+}
+
+void get_seqence()
+{
+  seq_t m[50];
+  char buf[20];
+  
+  for(int n=0;n<40;n++)
+    m[n] = seq_sample();
+
+  for(int n=0;n<40;n++) {
+    sprintf(buf,"%02x%04x", m[n].mode, m[n].result);
+    Serial.println(buf);
+  }
+    
+}
+
+
+void acquire_process()
+{
+        uint32_t ms = millis();
+
+        if (ms - tmr20 < 20) return;
+        tmr20 = ms;
+
+        double mv = 0;
+	uint16_t result;
+	for(byte n=8; n--;) {
+		result=read_mcp3201();
+		mv += result;
+	}
+        channels[ch_code] = mv*0.125;/* div 8 */
+
+        if (ms - tmr1000 >= 1000) {
+            tmr1000 = ms;
+            //f_clr();
+	    ds18s20_process();
+            make_report();
+            report();
+        } else 
+             make_report();
+}
+
 void serial_process()
 {
   switch(Serial.read()) {
@@ -190,80 +351,30 @@ void serial_process()
   case '7': muxSet(7); break;
   case 'f': filt = !filt; if (filt) f_clr(); Serial.print("filter o"); Serial.println(filt?"n":"ff");  break;
   case 'm': set_acphase(Serial.parseInt()); break;
+  case 'p': break;
+  case 'Q': break;
+  case 'q': get_seqence();
+  break;
   }
-}
-
-void report()
-{
-  Serial.print(channel_num);
-  Serial.print(' ');
-  for(int i = 0; i < 8; i++) {
-    Serial.print(channels[i],3);
-    Serial.print(' ');
-  }
-  Serial.print(' ');
-  for(int i = 8; i < CHANNELS_SZ; i++) {
-    Serial.print(channels[i],3);
-    Serial.print(' ');
-  }
-  Serial.println();
 }
 
 void setup()
 {
 	Serial.begin(115200);
         init_acphase();
+        init_mcp3201();
+	init_mux();
+
 	filt = 0;
-        for(int i=0; i < CHANNELS_SZ; i++) channels[i]=0;
-	SPI.begin();
-	SPI.setBitOrder(MSBFIRST);
-	SPI.setClockDivider(SPI_CLOCK_DIV16);
-	pinMode(chipSelectPinADC, OUTPUT);
-	digitalWrite(chipSelectPinADC, HIGH);
-	pinMode(refSelect, OUTPUT);
-	pinMode(refOut, OUTPUT);
-	pinMode(amp16, OUTPUT);
-	pinMode(amp33, OUTPUT);
-	pinMode(muxA, OUTPUT);
-	pinMode(muxB, OUTPUT);
-	pinMode(muxC, OUTPUT);
         f_clr();
-        uref(0);
-        refSupply(0);
-        ampSet(0);
-        muxSet(4);
+
         tmr1000=0;
-        tmr100=0;
+        tmr20=0;
 }
 
 void loop()
 {
-        uint32_t ms = millis();
-
-        if (ms - tmr100 >= 100) {
-          tmr100 = ms;
-          double mv = 0;
-	  uint16_t result;
-	  for(byte n=8; n--;) {
-		result=read_mcp3201();
-		mv += result;
-	  }
-          channels[ch_code] = mv*0.125;/* div 8 */
-
-          if (ms - tmr1000 >= 1000) {
-            tmr1000 = ms;
-            result = read_ds18s20();
-            if (result!=0xFFFF && result!=85*16)
-              channels[ch_ext] = result*0.0625; // div 16
-            //f_clr();
-            make_report();
-            report();
-          } else 
-             make_report();
-
-
-        }
-
+	acquire_process();
         if (Serial.available()) serial_process();
 }
 
