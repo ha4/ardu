@@ -94,6 +94,7 @@ proc ser_stop {} {
 proc data_in {s} {             
 	global chart
 	global datax
+	global lnum
 
 # timing
 	set t [get_clock]
@@ -102,6 +103,13 @@ proc data_in {s} {
 
 # parse
 	set re [regexp -all -inline {\S+} $s]
+	if {[llength $re] == 2} {
+		incr lnum
+		set m [lindex $re 1]
+		if [string is integer -strict $m] { $chart $lnum $m set1 } else { puts $s }
+		return
+	}
+
 #	puts "$t $re"
 	set vc [lindex $re 0]
 	if {![string is double -strict $vc]} { return }
