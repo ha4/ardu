@@ -73,6 +73,8 @@ double channels[CHANNELS_SZ];
 int8_t channel_num;
 
 bool filt;
+bool rept;
+bool seqq;
 double f_sum;
 int32_t f_num;
 double f_err;
@@ -261,9 +263,32 @@ void ds18s20_process()
       channels[ch_ext] = result*0.0625; // div 16
 }
 
-static uint8_t mx_lst[] = { BV_MUX4|BV_REFO|BV_REF655|BV_A33, 20,  BV_MUX4|BV_REFO|BV_REF777|BV_A33, 20, BV_END };
+static uint8_t mx_lst[16] = { BV_MUX4|BV_REF655|BV_A17, 20,  BV_MUX4|BV_REF777|BV_A17, 20, BV_END };
 static uint8_t mx_cnt = 0;
 static uint8_t mx_num = 0;
+
+void seqence_print()
+{
+  Serial.print('S');
+  for(int i=0; i < sizeof(mx_lst); i++) {
+    Serial.print(mx_lst[i]);
+    if (mx_lst[i] == BV_END) {
+      Serial.println();
+      break;
+    }
+    else Serial.print(',');
+  }
+}
+
+void seqence_read()
+{
+  int q;
+  for(int i=0; i < sizeof(mx_lst); i++) {
+    q=Serial.parseInt();
+    if ((mx_lst[i]=q) == BV_END) break;
+  }
+}
+
 
 seq_t seq_sample()
 {
@@ -292,10 +317,18 @@ void get_seqence()
     m[n] = seq_sample();
 
   for(int n=0;n<40;n++) {
-    sprintf(buf,"%02x%04x", m[n].mode, m[n].result);
+    sprintf(buf,"%02x %04d", m[n].mode, m[n].result);
     Serial.println(buf);
   }
     
+}
+
+void seqence_query()
+{
+    seq_t m = seq_sample();
+    Serial.print(m.mode, HEX);
+    Serial.print(' ');
+    Serial.println(m.result);
 }
 
 
@@ -351,10 +384,15 @@ void serial_process()
   case '7': muxSet(7); break;
   case 'f': filt = !filt; if (filt) f_clr(); Serial.print("filter o"); Serial.println(filt?"n":"ff");  break;
   case 'm': set_acphase(Serial.parseInt()); break;
-  case 'p': break;
-  case 'Q': break;
-  case 'q': get_seqence();
-  break;
+  case 'p': rept = !rept; Serial.print("report o"); Serial.println(rept?"n":"ff");  break;
+  case 'Q': seqq = !seqq; Serial.print("seqencer o"); Serial.println(seqq?"n":"ff");  break;
+  case 'q': get_seqence();  break;
+  case '?': Serial.print("mod "); Serial.println(muxmode(BV_MUXREAD),HEX); break;
+  case '!': Serial.print("smod "); Serial.println(muxmode(Serial.parseInt()),HEX); break;
+  case 'S': seqence_read(); break;
+  case 's': seqence_print(); break;
+  case 'x': Serial.println(read_mcp3201()); break;
+  case 'h': Serial.println("cmd: RrOoa[0-3][0-7]fm[int]pQq?![mod]Ssxh"); break;
   }
 }
 
@@ -365,6 +403,9 @@ void setup()
         init_mcp3201();
 	init_mux();
 
+        rept = 1;
+        seqq = 0;
+
 	filt = 0;
         f_clr();
 
@@ -374,7 +415,8 @@ void setup()
 
 void loop()
 {
-	acquire_process();
+	if (seqq) seqence_query();
+	if (rept) acquire_process();
         if (Serial.available()) serial_process();
 }
 
