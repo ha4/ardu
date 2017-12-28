@@ -24,6 +24,7 @@ enum { chipSelectPinADC = 9, // mcp3201 #7clk<-sck=D13, #6Dout->MISO=D12, MOSI-n
 #define BV_MUX5 (BV_MUXC|BV_MUXA)
 #define BV_MUX6 (BV_MUXC|BV_MUXB)
 #define BV_MUX7 (BV_MUXC|BV_MUXB|BV_MUXA)
+#define BV_MUX  (BV_MUX7)
 #define BV_REFO 0x80
 #define BV_AR16  0x40
 #define BV_AR33  0x20
@@ -31,6 +32,7 @@ enum { chipSelectPinADC = 9, // mcp3201 #7clk<-sck=D13, #6Dout->MISO=D12, MOSI-n
 #define BV_A33  (BV_AR16)
 #define BV_A50  (BV_AR33)
 #define BV_A66  (BV_AR16|BV_AR33)
+#define BV_AMP  (BV_A66)
 #define BV_REFS 0x01
 #define BV_REF777 0
 #define BV_REF655 (BV_REFS)
@@ -125,7 +127,7 @@ void init_mcp3201()
 {
 	SPI.begin();
 	SPI.setBitOrder(MSBFIRST);
-	SPI.setClockDivider(SPI_CLOCK_DIV16);
+	SPI.setClockDivider(SPI_CLOCK_DIV16); //62.5kS/s, 1mbps.
 	pinMode(chipSelectPinADC, OUTPUT);
 	digitalWrite(chipSelectPinADC, HIGH);
 }
@@ -178,6 +180,17 @@ uint8_t muxmode(uint8_t mode)
   return mode;
 }
 
+
+uint8_t muxvalues(uint8_t mode)
+{
+  channels[ch_offs] = (mode&BV_REFS)?UOFS1:UOFS0;
+  channels[ch_amp] = (mode&BV_A50)?((mode&BV_A33)?UAMP3:UAMP2):((mode&BV_A33)?UAMP1:UAMP0);
+  channel_num=(mode&BV_MUXC?4:0)|(mode&BV_MUXB?2:0)|(mode&BV_MUXA?1:0);
+  channels[ch_coeff]=(channel_num<4) ?
+    ((channel_num<2) ? ((channel_num==0)?KMUX0:KMUX1) : ((channel_num==2)?KMUX2:KMUX3)) :
+    ((channel_num<6) ? ((channel_num==4)?KMUX4:KMUX5) : ((channel_num==6)?KMUX6:KMUX7)) ;
+  return mode;
+}
 
 /* 0->0.777v 1->0.666v */
 void uref(int mode)
@@ -388,7 +401,7 @@ void serial_process()
   case 'Q': seqq = !seqq; Serial.print("seqencer o"); Serial.println(seqq?"n":"ff");  break;
   case 'q': get_seqence();  break;
   case '?': Serial.print("mod "); Serial.println(muxmode(BV_MUXREAD),HEX); break;
-  case '!': Serial.print("smod "); Serial.println(muxmode(Serial.parseInt()),HEX); break;
+  case '!': Serial.print("smod "); Serial.println(muxvalues(muxmode(Serial.parseInt())),HEX); break;
   case 'S': seqence_read(); break;
   case 's': seqence_print(); break;
   case 'x': Serial.println(read_mcp3201()); break;
