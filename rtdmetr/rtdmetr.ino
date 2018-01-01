@@ -104,21 +104,27 @@ double a_flt(double y, double x, double a)
 
 uint16_t read_ds18s20()
 {
+        static uint8_t dscnt=0;
 	byte data[12];
 	uint16_t rc = 0xFFFF;
 
 	if (ds.reset()) {
-		ds.write(0xCC);     // skip rom
-		ds.write(0xBE);         // Read Scratchpad
-		ds.read(data, 9);
-		if (ds.crc(data, 9)==0)
-			rc = data[0] + 256*data[1];
+                if (dscnt) { // read data only after conversion
+  		  ds.write(0xCC);     // skip rom
+		  ds.write(0xBE);         // Read Scratchpad
+		  ds.read(data, 9);
+		  if (ds.crc(data, 9)==0)
+			rc = (data[1]<<8) | data[0];
+                }
 		// restart conversion one second
 		ds.reset();
 		ds.write(0xCC);     // skip rom
 		ds.write(0x44);     // start conversion
 		ds.power(true);
-	}
+                dscnt++;
+                if (!dscnt) dscnt++;
+	} else
+          dscnt = 0;
 
 	return rc;
 }
