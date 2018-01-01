@@ -86,27 +86,34 @@ void serial_process()
   }
 }
 
+float alpha(float y, int x, float a)
+{
+ return y+(x-y)*a;
+}
+
 #define INTMAX 4095
 #define MVMAX 4095
 void pid_process()
 {
-  int16_t e,d,o;
+  int16_t e,o;
   static int16_t pe=0;
   static float i=0;
+  static float d=0;
   adc = analogRead(ADC);
   if (!run) return;
   e = temp - adc;
   i += ki*e; if (i<0)i=0; if( i > INTMAX) i=INTMAX;
   if (ki==0)i=0;
-  d = e-pe; pe = e;
+  if (kd==0)d=0;
+  d = alpha(d, e-pe, 0.1); pe = e;
   o = kp*e;
   o += i;
   o += kd*d;
   if (o < 0) o=0; if(o > MVMAX) o = MVMAX;
   mv  = o;    
   if (outpid) {
-    char buf[80], a1[10], a2[10], a3[10], a4[10];
-    sprintf(buf,"pid %s %s %s %d %s %d",dtostrf(kp,-8,3,a1),dtostrf(ki,-8,3,a2),dtostrf(kd,-8,3,a3),e,dtostrf(i,-8,3,a4),d);
+    char buf[80], a1[10], a2[10], a3[10], a4[10], a5[10];
+    sprintf(buf,"pid %s %s %s %d %s %s",dtostrf(kp,0,3,a1),dtostrf(ki,0,3,a2),dtostrf(kd,0,3,a3),e,dtostrf(i,0,3,a4),dtostrf(d,0,3,a5));
     Serial.println(buf);
   }
 }
