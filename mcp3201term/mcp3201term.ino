@@ -132,23 +132,29 @@ double convT2V(double T) { return ratpoly4(k2v+4, T-t2v[2])+t2v[3]; }
 double convV2T(double V) { return pwrp4(k2c, 5, V); }
 
 
-uint16_t ref_t()
+uint16_t read_ds18s20()
 {
+        static uint8_t dscnt=0;
 	byte data[12];
 	uint16_t rc = 0xFFFF;
 
 	if (ds.reset()) {
-		ds.write(0xCC);     // skip rom
-		ds.write(0xBE);         // Read Scratchpad
-		ds.read(data, 9);
-		if (ds.crc(data, 9)==0)
-			rc = data[0] + 256*data[1];
-		// restart conversion
+                if (dscnt) { // read data only after conversion
+  		  ds.write(0xCC);     // skip rom
+		  ds.write(0xBE);         // Read Scratchpad
+		  ds.read(data, 9);
+		  if (ds.crc(data, 9)==0)
+			rc = (data[1]<<8) | data[0];
+                }
+		// restart conversion one second
 		ds.reset();
 		ds.write(0xCC);     // skip rom
 		ds.write(0x44);     // start conversion
 		ds.power(true);
-	}
+                dscnt++;
+                if (!dscnt) dscnt++;
+	} else
+          dscnt = 0;
 
 	return rc;
 }
@@ -223,7 +229,7 @@ void loop()
 	Serial.print(mv,3);
 	Serial.print(' ');
 
-	if((result=ref_t()) != 0xFFFF) {
+	if((result=read_ds18s20()) != 0xFFFF) {
 		tinp=result/16.0;
 		uinp = convT2V(tinp);
         	Serial.print(tinp);
