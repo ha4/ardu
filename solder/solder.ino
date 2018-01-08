@@ -4,10 +4,21 @@
 
 #include <SoftwareSerial.h>
 #define Ser mySerial
-SoftwareSerial mySerial(2, 1); // RX, TX
+SoftwareSerial mySerial(2, 1); // RX=D2=#7, TX=D1=#6
 
-enum {tcouple=A3, pot=A2, output=0, 
-    out_inv=1, vref=1100, vref_corr=-88/*1.003*/, amp=55, amp_corr=-291/*39*/, pot_250=11625, pot_low=6202, pot_hi=22526, off_corr=-16 };
+enum {
+    // USE tiny85, internal-1MHz LFUSE:62h-default-NOT WORKING SoftwareSerial, internal 8MHz: lfuse:E2h
+    // avrdude -pattiny85 -Ulfuse:w:0xE2:m
+    tcouple=A3,// D3, #2, referenced to INTERAL 1100mV
+    pot=A2,   // D4, #3 <-POT_mid, POT_hi -> +5v, POT_low -> GND
+    outpin=0, // D0, #5, PDM-output
+    out_inv=1,
+    vref=1100, vref_corr=-88 /* AMP=1003.2mv=1100(1-88/1000)*/,
+    amp=55, amp_corr=-291 /* AMP=38.995 = 55(1-291/1000)*/, 
+    pot_250=11625, pot_low=6202, pot_hi=22526, /* uVolts of TC */
+    off_corr=-16, /* mVolts. uV = AMP * (ADC*VREF + OFF_CORR) */
+    outmax=256L,
+};
 
 
 #include <EEPROM.h>
@@ -23,7 +34,8 @@ uint32_t sec;
 uint8_t acc, pwr;
 int16_t tcx,potx,tcu;
 int16_t tset;
-int16_t cv,prev_cv;
+int16_t pv;
+int32_t prev_e;
 int32_t I;
 
 #define CRC_START 0xFFFF
@@ -99,21 +111,8 @@ int pload()
   return 1;
 }
 
-void setup()
-{
-  Ser.begin(9600);
-  pinMode(output,OUTPUT);
-  pwr=128;
-  tset=pot_250;
-  en_pid=1;
-  en_pot=1;
-  en_disp=1;
-  pdefault();
-  if(!pload()) Ser.println("Invalid EEPROM");
-}
-
 void disp() {
-  Ser.print(cv);
+  Ser.print(pv);
   Ser.print(' ');
   Ser.print(tset);
   Ser.print(' ');
@@ -122,24 +121,36 @@ void disp() {
 
 void pid()
 {
-  int32_t r,e,ee,imax;
+  int32_t r,e,de,imax;
 
-  e = tset - cv;
-  ee= cv-prev_cv;
-  prev_cv=cv;
-  imax = 256*si; // I-limit
+  e = tset - pv;
+  e *= outmax;
+  de= e-prev_e;
+  prev_e=e;
+  // sample rate sr=1/h, h=dt=timestep, 
+  imax = outmax*si; // I-limit
   if (pb == 0) return;
-  r = I + e*256L/((int32_t)pb); // integrate
-  if (r < -imax) r=-imax; else if (r > imax) r=imax; // I-saturation
-  I=r; if (si == 0) r=0; else r/=si; // I-part
-  r += (e*256L - sd*ee*256L)/pb;     // P-part D-part
-  if (r < 0) r = 0; else if (r > 255) r=255; // output saturation
+  r = I + e/((int32_t)pb); // integrate
+  if (r < 0) r=0; else if (r > imax) r=imax; // I-saturation
+  I=r;
+  if (si != 0) r/=si; // I-paer
+  // I-part=int(e*outmax/(pb*si))=outmax/pb * 1/(si*h) * int(e*h)
+  // or I=kp*ki*int(e*h)=1/pb * 1/Ti * int(e*h)
+  // here 1/Ti = outmax/(si*h), Ti = si*h/outmax
+  // if Ti' in samples: Ipart = k*int(e); k=1/pb * 1/(Ti/h); Ti'=Ti/h=Ti*sr
+  // Ti'=si/outmax, si=Ti'*outmax, classic Ti=Ti'/sr=si/sr/outmax=si*h/outmax
+  r += (e + sd*de)/pb;     // P-part D-part
+  // P-part = e*outmax/pb or P=kp*e  classic kp=outmax/pb
+  // D-part = de*outmax*sd/pb or D=kp*kd*de/h=kp*Td * de/h
+  // if Td' in samples Td'=Td/h D=kp*Td' * de=1/pb * Td' * de
+  // Td'=sd/outmax sd=Td'*outmax, classic Td=Td'/sr=sd/outmax/sr=sd*h/outmax  
+  if (r < 0) r = 0; else if (r >= outmax) r=outmax-1; // output saturation
   pwr=r;
 }
 
 void srecv()
 {
-  if (Ser.available())
+  
     switch(Ser.read()) {
       case '?': Ser.print('e'); Ser.println(en_pid);
                 Ser.print('r'); Ser.println(en_pot);
@@ -196,8 +207,8 @@ void tcread()
   v += offc;
   tcu=v;
   v = v*100000L;
-  v /= (amp*100+amp*ampc/10); // uV = mV * 1000 / [amp * (1+ampc/1000)]
-  cv = v;
+  v /= ((int32_t)amp*100L+(int32_t)amp*(int32_t)ampc/10L); // uV = mV * 1000 / [amp * (1+ampc/1000)]
+  pv = v;
 }
 
 void potread()
@@ -220,13 +231,26 @@ void pwrout()
 {
   uint8_t t;
   t = acc+pwr;
-  digitalWrite(output, (acc>t)?0:1);
+  digitalWrite(outpin, (acc>t)?0:1);
   acc=t;
+}
+
+void setup()
+{
+  Ser.begin(9600);
+  pinMode(outpin,OUTPUT);
+  pwr=128;
+  tset=pot_250;
+  en_pid=1;
+  en_pot=1;
+  en_disp=1;
+  pdefault();
+  if(!pload()) Ser.println("Invalid EEPROM");
 }
 
 void loop()
 {
-  srecv();
+  if (Ser.available()) srecv();
   if (dtimer(250)) {
       tcread();
       if (en_pot) potread();
