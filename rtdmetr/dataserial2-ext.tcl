@@ -6,8 +6,8 @@ set ::AutoPlotM::dset(set3,color)  "magenta"
 set ::AutoPlotM::pscale(y2,tcolor)  "red"
 set ::AutoPlotM::pscale(y2,gcolor)  "pink"
 set ::AutoPlotM::pscale(y2,offset)  126
-set ::AutoPlotM::pscale(y2,fmt)  "%5.3g"
-set ::AutoPlotM::pscale(y,fmt)  "%7.3g"
+set ::AutoPlotM::pscale(y2,fmt)  "%5.3f"
+set ::AutoPlotM::pscale(y,fmt)  "%7.3f"
 
 # -- SERIAL DATA HANDLER
 
