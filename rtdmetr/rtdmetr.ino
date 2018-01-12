@@ -1,48 +1,10 @@
 #include <SPI.h>
 #include "owire.h"
 #include "phase.h"
+#include "mux3201.h"
 #include "rtdmeter.h"
 
 OneWire  ds(16); // on D14
-
-
-
-enum { chipSelectPinADC = 9, // mcp3201 #7clk<-sck=D13, #6Dout->MISO=D12, MOSI-nc=D11, #5CS<-D9
-       refSelect = 8, // mosfet
-       refOut = 7, amp33 = 5, amp16 = 6, // hef4053,  refout #9=C(Z), amp33 #11=A(X), amp16 #10=B(Y)
-       muxA = 4, muxB = 2, muxC = 3, // hef4051, A#11, B#10, C#9. A is lsb
-};
-
-#define BV_MUXA 0x10
-#define BV_MUXB 0x04
-#define BV_MUXC 0x08
-#define BV_MUX0 (0x00)
-#define BV_MUX1 (BV_MUXA)
-#define BV_MUX2 (BV_MUXB)
-#define BV_MUX3 (BV_MUXB|BV_MUXA)
-#define BV_MUX4 (BV_MUXC)
-#define BV_MUX5 (BV_MUXC|BV_MUXA)
-#define BV_MUX6 (BV_MUXC|BV_MUXB)
-#define BV_MUX7 (BV_MUXC|BV_MUXB|BV_MUXA)
-#define BV_MUX  (BV_MUX7)
-#define BV_REFO 0x80
-#define BV_AR16  0x40
-#define BV_AR33  0x20
-#define BV_A17  (0x00)
-#define BV_A33  (BV_AR16)
-#define BV_A50  (BV_AR33)
-#define BV_A66  (BV_AR16|BV_AR33)
-#define BV_AMP  (BV_A66)
-#define BV_REFS 0x01
-#define BV_REF777 0
-#define BV_REF655 (BV_REFS)
-#define BV_EXT  0xFE
-#define BV_END  0xFF
-#define BV_MUXREAD 0xFF
-#define BV_MASKD 0xFC
-#define BV_MASKB 0x01
-#define BV_PORTD PORTD
-#define BV_PORTB PORTB
 
 #define UPART (1.0/4096)
 #define UREF 4318.7
@@ -69,14 +31,15 @@ enum { chipSelectPinADC = 9, // mcp3201 #7clk<-sck=D13, #6Dout->MISO=D12, MOSI-n
 
 enum { ch_code = 8, ch_mv, ch_offs, ch_amp, ch_coeff, ch_err, ch_ext, ch_tref, CHANNELS_SZ };
 
-uint32_t tmr1000, tmr20;
-
 double channels[CHANNELS_SZ];
 int8_t channel_num;
 
 bool filt;
 bool rept;
 bool seqq;
+
+uint32_t tmr1000, tmr20;
+
 double f_sum;
 int32_t f_num;
 double f_err;
@@ -102,147 +65,15 @@ double a_flt(double y, double x, double a)
   return a*(x-y)+y;
 }
 
-uint16_t read_ds18s20()
-{
-        static uint8_t dscnt=0;
-	byte data[12];
-	uint16_t rc = 0xFFFF;
-
-	if (ds.reset()) {
-                if (dscnt) { // read data only after conversion
-  		  ds.write(0xCC);     // skip rom
-		  ds.write(0xBE);         // Read Scratchpad
-		  ds.read(data, 9);
-		  if (ds.crc(data, 9)==0)
-			rc = (data[1]<<8) | data[0];
-                }
-		// restart conversion one second
-		ds.reset();
-		ds.write(0xCC);     // skip rom
-		ds.write(0x44);     // start conversion
-		ds.power(true);
-                dscnt++;
-                if (!dscnt) dscnt++;
-	} else
-          dscnt = 0;
-
-	return rc;
-}
-
-void init_mcp3201()
-{
-	SPI.begin();
-	SPI.setBitOrder(MSBFIRST);
-	SPI.setClockDivider(SPI_CLOCK_DIV16); //62.5kS/s, 1mbps.
-	pinMode(chipSelectPinADC, OUTPUT);
-	digitalWrite(chipSelectPinADC, HIGH);
-}
-
-uint16_t read_mcp3201() /* 30us to convert/read */
-{
-	uint16_t result;
-
-	digitalWrite(chipSelectPinADC, LOW);
-	result = SPI.transfer(0x00) << 8;
-	result = result | SPI.transfer(0x00);
-	digitalWrite(chipSelectPinADC, HIGH);
-	result = result >> 1;
-	result = result & 0xFFF;
-  
-	return result;
-}
-
-void init_mux()
-{
-	pinMode(refSelect, OUTPUT);
-	pinMode(refOut, OUTPUT);
-	pinMode(amp16, OUTPUT);
-	pinMode(amp33, OUTPUT);
-	pinMode(muxA, OUTPUT);
-	pinMode(muxB, OUTPUT);
-	pinMode(muxC, OUTPUT);
-
-        for(int i=0; i < CHANNELS_SZ; i++) channels[i]=0;
-
-        uref(0);
-        refSupply(0);
-        ampSet(0);
-        muxSet(4);
-}
-
-uint8_t muxmode(uint8_t mode)
-{
-  uint8_t b,d;
-
-  if (mode==BV_MUXREAD) {
-    b = BV_PORTB & BV_MASKB;
-    d = BV_PORTD & BV_MASKD;
-    return b|d;
-  }
-  b = mode & BV_MASKB;
-  d = mode & BV_MASKD;
-  BV_PORTB = (BV_PORTB & ~BV_MASKB) | b;
-  BV_PORTD = (BV_PORTD & ~BV_MASKB) | d;
-  return mode;
-}
-
-
 uint8_t muxvalues(uint8_t mode)
 {
   channels[ch_offs] = (mode&BV_REFS)?UOFS1:UOFS0;
   channels[ch_amp] = (mode&BV_A50)?((mode&BV_A33)?UAMP3:UAMP2):((mode&BV_A33)?UAMP1:UAMP0);
-  channel_num=(mode&BV_MUXC?4:0)|(mode&BV_MUXB?2:0)|(mode&BV_MUXA?1:0);
+  channel_num=muxGet(mode);
   channels[ch_coeff]=(channel_num<4) ?
     ((channel_num<2) ? ((channel_num==0)?KMUX0:KMUX1) : ((channel_num==2)?KMUX2:KMUX3)) :
     ((channel_num<6) ? ((channel_num==4)?KMUX4:KMUX5) : ((channel_num==6)?KMUX6:KMUX7)) ;
   return mode;
-}
-
-/* 0->0.777v 1->0.666v */
-void uref(int mode)
-{
-  digitalWrite(refSelect, mode);
-  channels[ch_offs] = (mode==1)?UOFS1:UOFS0;
-  Serial.print("Uref ");
-  Serial.println(mode);
-}
-
-/* 0->off, 1->on: tempr-diode, rtd(300uA), 10M-to-tc supply */
-void refSupply(int mode)
-{
-  digitalWrite(refOut, mode);
-  Serial.print("ref out ");
-  Serial.println(mode);
-}
-
-/* 0->1:(16+16+33) 1->1:(16+33) 2->1:(16+16) 3->1:16 */
-void ampSet(int s)
-{
-  digitalWrite(amp16, (s&1)?1:0);
-  digitalWrite(amp33, (s&2)?1:0);
-  channels[ch_amp]=(s<2)?((s==0)?UAMP0:UAMP1):((s==2)?UAMP2:UAMP3);
-  Serial.print("amp ");
-  Serial.println(s);
-}
-
-/*   A      <-R           <-mA(+)
- *   B      <-+ <-,   <-V   |
- *   B'=GND <-' <-'tc <-' <-'
- *   C  <-tc-'
- *   D  [as c]
- * channels:
- * 0:A, 1:B, 2:B(v), 3:A(mA), 4:zero, 5:Tmpr-diode, 6:C, 7:D
- */
-
-void muxSet(int s)
-{
-  digitalWrite(muxA, (s&1)?1:0);
-  digitalWrite(muxB, (s&2)?1:0);
-  digitalWrite(muxC, (s&4)?1:0);
-  channel_num=s&7;
-  channels[ch_coeff]=(s<4)?((s<2)?((s==0)?KMUX0:KMUX1):((s==2)?KMUX2:KMUX3)):((s<6)?((s==4)?KMUX4:KMUX5):((s==6)?KMUX6:KMUX7));
-  Serial.print("mux ");
-  Serial.println(s);
 }
 
 void make_report()
@@ -275,6 +106,33 @@ void report()
   Serial.println();
 }
 
+uint16_t read_ds18s20()
+{
+        static uint8_t dscnt=0;
+	byte data[12];
+	uint16_t rc = 0xFFFF;
+
+	if (ds.reset()) {
+                if (dscnt) { // read data only after conversion
+  		  ds.write(0xCC);     // skip rom
+		  ds.write(0xBE);         // Read Scratchpad
+		  ds.read(data, 9);
+		  if (ds.crc(data, 9)==0)
+			rc = (data[1]<<8) | data[0];
+                }
+		// restart conversion one second
+		ds.reset();
+		ds.write(0xCC);     // skip rom
+		ds.write(0x44);     // start conversion
+		ds.power(true);
+                dscnt++;
+                if (!dscnt) dscnt++;
+	} else
+          dscnt = 0;
+
+	return rc;
+}
+
 void ds18s20_process()
 {
    uint16_t result = read_ds18s20();
@@ -282,7 +140,7 @@ void ds18s20_process()
       channels[ch_ext] = result*0.0625; // div 16
 }
 
-static uint8_t mx_lst[16] = { BV_MUX4|BV_REF655|BV_A17, 20,  BV_MUX4|BV_REF777|BV_A17, 20, BV_END };
+static uint8_t mx_lst[16] = { BV_MUX0|BV_REF655|BV_A17, 20,  BV_MUX1|BV_REF655|BV_A17, 20, BV_END };
 static uint8_t mx_cnt = 0;
 static uint8_t mx_num = 0;
 
@@ -379,10 +237,10 @@ void acquire_process()
 void serial_process()
 {
   switch(Serial.read()) {
-  case 'R': uref(1); break;
-  case 'r': uref(0); break;
-  case 'O': refSupply(1); break;
-  case 'o': refSupply(0); break;
+  case 'R': uref(1); muxvalues(muxmode(BV_MUXREAD)); break;
+  case 'r': uref(0); muxvalues(muxmode(BV_MUXREAD)); break;
+  case 'O': refSupply(1); muxvalues(muxmode(BV_MUXREAD)); break;
+  case 'o': refSupply(0); muxvalues(muxmode(BV_MUXREAD)); break;
   case 'a':
     delay(1);
     switch(Serial.read())
@@ -392,25 +250,30 @@ void serial_process()
     case '2': ampSet(2); break;
     case '3': ampSet(3); break;
     }
+    muxvalues(muxmode(BV_MUXREAD));
     break;
-  case '0': muxSet(0); break;
-  case '1': muxSet(1); break;
-  case '2': muxSet(2); break;
-  case '3': muxSet(3); break;
-  case '4': muxSet(4); break;
-  case '5': muxSet(5); break;
-  case '6': muxSet(6); break;
-  case '7': muxSet(7); break;
+  case '0': muxSet(0); muxvalues(muxmode(BV_MUXREAD)); break;
+  case '1': muxSet(1); muxvalues(muxmode(BV_MUXREAD)); break;
+  case '2': muxSet(2); muxvalues(muxmode(BV_MUXREAD)); break;
+  case '3': muxSet(3); muxvalues(muxmode(BV_MUXREAD)); break;
+  case '4': muxSet(4); muxvalues(muxmode(BV_MUXREAD)); break;
+  case '5': muxSet(5); muxvalues(muxmode(BV_MUXREAD)); break;
+  case '6': muxSet(6); muxvalues(muxmode(BV_MUXREAD)); break;
+  case '7': muxSet(7); muxvalues(muxmode(BV_MUXREAD)); break;
+  case '?': Serial.print("mod "); Serial.println(muxmode(BV_MUXREAD),HEX); break;
+  case '!': Serial.print("smod "); Serial.println(muxvalues(muxmode(Serial.parseInt())),HEX); break;
+
   case 'f': filt = !filt; if (filt) f_clr(); Serial.print("filter o"); Serial.println(filt?"n":"ff");  break;
+
   case 'm': set_acphase(Serial.parseInt()); break;
+
   case 'p': rept = !rept; Serial.print("report o"); Serial.println(rept?"n":"ff");  break;
   case 'Q': seqq = !seqq; Serial.print("seqencer o"); Serial.println(seqq?"n":"ff");  break;
   case 'q': get_seqence();  break;
-  case '?': Serial.print("mod "); Serial.println(muxmode(BV_MUXREAD),HEX); break;
-  case '!': Serial.print("smod "); Serial.println(muxvalues(muxmode(Serial.parseInt())),HEX); break;
   case 'S': seqence_read(); break;
   case 's': seqence_print(); break;
   case 'x': Serial.println(read_mcp3201()); break;
+
   case 'h': Serial.println("cmd: RrOoa[0-3][0-7]fm[int]pQq?![mod]Ssxh"); break;
   }
 }
@@ -421,6 +284,7 @@ void setup()
         init_acphase();
         init_mcp3201();
 	init_mux();
+        for(int i=0; i < CHANNELS_SZ; i++) channels[i]=0;
 
         rept = 1;
         seqq = 0;
