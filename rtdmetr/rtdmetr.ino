@@ -34,11 +34,14 @@ enum { ch_code = 8, ch_mv, ch_offs, ch_amp, ch_coeff, ch_err, ch_ext, ch_tref, C
 double channels[CHANNELS_SZ];
 int8_t channel_num;
 
-bool filt;
+bool mflt;
+bool aflt;
 bool rept;
 bool seqq;
 
-uint32_t tmr1000, tmr20;
+uint32_t tmr1000, tmr20, tmrd;
+int  acq_n;
+int  acq_d;
 
 double f_sum;
 int32_t f_num;
@@ -84,9 +87,9 @@ void make_report()
           r = channels[ch_mv];
           else 
           r = ((channels[ch_mv]-channels[ch_offs])/channels[ch_amp]-UINO)*channels[ch_coeff];
-        channels[channel_num] = a_flt(channels[channel_num], r, 0.1);
+        if (aflt) channels[channel_num] = a_flt(channels[channel_num], r, 0.1); else channels[channel_num] = r;
         
-        if (filt) channels[channel_num] = f_flt(channels[channel_num]);
+        if (mflt) channels[channel_num] = f_flt(channels[channel_num]);
         channels[ch_tref] = (channels[5] + UDIODE)*KDIODE;
 }
 
@@ -194,7 +197,7 @@ void get_seqence()
     m[n] = seq_sample();
 
   for(int n=0;n<40;n++) {
-    sprintf(buf,"%02x %04d", m[n].mode, m[n].result);
+    sprintf(buf,"q%02x %04d", m[n].mode, m[n].result);
     Serial.println(buf);
   }
     
@@ -203,6 +206,7 @@ void get_seqence()
 void seqence_query()
 {
     seq_t m = seq_sample();
+    Serial.print('q');
     Serial.print(m.mode, HEX);
     Serial.print(' ');
     Serial.println(m.result);
@@ -218,20 +222,20 @@ void acquire_process()
 
         double mv = 0;
 	uint16_t result;
-	for(byte n=8; n--;) {
+	for(byte n=acq_n; n--;) {
 		result=read_mcp3201();
 		mv += result;
 	}
-        channels[ch_code] = mv*0.125;/* div 8 */
+        channels[ch_code] = mv/acq_n;/* div 8 */
 
         if (ms - tmr1000 >= 1000) {
             tmr1000 = ms;
             //f_clr();
 	    ds18s20_process();
-            make_report();
-            report();
-        } else 
-             make_report();
+        }
+
+        make_report();
+        if (ms-tmrd >= acq_d) { tmrd=ms; report(); }
 }
 
 void serial_process()
@@ -263,7 +267,8 @@ void serial_process()
   case '?': Serial.print("mod "); Serial.println(muxmode(BV_MUXREAD),HEX); break;
   case '!': Serial.print("smod "); Serial.println(muxvalues(muxmode(Serial.parseInt())),HEX); break;
 
-  case 'f': filt = !filt; if (filt) f_clr(); Serial.print("filter o"); Serial.println(filt?"n":"ff");  break;
+  case 'f': mflt = !mflt; if (mflt) f_clr(); Serial.print("meanfilter o"); Serial.println(mflt?"n":"ff");  break;
+  case 'F': aflt = !aflt; Serial.print("alphafilter o"); Serial.println(aflt?"n":"ff");  break;
 
   case 'm': set_acphase(Serial.parseInt()); break;
 
@@ -273,8 +278,10 @@ void serial_process()
   case 'S': seqence_read(); break;
   case 's': seqence_print(); break;
   case 'x': Serial.println(read_mcp3201()); break;
+  case 'n': delay(1); acq_n=Serial.parseInt(); Serial.print("acq_n "); Serial.println(acq_n); break;
+  case 'd': delay(1); acq_d=Serial.parseInt(); Serial.print("acq_delta "); Serial.println(acq_d); break;
 
-  case 'h': Serial.println("cmd: RrOoa[0-3][0-7]fm[int]pQq?![mod]Ssxh"); break;
+  case 'h': Serial.println("cmd: [0-7]RrOoa[0-3]fFm[pow]pQq?![mod]S[]sxhn[num]d[ms]"); break;
   }
 }
 
@@ -285,15 +292,19 @@ void setup()
         init_mcp3201();
 	init_mux();
         for(int i=0; i < CHANNELS_SZ; i++) channels[i]=0;
-
+        muxvalues(muxmode(BV_MUXREAD));
         rept = 1;
         seqq = 0;
+        acq_n=8;
+        acq_d=1000;
 
-	filt = 0;
+	mflt = 0;
+        aflt = 1;
         f_clr();
 
         tmr1000=0;
         tmr20=0;
+        tmrd=0;
 }
 
 void loop()

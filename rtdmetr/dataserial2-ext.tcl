@@ -9,10 +9,12 @@ set ::AutoPlotM::pscale(y2,offset)  126
 set ::AutoPlotM::pscale(y2,fmt)  "%5.3f"
 set ::AutoPlotM::pscale(y,fmt)  "%7.3f"
 
-# -- SERIAL DATA HANDLER
+global chan
+global sertime
+global pdat
+global cdat
 
-set chan ""
-set sertime 3000
+# -- SERIAL DATA HANDLER
 
 proc ser_cmd {cmd} {
 	global chan
@@ -95,6 +97,8 @@ proc data_in {s} {
 	global chart
 	global datax
 	global lnum
+	global pdat
+	global cdat
 
 # timing
 	set t [get_clock]
@@ -102,36 +106,38 @@ proc data_in {s} {
 	set x $s
 
 # parse
-	set re [regexp -all -inline {\S+} $s]
-	if {[llength $re] == 2} {
+	set re [regexp -all -inline {^q(.+)\s+(.+)} $s]
+	if {[llength $re] == 3} {
 		incr lnum
-		set m [lindex $re 1]
-		if [string is integer -strict $m] { $chart $lnum $m set1 } else { puts $s }
+		set m [lindex $re 2]
+		if [string is integer -strict $m] { $chart $lnum $m set1 }
 		return
 	}
 
-#	puts "$t $re"
-	set vc [lindex $re 0]
-	if {![string is double -strict $vc]} { return }
-	set vx [lindex $re [expr 1+$vc]]
-	if {![string is double -strict $vx]} { return }
-
-	set vt [lindex $re end-1]
-	if {![string is double -strict $vt]} { return }
-	set vtd [lindex $re end]
-	if {![string is double -strict $vtd]} { return }
-	puts "$t $vc $vx $vtd"
-
-# processing
+	set vc [lindex $s 0]
+	if {![string is integer -strict $vc]} {
+		puts "$s"
+		return
+	}
+	foreach {q p} [list vx [expr 1+$vc] vt end-1 vtd end] {
+		set $q [lindex $s $p]
+		if {![string is double -strict [set $q]]} {
+			puts "$s"
+			return
+		}
+	}
+	if {$pdat} {puts "$t $vc $vx $vtd"}
  	set datax "$vx"
 
 # store to file
 	put_log "$t $s"
 
 # plot	
+	if {$cdat} {
 	$chart $t $vx set1
 	$chart $t $vt set2
 	$chart $t $vtd set3
+	}
 }
 
 proc cmd_conn {} {
@@ -163,10 +169,32 @@ proc cmd_replot {} {
 	if {[llength $res]} {replot {*}$res}
 }
 
+proc bcmd {w off on} {
+   upvar [$w cget -variable] x1 
+   if {$x1} {ser_cmd $on} else {ser_cmd $off}
+}
+
 proc extension_init {} {
+global chan
+global sertime
+global pdat
 # -- COMMAND EXTENSTION
 .mbar.fl insert 6 command -label "Reload Extension" -command { source dataserial2-ext.tcl }
 .mbar.dat insert 1 command -label "replot" -command cmd_replot
 .mbar.dat add command -label "Send a2RO5 (diode)" -command { ser_cmd a2RO5 }
 .mbar.dat add command -label "Send command" -command cmd_send
+set chan ""
+set sertime 3000
+set pdat 1
+set cdat 1
+# checkbutton .c -text "Click me" -indicatoron false
+checkbutton .toolbar.cmdR  -text "REF" -indicatoron false -command {bcmd .toolbar.cmdR r R}
+checkbutton .toolbar.cmdO  -text "OUT" -indicatoron false -command {bcmd .toolbar.cmdO o O}
+checkbutton .toolbar.pdat  -text "putsdata"
+checkbutton .toolbar.cdat  -text "chartdata"
+pack   .toolbar.cmdR  -side left
+pack   .toolbar.cmdO  -side left
+pack   .toolbar.pdat  -side left
+pack   .toolbar.cdat  -side left
+
 }
