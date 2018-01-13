@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <SPI.h>
 #include "mux3201.h"
 
 enum { chipSelectPinADC = 9, // mcp3201 #7clk<-sck=D13, #6Dout->MISO=D12, MOSI-nc=D11, #5CS<-D9
