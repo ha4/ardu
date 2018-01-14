@@ -13,6 +13,7 @@ float fit(float *data, int n)
         for (int i = 0; i<n; i++) {
                 float x=*data++;
                 float y=*data++;
+                /* Serial.print("x="); Serial.print(x); Serial.print(" y="); Serial.println(y); */
                 sx+=x;
                 sy+=y;
                 sxx+=x*x;
