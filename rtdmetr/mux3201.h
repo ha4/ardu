@@ -36,7 +36,7 @@
 
 #define BV_EXT  0xFE
 #define BV_END  0xFF
-#define BV_MUXREAD 0xFF
+#define BV_READ 0xFF
 
 /* calls */
 void init_mcp3201();

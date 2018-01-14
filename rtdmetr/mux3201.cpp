@@ -52,7 +52,7 @@ uint8_t muxmode(uint8_t mode)
 {
   uint8_t b,d;
 
-  if (mode==BV_MUXREAD) {
+  if (mode==BV_READ) {
     b = BV_PORTB & BV_MASKB;
     d = BV_PORTD & BV_MASKD;
     return b|d;
