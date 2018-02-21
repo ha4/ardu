@@ -153,7 +153,11 @@ proc data_in {s} {
 	put_log "$t $s"
 
 # plot	
-	if {$cdat} { foreach c $clst {$chart $t [lindex $vx $c] set$c} }
+	if {$cdat} { 
+		foreach c $clst {
+		if {[catch {$chart $t [lindex $vx $c] set$c}]} { puts "c=$c vx=$vx" }
+	}
+	}
 }
 
 proc cmd_conn {} {

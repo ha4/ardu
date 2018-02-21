@@ -1,5 +1,5 @@
 
-enum { hx711_dt = 9, hx711_clk=10 };
+enum { hx711_dt = 15, hx711_clk=14 };
 
 void setup()
 {
