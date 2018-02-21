@@ -6,7 +6,7 @@ set ::AutoPlotM::dset(set1,yaxis)   "y1"
 set ::AutoPlotM::dset(set1,color)  "saddle brown"
 set ::AutoPlotM::pscale(y1,tcolor) "saddle brown" 
 set ::AutoPlotM::pscale(y1,offset)  45
-set ::AutoPlotM::pscale(y,fmt)  "%7.1f"
+set ::AutoPlotM::pscale(y1,fmt)  "%7.4f"
 
 global chan
 global sertime
