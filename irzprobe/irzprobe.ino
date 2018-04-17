@@ -1,6 +1,9 @@
 #define SUPPORT_CALIBRATION	(0)
-#define RANGE_DEBUG			(0)		// set nonzero to flash LED when it changes range
-// Pin assignments:
+// set nonzero to flash LED when it changes range
+#define RANGE_DEBUG			(0)
+
+	
+// Pin assignments tiny25:
 // PB0/MOSI			far LED drive, active high
 // PB1/MISO			near LED drive, active high
 // PB2/ADC1/SCK		output to Duet via 12K resistor
@@ -9,12 +12,13 @@
 // PB5/ADC0/RESET	not available, used for programming
 
 #ifndef __ECV__
-__fuse_t __fuse __attribute__((section (".fuse"))) = {0xE2u, 0xDFu, 0xFFu};
+/* fuse for attiny */
+//__fuse_t __fuse __attribute__((section (".fuse"))) = {0xE2u, 0xDFu, 0xFFu};
 #endif
 
-const unsigned int AdcPhototransistorChan = 2;				// ADC channel for the phototransistor
-const unsigned int AdcPortBDuet3K0OutputChan = 3;			// ADC channel for the 3K0 and LED output bit, when we use it as an input
-const unsigned int AdcPortBDuet3K6OutputChan = 1;			// ADC channel for the 3K6 output bit, when we use it as an input
+const unsigned int AdcPhototransistorChan = 0;	// A0, D14, PC0 ADC channel for the phototransistor
+const unsigned int AdcPortBDuet3K0OutputChan = 3;// ADC channel for the 3K0 and LED output bit, when we use it as an input
+const unsigned int AdcPortBDuet3K6OutputChan = 1;// ADC channel for the 3K6 output bit, when we use it as an input
 const unsigned int PortBNearLedBit = 1;
 const unsigned int PortBFarLedBit = 0;
 const unsigned int PortBDuet3K0OutputBit = 3;
@@ -62,13 +66,7 @@ public:
 void IrData::init()
 {
 	for (uint8_t i = 0; i < cyclesAveragedIR; ++i)
-	writes(i; *this; volatile)
-	keep(i <= cyclesAveragedIR)
-	keep(forall j in 0..(i-1) :- readings[j] == 0)
-	decrease(cyclesAveragedIR - i)
-	{
 		readings[i] = 0;
-	}
 	index = 0;
 	sum = 0;
 }
@@ -95,35 +93,25 @@ struct NvData
 // EEPROM access functions
 void readEEPROM(uint8_t ucAddress, uint8_t *p, uint8_t len)
 {
-	do
-	{
+	do {
 		/* Wait for completion of previous write */
-		while(EECR & (1<<EEPE))
-		;
-		/* Set up address register */
+		while(EECR & (1<<EEPE));
 		EEAR = ucAddress++;
-		/* Start eeprom read by writing EERE */
 		EECR |= (1<<EERE);
-		/* Return data from data register */
 		*p++ = EEDR;
 	} while (--len != 0);
 }
 
 void writeEEPROM(uint8_t ucAddress, const uint8_t *p, uint8_t len)
 {
-	do
-	{
+	do {
 		/* Wait for completion of previous write */
-		while(EECR & (1<<EEPE))
-		;
-		/* Set Programming mode */
+		while(EECR & (1<<EEPE));
 		EECR = (0<<EEPM1)|(0<<EEPM0);
 		/* Set up address and data registers */
 		EEAR = ucAddress++;
 		EEDR = *p++;
-		/* Write logical one to EEMPE */
 		EECR |= (1<<EEMPE);
-		/* Start eeprom write by setting EEPE */
 		EECR |= (1<<EEPE);
 	} while (--len != 0);
 }
@@ -134,40 +122,29 @@ void writeEEPROM(uint8_t ucAddress, const uint8_t *p, uint8_t len)
 // This uses 19 bytes of stack (from assembly listing, 2016-07-30)
 ISR(TIM0_COMPB_vect)
 {
-	const uint16_t adcVal = ADC & 1023u;			// get the ADC reading from the previous conversion
+	const uint16_t adcVal = ADC & 0x3FF;
 	const uint8_t locTickCounter = (uint8_t)tickCounter;
 	while (TCNT0 < 3u * 8u) {}						// delay a little until the ADC s/h has taken effect. 3 ADC clocks should be enough, and 1 ADC clock is 8 timer 0 clocks.
-	switch(locTickCounter & 0x03u)
-	{
-		case 0:
-			// Far LED is on, we just did no reading, we are doing a far reading now and an off reading next
+	switch(locTickCounter & 0x03u) {
+		case 0: // Far LED is on, we just did no reading, we are doing a far reading now and an off reading next
 			PORTB &= ~_BV(PortBFarLedBit);		// turn far LED off
 			break;
 		
-		case 1:
-			// LEDs are off, we just did a far reading, we are doing a off reading now and a near reading next			
+		case 1: // LEDs are off, we just did a far reading, we are doing a off reading now and a near reading next			
 			if (running)
-			{
 				farData.addReading(adcVal);
-			}
 			PORTB |= _BV(PortBNearLedBit);		// turn near LED on
 			break;
 					
-		case 2:
-			// Near LED is on, we just did an off reading, we are doing a near reading now and a dummy off reading next
+		case 2: // Near LED is on, we just did an off reading, we are doing a near reading now and a dummy off reading next
 			if (running)
-			{
 				offData.addReading(adcVal);
-			}
 			PORTB &= ~_BV(PortBNearLedBit);		// turn near LED off
 			break;
 
-		case 3:
-			// Far LED is on, we just did an off reading, we are doing another off reading now which will be discarded
+		case 3: // Far LED is on, we just did an off reading, we are doing another off reading now which will be discarded
 			if (running)
-			{
 				nearData.addReading(adcVal);
-			}
 			PORTB |= _BV(PortBFarLedBit);		// turn far LED on
 			break;
 	}
@@ -178,32 +155,32 @@ ISR(TIM0_COMPB_vect)
 inline void SetOutputOff()
 {
 	// We do this in 2 operations, each of which is atomic, so that we don't mess up what the ISR is doing with the LEDs.
-	PORTB &= ~BITVAL(PortBDuet3K0OutputBit);
-	PORTB &= ~BITVAL(PortBDuet3K6OutputBit);
+	PORTB &= ~_BV(PortBDuet3K0OutputBit);
+	PORTB &= ~_BV(PortBDuet3K6OutputBit);
 }
 
 // Give a G31 reading of about 445 indicating we are approaching the trigger point
 inline void SetOutputApproaching()
 {
 	// We do this in 2 operations, each of which is atomic, so that we don't mess up what the ISR is doing with the LEDs.
-	PORTB &= ~BITVAL(PortBDuet3K0OutputBit);
-	PORTB |= BITVAL(PortBDuet3K6OutputBit);
+	PORTB &= ~_BV(PortBDuet3K0OutputBit);
+	PORTB |= _BV(PortBDuet3K6OutputBit);
 }	
 
 // Give a G31 reading of about 578 indicating we are at/past the trigger point
 inline void SetOutputOn()
 {
 	// We do this in 2 operations, each of which is atomic, so that we don't mess up what the ISR is doing with the LEDs.
-	PORTB |= BITVAL(PortBDuet3K0OutputBit);
-	PORTB &= ~BITVAL(PortBDuet3K6OutputBit);
+	PORTB |= _BV(PortBDuet3K0OutputBit);
+	PORTB &= ~_BV(PortBDuet3K6OutputBit);
 }
 
 // Give a G31 reading of about 1023 indicating that the sensor is saturating
 inline void SetOutputSaturated()
 {
 	// We do this in 2 operations, each of which is atomic, so that we don't mess up what the ISR is doing with the LEDs.
-	PORTB |= BITVAL(PortBDuet3K0OutputBit);
-	PORTB |= BITVAL(PortBDuet3K6OutputBit);
+	PORTB |= _BV(PortBDuet3K0OutputBit);
+	PORTB |= _BV(PortBDuet3K6OutputBit);
 }
 
 // Get the tick counter from outside the ISR. As it's more than 8 bits long, we need to disable interrupts while fetching it.
@@ -235,10 +212,10 @@ void DelayTicks(uint16_t ticks)
 void setup(void)
 {
 	noInterrupts();
-	DIDR0 = _BV(AdcPhototransistorChan) | _BV(PortBDuet3K6OutputBit);	// disable digital input buffers on ADC inputs
+	DIDR0 = _BV(AdcPhototransistorChan) | _BV(PortBDuet3K6OutputBit);// disable digital input buffers on ADC inputs
 
 	// Set ports and pullup resistors
-	PORTB = PortBUnusedBitMask;								// enable pullup on unused I/O pins
+	PORTB = PortBUnusedBitMask;			// enable pullup on unused I/O pins
 	
 	// Enable outputs
 	DDRB = _BV(PortBNearLedBit) | _BV(PortBFarLedBit) | _BV(PortBDuet3K0OutputBit) | _BV(PortBDuet3K6OutputBit);
@@ -253,18 +230,18 @@ void setup(void)
 	noInterrupts();
 	// Set up timer 1 in mode 2 (CTC mode)
 	GTCCR = 0;
-	TCCR0A = BITVAL(WGM01);									// no direct outputs, mode 2
-	TCCR0B = 0;												// set the mode, clock stopped for now
+	TCCR0A = _BV(WGM01);			// no direct outputs, mode 2
+	TCCR0B = 0;				// set the mode, clock stopped for now
 	TCNT0 = 0;
 	OCR0A = baseTopIR;
 	OCR0B = 0;
-	TIFR = BITVAL(OCF0B);									// clear any pending interrupt
-	TIMSK = BITVAL(OCIE0B);									// enable the timer 0 compare match B interrupt
-	TCCR0B |= BITVAL(CS01);									// start the clock, prescaler = 8
+	TIFR0 = _BV(OCF0B);			// clear any pending interrupt
+	TIMSK0 = _BV(OCIE0B);			// enable the timer 0 compare match B interrupt
+	TCCR0B |= _BV(CS01);			// start the clock, prescaler = 8
 	
-	ADMUX = (uint8_t)AdcPortBDuet3K6OutputChan;				// select the 10K resistor output bit, single ended mode
-	ADCSRA = BITVAL(ADEN) | BITVAL(ADPS2) | BITVAL(ADATE) | BITVAL(ADPS1);	// enable ADC, auto trigger enable, prescaler = 64 (ADC clock ~= 125kHz)
-	ADCSRB = BITVAL(ADTS2) | BITVAL(ADTS0);					// start conversion on timer 0 compare match B, unipolar input mode
+	ADMUX = (uint8_t)AdcPortBDuet3K6OutputChan;// select the 10K resistor output bit, single ended mode
+	ADCSRA = _BV(ADEN) | _BV(ADPS2) | _BV(ADATE) | _BV(ADPS1);// enable ADC, auto trigger enable, prescaler = 64 (ADC clock ~= 125kHz)
+	ADCSRB = _BV(ADTS2) | _BV(ADTS0);	// start conversion on timer 0 compare match B, unipolar input mode
 	tickCounter = 0;
 	interrupts();
 	
@@ -274,10 +251,10 @@ void setup(void)
 	// Wait a while before we do this test, so that Duet firmware has a chance to turn the internal pullup (50K to 150K) off,
 	// and Arduino/RAMPS firmware has a chance to turn the internal pullup (20K to 50K) on.
 	SetOutputOff();
-	DDRB &= ~BITVAL(PortBDuet3K6OutputBit);						// set the pin to an input, pullup disabled because output is off
+	DDRB &= ~_BV(PortBDuet3K6OutputBit);	// set the pin to an input, pullup disabled because output is off
 	
 	DelayTicks(4u);
-	running = true;												// start collecting readings
+	running = true;	// start collecting readings
 
 #if SUPPORT_CALIBRATION
 	// Wait 1 second to allow voltages to stabilize
@@ -285,24 +262,24 @@ void setup(void)
 	noInterrupts();
 	uint16_t totalSum = offData.sum + nearData.sum + farData.sum;
 	interrupts();
-	bool inProgrammingSeq = totalSum >= cyclesAveragedIR * 950u * 3u;	// see if output high after 1 second
+	bool inProgrammingSeq = totalSum >= cyclesAveragedIR * 950u * 3u;// see if output high after 1 second
 	DelayTicks(2u * interruptFreq);
 	if (inProgrammingSeq)
 	{
 		noInterrupts();
 		totalSum = offData.sum + nearData.sum + farData.sum;
 		interrupts();
-		inProgrammingSeq = totalSum <= cyclesAveragedIR * 50u * 3u;	// see if output low after 3 seconds
+		inProgrammingSeq = totalSum <= cyclesAveragedIR * 50u * 3u;// see if output low after 3 seconds
 	}
 	DelayTicks(2u * interruptFreq);
 #else
-	DelayTicks(5u * interruptFreq);								// wait 5 seconds
+	DelayTicks(5u * interruptFreq);		// wait 5 seconds
 #endif
-	running = false;											// stop collecting readings
+	running = false;			// stop collecting readings
 	
 	// Change back to normal operation mode
-	ADMUX = (uint8_t)AdcPhototransistorChan | (1 << REFS1);		// select ADC input from phototransistor, single ended mode, 1.1V reference
-	DDRB |= _BV(PortBDuet3K6OutputBit);						// set the pin back to being an output
+	ADMUX = (uint8_t)AdcPhototransistorChan | (1 << REFS1);// select ADC input from phototransistor, single ended mode, 1.1V reference
+	DDRB |= _BV(PortBDuet3K6OutputBit);	// set the pin back to being an output
 
 	// Readings have been collected into all three of nearData, farData, and offData.
 	// We are looking for a pullup resistor of no more than 160K on the output to indicate that we should use a digital output.
@@ -319,8 +296,8 @@ void setup(void)
 		farData.init();
 		offData.init();
 		
-		running = true;											// tell interrupt handler to collect readings
-		DelayTicks(8u * cyclesAveragedIR + 4);					// wait until we have taken two full sets of readings
+		running = true;				// tell interrupt handler to collect readings
+		DelayTicks(8u * cyclesAveragedIR + 4);	// wait until we have taken two full sets of readings
 		running = false;
 		
 		// Get local copies of volatile variables to save code space. No need to disable interrupts because running is false.
@@ -330,7 +307,7 @@ void setup(void)
 		
 		if (locNearSum >= rangeUpThreshold * cyclesAveragedIR || locFarSum >= rangeUpThreshold * cyclesAveragedIR)
 		{
-			ADMUX &= ~(1 << REFS1);								// switch to low sensitivity (voltage reference is VCC)
+			ADMUX &= ~(1 << REFS1);		// switch to low sensitivity (voltage reference is VCC)
 			running = true;
 			DelayTicks(8u * cyclesAveragedIR + 4);
 			running = false;
@@ -341,13 +318,8 @@ void setup(void)
 
 		const uint16_t nearSum = (locNearSum > locOffSum) ? locNearSum - locOffSum : 0;
 		const uint16_t farSum = (locFarSum > locOffSum) ? locFarSum - locOffSum : 0;
-		if (   farSum >= farThreshold
-			&& locNearSum < saturatedThreshold 
-			&& locFarSum < saturatedThreshold 
-			&& nearSum <= 2 * farSum
-			&& farSum <= nearSum			// the far LED is stronger than the near one, so to avoid false triggering we don't want the far reading to exceed the near one
-		   )
-		{
+		if (farSum >= farThreshold && locNearSum < saturatedThreshold  && locFarSum < saturatedThreshold  && nearSum <= 2 * farSum && farSum <= nearSum) {
+			// the far LED is stronger than the near one, so to avoid false triggering we don't want the far reading to exceed the near one
 			// Successful calibration so set multipliers and save to EEPROM
 			nvData.nearMultiplier = farSum;
 			nvData.farMultiplier = nearSum;
@@ -355,18 +327,11 @@ void setup(void)
 			writeEEPROM(0, reinterpret_cast<const uint8_t*>(&nvData), sizeof(nvData));
 			
 			flashesToGo = 6u;									// indicate successful calibration
-		}
-		else
-		{
+		} else {
 			SetOutputOn();										// light LED to signal calibration error
-			for (;;)
-			{
-				KickWatchdog();
-			}
+			for (;;) KickWatchdog();
 		}
-	}
-	else
-	{
+	} else {
 		digitalOutput = totalSum >= (3000UL * cyclesAveragedIR * 1024UL * 3u)/(160000UL + 3000UL);
 		flashesToGo = (digitalOutput) ? 2u : 4u;
 		
@@ -387,23 +352,24 @@ void setup(void)
 	// Flash the LED the appropriate number of times
 	while (flashesToGo != 0u)
 	{
-		SetOutputSaturated();									// turn LED on
+		SetOutputSaturated();// turn LED on
 		DelayTicks(ledFlashTime);
-		SetOutputOff();											// turn LED off
+		SetOutputOff();	// turn LED off
 		DelayTicks(ledFlashTime);
 		--flashesToGo;
 	}
-	// Clear out the data and start collecting data from the phototransistor
+
+	// start collecting the data
 	nearData.init();
 	farData.init();
 	offData.init();
-
-	running = true;											// tell interrupt handler to collect readings
-	DelayTicks(4u * cyclesAveragedIR + 2);					// wait until we have a full set of readings
+	running = true;
+	DelayTicks(4u * cyclesAveragedIR + 2);
 }
 
 void loop()
 {
+	KickWatchdog();
 	noInterrupts();
 	const uint16_t locNearSum = nearData.sum;
 	const uint16_t locFarSum = farData.sum;
@@ -413,60 +379,60 @@ void loop()
 	// See if we need to switch the sensitivity range
 	const bool highSense = (ADMUX & (1 << REFS1)) != 0;
 	if (highSense && (locNearSum >= rangeUpThreshold * cyclesAveragedIR || locFarSum >= rangeUpThreshold * cyclesAveragedIR)) {
-		ADMUX &= ~(1 << REFS1);							// switch to low sensitivity (voltage reference is VCC)
+		ADMUX &= ~(1 << REFS1);	// switch to low sensitivity (voltage reference is VCC)
 #if RANGE_DEBUG
-		SetOutputOn();									// so we can see when it changes range
+		SetOutputOn();		// so we can see when it changes range
 #endif
 		DelayTicks(4 * cyclesAveragedIR + 3);
+		return;
 	} else if (!highSense && locNearSum < rangeDownThreshold * cyclesAveragedIR && locFarSum < rangeDownThreshold * cyclesAveragedIR) {
-		ADMUX |= (1 << REFS1);							// switch to high sensitivity (voltage reference is 1.1V)
+		ADMUX |= (1 << REFS1);	// switch to high sensitivity (voltage reference is 1.1V)
 #if RANGE_DEBUG
-		SetOutputOn();									// so we can see when it changes range
+		SetOutputOn();		// so we can see when it changes range
 #endif
 		DelayTicks(4 * cyclesAveragedIR + 3);
-	} else {
-		// We only report saturation when both readings are in the saturation zone.
-		// This allows for the possibility that the light from the far LED exceeds the saturation limit at large distances, but is in
-		// range at the trigger height. Some sensors have been found to exhibit this behaviour with a target of plain glass when run from 5V.
-		const bool saturated =
+		return;
+	}
+
+	// We only report saturation when both readings are in the saturation zone.
+	// This allows for the possibility that the light from the far LED exceeds the saturation limit at large distances, but is in
+	// range at the trigger height. Some sensors have been found to exhibit this behaviour with a target of plain glass when run from 5V.
+	const bool saturated =
 #if SUPPORT_CALIBRATION
 	(nvData.nearMultiplier >= nvData.farMultiplier)
 		? (locFarSum >= saturatedThreshold && (uint32_t)locNearSum * nvData.nearMultiplier > (uint32_t)saturatedThreshold * nvData.farMultiplier)
   	      : (locNearSum >= saturatedThreshold && (uint32_t)locFarSum * nvData.farMultiplier > (uint32_t)saturatedThreshold * nvData.nearMultiplier);
 #else
-		locFarSum >= saturatedThreshold && locNearSum > saturatedThreshold;
+	locFarSum >= saturatedThreshold && locNearSum > saturatedThreshold;
 #endif
-		if (saturated) {
-			// Sensor is saturating. We flash the LED rapidly to indicate this.
-			if ((GetTicks() & (1 << 9)) != 0) {
-				SetOutputOff();
-			} else {
-				SetOutputSaturated();		// sensor is saturating, so set the output full on to indicate this
-			}
-		} else {
-#if SUPPORT_CALIBRATION
-			const uint32_t adjNearSum =  (locNearSum > locOffSum) ? (uint32_t)(locNearSum - locOffSum) * nvData.nearMultiplier : 0;
-			const uint32_t adjFarSum = (locFarSum > locOffSum) ? (uint32_t)(locFarSum - locOffSum) * nvData.farMultiplier : 0;
-#else
-			const uint32_t adjNearSum =  (locNearSum > locOffSum) ? (uint32_t)(locNearSum - locOffSum) : 0;
-			const uint32_t adjFarSum = (locFarSum > locOffSum) ? (uint32_t)(locFarSum - locOffSum) : 0;
-#endif
-			const bool readingsOk = locFarSum > locOffSum && locFarSum - locOffSum >= farThreshold;
-			
-			if (readingsOk && adjNearSum >= adjFarSum) {
-				if (digitalOutput) {
-  				  SetOutputSaturated();
-				} else {
-				  SetOutputOn();					
-				}
-			} else if (!digitalOutput && readingsOk && adjNearSum * 2 >= adjFarSum) {
-				SetOutputApproaching();
-			} else {
-				SetOutputOff();
-			}
-		}
+	if (saturated) {
+		// Sensor is saturating. We flash the LED rapidly to indicate this.
+		if ((GetTicks() & (1 << 9)) != 0)
+			SetOutputOff();
+		else
+			SetOutputSaturated();
+		return;
 	}
-	KickWatchdog();
+
+#if SUPPORT_CALIBRATION
+	const uint32_t adjNearSum =  (locNearSum > locOffSum) ? (uint32_t)(locNearSum - locOffSum) * nvData.nearMultiplier : 0;
+	const uint32_t adjFarSum = (locFarSum > locOffSum) ? (uint32_t)(locFarSum - locOffSum) * nvData.farMultiplier : 0;
+#else
+	const uint32_t adjNearSum =  (locNearSum > locOffSum) ? (uint32_t)(locNearSum - locOffSum) : 0;
+	const uint32_t adjFarSum = (locFarSum > locOffSum) ? (uint32_t)(locFarSum - locOffSum) : 0;
+#endif
+	const bool readingsOk = locFarSum > locOffSum && locFarSum - locOffSum >= farThreshold;
+			
+	if (readingsOk && adjNearSum >= adjFarSum) {
+		if (digitalOutput)
+  			SetOutputSaturated();
+		else
+			SetOutputOn();
+	} else if (!digitalOutput && readingsOk && adjNearSum * 2 >= adjFarSum) {
+		SetOutputApproaching();
+	} else {
+		SetOutputOff();
+	}
 }
 
 
