@@ -16,15 +16,38 @@
 //__fuse_t __fuse __attribute__((section (".fuse"))) = {0xE2u, 0xDFu, 0xFFu};
 #endif
 
-const unsigned int AdcPhototransistorChan = 0;	// A0, D14, PC0 ADC channel for the phototransistor
-const unsigned int AdcPortBDuet3K0OutputChan = 3;// ADC channel for the 3K0 and LED output bit, when we use it as an input
-const unsigned int AdcPortBDuet3K6OutputChan = 1;// ADC channel for the 3K6 output bit, when we use it as an input
-const unsigned int PortBNearLedBit = 1;
-const unsigned int PortBFarLedBit = 0;
-const unsigned int PortBDuet3K0OutputBit = 3;
-const unsigned int PortBDuet3K6OutputBit = 2;
+#define PortOUT PORTD
+#define PortDIR DDRD
 
-const uint8_t PortBUnusedBitMask = 0;
+#define REFVCC 0b01000000
+#define REF1V1 0b11000000
+
+// active - high
+//#define PortOn(b) PortOUT |= _BV(b)
+//#define PortOff(b) PortOUT &= ~_BV(b)
+// active - low
+#define PortOn(b) PortOUT &= ~_BV(b)
+#define PortOff(b) PortOUT |= _BV(b)
+
+
+const unsigned int AdcPhototransistorChan = 0;	// A0, D14, PC0 ADC channel for the phototransistor
+const unsigned int AdcDuet3K0OutputChan = 2;// ADC channel for the 3K0 and LED output bit, when we use it as an input
+const unsigned int AdcDuet3K6OutputChan = 1;// ADC channel for the 3K6 output bit, when we use it as an input
+const unsigned int NearLedBit = 4;
+const unsigned int FarLedBit = 3;
+const unsigned int Duet3K0OutputBit = 5;
+const unsigned int Duet3K6OutputBit = 6;
+
+const uint8_t PortUnusedBitMask = 0;
+
+// Give a G31 reading of about 0
+inline void SetOutputOff(){PortOUT &= ~_BV(Duet3K0OutputBit); PortOUT &= ~_BV(Duet3K6OutputBit);}
+// Give a G31 reading of about 445 indicating we are approaching the trigger point
+inline void SetOutputApproaching(){ PortOUT &= ~_BV(Duet3K0OutputBit); PortOUT |= _BV(Duet3K6OutputBit);}	
+// Give a G31 reading of about 578 indicating we are at/past the trigger point
+inline void SetOutputOn(){ PortOUT |= _BV(Duet3K0OutputBit); PortOUT &= ~_BV(Duet3K6OutputBit); }
+// Give a G31 reading of about 1023 indicating that the sensor is saturating
+inline void SetOutputSaturated(){ PortOUT |= _BV(Duet3K0OutputBit); PortOUT |= _BV(Duet3K6OutputBit); }
 
 // IR parameters. These also allow us to receive a signal through the command input.
 const uint16_t interruptFreq = 8000;						// interrupt frequency. We run the IR sensor at one quarter of this, i.e. 2kHz
@@ -120,68 +143,40 @@ void writeEEPROM(uint8_t ucAddress, const uint8_t *p, uint8_t len)
 
 // ISR for the timer 0 compare match interrupt
 // This uses 19 bytes of stack (from assembly listing, 2016-07-30)
-ISR(TIM0_COMPB_vect)
+
+ISR(TIMER0_COMPA_vect)
 {
+//  while((ADCSRA & ADIF) == 0);
 	const uint16_t adcVal = ADC & 0x3FF;
 	const uint8_t locTickCounter = (uint8_t)tickCounter;
 	while (TCNT0 < 3u * 8u) {}						// delay a little until the ADC s/h has taken effect. 3 ADC clocks should be enough, and 1 ADC clock is 8 timer 0 clocks.
+
 	switch(locTickCounter & 0x03u) {
 		case 0: // Far LED is on, we just did no reading, we are doing a far reading now and an off reading next
-			PORTB &= ~_BV(PortBFarLedBit);		// turn far LED off
+			PortOff(FarLedBit);		// turn far LED off
 			break;
 		
 		case 1: // LEDs are off, we just did a far reading, we are doing a off reading now and a near reading next			
 			if (running)
 				farData.addReading(adcVal);
-			PORTB |= _BV(PortBNearLedBit);		// turn near LED on
+			PortOn(NearLedBit);		// turn near LED on
 			break;
 					
 		case 2: // Near LED is on, we just did an off reading, we are doing a near reading now and a dummy off reading next
 			if (running)
 				offData.addReading(adcVal);
-			PORTB &= ~_BV(PortBNearLedBit);		// turn near LED off
+			PortOff(NearLedBit);		// turn near LED off
 			break;
 
 		case 3: // Far LED is on, we just did an off reading, we are doing another off reading now which will be discarded
 			if (running)
 				nearData.addReading(adcVal);
-			PORTB |= _BV(PortBFarLedBit);		// turn far LED on
+			PortOn(FarLedBit);		// turn far LED on
 			break;
 	}
-	++tickCounter;
+++tickCounter;
 }
 
-// Give a G31 reading of about 0
-inline void SetOutputOff()
-{
-	// We do this in 2 operations, each of which is atomic, so that we don't mess up what the ISR is doing with the LEDs.
-	PORTB &= ~_BV(PortBDuet3K0OutputBit);
-	PORTB &= ~_BV(PortBDuet3K6OutputBit);
-}
-
-// Give a G31 reading of about 445 indicating we are approaching the trigger point
-inline void SetOutputApproaching()
-{
-	// We do this in 2 operations, each of which is atomic, so that we don't mess up what the ISR is doing with the LEDs.
-	PORTB &= ~_BV(PortBDuet3K0OutputBit);
-	PORTB |= _BV(PortBDuet3K6OutputBit);
-}	
-
-// Give a G31 reading of about 578 indicating we are at/past the trigger point
-inline void SetOutputOn()
-{
-	// We do this in 2 operations, each of which is atomic, so that we don't mess up what the ISR is doing with the LEDs.
-	PORTB |= _BV(PortBDuet3K0OutputBit);
-	PORTB &= ~_BV(PortBDuet3K6OutputBit);
-}
-
-// Give a G31 reading of about 1023 indicating that the sensor is saturating
-inline void SetOutputSaturated()
-{
-	// We do this in 2 operations, each of which is atomic, so that we don't mess up what the ISR is doing with the LEDs.
-	PORTB |= _BV(PortBDuet3K0OutputBit);
-	PORTB |= _BV(PortBDuet3K6OutputBit);
-}
 
 // Get the tick counter from outside the ISR. As it's more than 8 bits long, we need to disable interrupts while fetching it.
 inline uint16_t GetTicks()
@@ -211,14 +206,16 @@ void DelayTicks(uint16_t ticks)
 // Main program
 void setup(void)
 {
+  	uint8_t flashesToGo;
+
 	noInterrupts();
-	DIDR0 = _BV(AdcPhototransistorChan) | _BV(PortBDuet3K6OutputBit);// disable digital input buffers on ADC inputs
+//	DIDR0 = _BV(AdcPhototransistorChan) | _BV(PortBDuet3K6OutputBit);// disable digital input buffers on ADC inputs
 
 	// Set ports and pullup resistors
-	PORTB = PortBUnusedBitMask;			// enable pullup on unused I/O pins
+	PortOUT= PortUnusedBitMask;			// enable pullup on unused I/O pins
 	
 	// Enable outputs
-	DDRB = _BV(PortBNearLedBit) | _BV(PortBFarLedBit) | _BV(PortBDuet3K0OutputBit) | _BV(PortBDuet3K6OutputBit);
+	PortDIR = _BV(NearLedBit) | _BV(FarLedBit) | _BV(Duet3K0OutputBit) | _BV(Duet3K6OutputBit);
 	
 	interrupts();
 
@@ -235,15 +232,16 @@ void setup(void)
 	TCNT0 = 0;
 	OCR0A = baseTopIR;
 	OCR0B = 0;
-	TIFR0 = _BV(OCF0B);			// clear any pending interrupt
-	TIMSK0 = _BV(OCIE0B);			// enable the timer 0 compare match B interrupt
+	TIFR0 = _BV(OCF0A);			// clear any pending interrupt
+	TIMSK0 = _BV(OCIE0A);			// enable the timer 0 compare match B interrupt
 	TCCR0B |= _BV(CS01);			// start the clock, prescaler = 8
 	
-	ADMUX = (uint8_t)AdcPortBDuet3K6OutputChan;// select the 10K resistor output bit, single ended mode
-	ADCSRA = _BV(ADEN) | _BV(ADPS2) | _BV(ADATE) | _BV(ADPS1);// enable ADC, auto trigger enable, prescaler = 64 (ADC clock ~= 125kHz)
-	ADCSRB = _BV(ADTS2) | _BV(ADTS0);	// start conversion on timer 0 compare match B, unipolar input mode
+	ADMUX = (uint8_t)AdcDuet3K6OutputChan | (REFVCC);// select the 10K resistor output bit, single ended mode
+	ADCSRA = _BV(ADEN) | _BV(ADATE) | _BV(ADPS2) | _BV(ADPS1) | _BV(ADPS0);// enable ADC, auto trigger enable, prescaler = 64 (ADC clock ~= 125kHz)
+	ADCSRB = _BV(ADTS1) | _BV(ADTS0);	// start conversion on timer 0 compare match B, unipolar input mode
 	tickCounter = 0;
 	interrupts();
+
 	
 	// Determine whether to provide a digital output or a 4-state output, or to calibrate the sensor.
 	// We do this by checking to see whether the connected electronics provided a pullup resistor on the output.
@@ -251,7 +249,7 @@ void setup(void)
 	// Wait a while before we do this test, so that Duet firmware has a chance to turn the internal pullup (50K to 150K) off,
 	// and Arduino/RAMPS firmware has a chance to turn the internal pullup (20K to 50K) on.
 	SetOutputOff();
-	DDRB &= ~_BV(PortBDuet3K6OutputBit);	// set the pin to an input, pullup disabled because output is off
+	PortDIR &= ~_BV(Duet3K6OutputBit);	// set the pin to an input, pullup disabled because output is off
 	
 	DelayTicks(4u);
 	running = true;	// start collecting readings
@@ -278,15 +276,14 @@ void setup(void)
 	running = false;			// stop collecting readings
 	
 	// Change back to normal operation mode
-	ADMUX = (uint8_t)AdcPhototransistorChan | (1 << REFS1);// select ADC input from phototransistor, single ended mode, 1.1V reference
-	DDRB |= _BV(PortBDuet3K6OutputBit);	// set the pin back to being an output
+	ADMUX = (uint8_t)AdcPhototransistorChan | (REF1V1);// select ADC input from phototransistor, single ended mode, 1.1V reference
+	PortDIR |= _BV(Duet3K6OutputBit);	// set the pin back to being an output
 
 	// Readings have been collected into all three of nearData, farData, and offData.
 	// We are looking for a pullup resistor of no more than 160K on the output to indicate that we should use a digital output.
 	
 #if SUPPORT_CALIBRATION
 	totalSum = offData.sum + nearData.sum + farData.sum;
-	uint8_t flashesToGo;
 
 	if (inProgrammingSeq && totalSum >= cyclesAveragedIR * 900u * 3u)
 	{
@@ -307,7 +304,7 @@ void setup(void)
 		
 		if (locNearSum >= rangeUpThreshold * cyclesAveragedIR || locFarSum >= rangeUpThreshold * cyclesAveragedIR)
 		{
-			ADMUX &= ~(1 << REFS1);		// switch to low sensitivity (voltage reference is VCC)
+			ADMUX = (uint8_t)AdcPhototransistorChan | (REFVCC);		// switch to low sensitivity (voltage reference is VCC)
 			running = true;
 			DelayTicks(8u * cyclesAveragedIR + 4);
 			running = false;
@@ -346,7 +343,7 @@ void setup(void)
 #else
 	const uint16_t totalSum = offData.sum + nearData.sum + farData.sum;
 	digitalOutput = totalSum >= (3000UL * cyclesAveragedIR * 1024UL * 3u)/(160000UL + 3000UL);
-	uint8_t flashesToGo = (digitalOutput) ? 2u : 4u;
+	flashesToGo = (digitalOutput) ? 2u : 4u;
 #endif
 	
 	// Flash the LED the appropriate number of times
@@ -367,6 +364,13 @@ void setup(void)
 	DelayTicks(4u * cyclesAveragedIR + 2);
 }
 
+int every100() {
+    static uint16_t x= 0;
+    const uint16_t t = GetTicks();
+    if (t - x  > 1000) { x = t; return 1; }
+    return 0;
+}
+
 void loop()
 {
 	KickWatchdog();
@@ -375,18 +379,18 @@ void loop()
 	const uint16_t locFarSum = farData.sum;
 	const uint16_t locOffSum = offData.sum;
 	interrupts();
-		
+
 	// See if we need to switch the sensitivity range
 	const bool highSense = (ADMUX & (1 << REFS1)) != 0;
 	if (highSense && (locNearSum >= rangeUpThreshold * cyclesAveragedIR || locFarSum >= rangeUpThreshold * cyclesAveragedIR)) {
-		ADMUX &= ~(1 << REFS1);	// switch to low sensitivity (voltage reference is VCC)
+		ADMUX = (uint8_t)AdcPhototransistorChan | (REFVCC);	// switch to low sensitivity (voltage reference is VCC)
 #if RANGE_DEBUG
 		SetOutputOn();		// so we can see when it changes range
 #endif
 		DelayTicks(4 * cyclesAveragedIR + 3);
 		return;
 	} else if (!highSense && locNearSum < rangeDownThreshold * cyclesAveragedIR && locFarSum < rangeDownThreshold * cyclesAveragedIR) {
-		ADMUX |= (1 << REFS1);	// switch to high sensitivity (voltage reference is 1.1V)
+		ADMUX = (uint8_t)AdcPhototransistorChan | (REF1V1);	// switch to high sensitivity (voltage reference is 1.1V)
 #if RANGE_DEBUG
 		SetOutputOn();		// so we can see when it changes range
 #endif
