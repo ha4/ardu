@@ -41,13 +41,13 @@ const unsigned int Duet3K6OutputBit = 6;
 const uint8_t PortUnusedBitMask = 0;
 
 // Give a G31 reading of about 0
-inline void SetOutputOff(){PortOUT &= ~_BV(Duet3K0OutputBit); PortOUT &= ~_BV(Duet3K6OutputBit);}
+inline void SetOutputOff(){PortOUT &= ~_BV(Duet3K0OutputBit); PortOUT &= ~_BV(Duet3K6OutputBit); digitalWrite(13,0); }
 // Give a G31 reading of about 445 indicating we are approaching the trigger point
-inline void SetOutputApproaching(){ PortOUT &= ~_BV(Duet3K0OutputBit); PortOUT |= _BV(Duet3K6OutputBit);}	
+inline void SetOutputApproaching(){ PortOUT &= ~_BV(Duet3K0OutputBit); PortOUT |= _BV(Duet3K6OutputBit); digitalWrite(13,0); }
 // Give a G31 reading of about 578 indicating we are at/past the trigger point
-inline void SetOutputOn(){ PortOUT |= _BV(Duet3K0OutputBit); PortOUT &= ~_BV(Duet3K6OutputBit); }
+inline void SetOutputOn(){ PortOUT |= _BV(Duet3K0OutputBit); PortOUT &= ~_BV(Duet3K6OutputBit); digitalWrite(13,1); }
 // Give a G31 reading of about 1023 indicating that the sensor is saturating
-inline void SetOutputSaturated(){ PortOUT |= _BV(Duet3K0OutputBit); PortOUT |= _BV(Duet3K6OutputBit); }
+inline void SetOutputSaturated(){ PortOUT |= _BV(Duet3K0OutputBit); PortOUT |= _BV(Duet3K6OutputBit); digitalWrite(13,1); }
 
 // IR parameters. These also allow us to receive a signal through the command input.
 const uint16_t interruptFreq = 8000;						// interrupt frequency. We run the IR sensor at one quarter of this, i.e. 2kHz
@@ -216,13 +216,16 @@ void setup(void)
 	
 	// Enable outputs
 	PortDIR = _BV(NearLedBit) | _BV(FarLedBit) | _BV(Duet3K0OutputBit) | _BV(Duet3K6OutputBit);
-	
+        digitalWrite(13,0);
+        pinMode(13,OUTPUT);
 	interrupts();
 
 	running = false;
 	nearData.init();
 	farData.init();
 	offData.init();
+
+        Serial.begin(115200);
 
 	noInterrupts();
 	// Set up timer 1 in mode 2 (CTC mode)
@@ -379,6 +382,12 @@ void loop()
 	const uint16_t locFarSum = farData.sum;
 	const uint16_t locOffSum = offData.sum;
 	interrupts();
+
+        if (every100()) {
+          Serial.print(locOffSum); Serial.print(' ');
+          Serial.print(locNearSum); Serial.print(' ');
+          Serial.println(locFarSum);
+        }
 
 	// See if we need to switch the sensitivity range
 	const bool highSense = (ADMUX & (1 << REFS1)) != 0;
