@@ -6,32 +6,26 @@ module ring(r1,r2,h1) {
     }
 }
 
-module beams() {
-difference() {
-    
+module beam()
+{
     union() {
-        rotate([0,22.5,0]) translate([0,0,-3]) {
-            cylinder(d=3, h=50, $fs=0.4);
-            translate([0,0,19]) cylinder(d=4.2, h=10, $fs=0.4);
-        }
-        translate([2.5,0,0]) rotate([0,-22.5,0]) translate([0,0,-3]){ 
-            cylinder(d=3, h=50, $fs=0.4);
-            translate([0,0,20]) cylinder(d=4.2, h=10, $fs=0.4);
-        }
-        translate([-2.5,0,0]) rotate([0,-22.5,0]) translate([0,0,-3]){ 
-            cylinder(d=3, h=50, $fs=0.4);
-            translate([0,0,18]) cylinder(d=4.2, h=10, $fs=0.4);
-        }
+        translate([0,0,-3]) cylinder(d=3, h=53, $fs=0.4);
+        translate([0,0,16]) cylinder(d=4.2, h=7, $fs=0.4);
     }
-    
-    translate([0,0,-6]) cube(12,center=true);
 }
+
+module beams(a,dist) {
+    union() {
+        rotate([0,0,0])  beam();
+        translate([0,0,dist/2]) rotate([0,-a,0]) beam();
+        translate([0,0,-dist/2]) rotate([0,-a,0]) beam();
+    }
 }
 
 module block() {
     difference() {
       intersection() {
-        rotate([90,0,0])ring(r1=33,r2=10,h1=6);
+        rotate([90,0,0])ring(r1=33,r2=11,h1=6);
         translate([0,0,14])rotate([0,45,0])cube(20, center=true);
       }
       translate([-30,-15,18])cube([60,20,40]);
@@ -43,10 +37,13 @@ module block() {
 module holder() {
     difference() {
         block();
-        beams();
+        rotate([0,22.5,0])beams(45,5.5);
         translate([0,0,15])rotate([90,0,0])cylinder(d=3.2, h=10,center=true, $fs=0.4);
     }
- }
+}
 
 // translate to print base
-translate([0,0,18])rotate([180,0,0]) holder();
+//translate([0,0,18])rotate([180,0,0])
+holder();
+//difference() { rotate([0,22.5,0])beams(45,5); translate([0,0,-6]) cube(12,center=true); }
+
