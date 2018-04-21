@@ -11,14 +11,14 @@ const uint8_t digs[] = {
   0b1111011  // 9
 };  
 
-const uint8_t ledpin[] = /* a..g */ {  3, 4, 5, 6, 7, 8, 9 };
+const uint8_t ledpin[] = /* h,a..g */ {2, 3, 4, 5,   6, 7, 8, 9};
 
 uint8_t disp[4];
 static int cnt;
   
 void setup()
 {
-  disp[0]=digs[0];
+  disp[0]=digs[0]|0x80;
   disp[1]=digs[1];
   disp[2]=digs[2];
   disp[3]=digs[3];
@@ -36,15 +36,34 @@ bool every300() {
   return 0;
 }
 
+void scanpin(const uint8_t c, const uint8_t p, const uint8_t x, const uint8_t s)
+{
+      if (c == p) { pinMode(p, OUTPUT); digitalWrite(p, 0); }
+      else {
+        if (x & s) { pinMode(p, OUTPUT); digitalWrite(p, 1); }
+        else pinMode(p, INPUT_PULLUP);
+      }
+}
+
+void scanner() {
+  static uint8_t d = 0;
+  if (d > 8) d = 0;
+  const uint8_t x = disp[d&3] & ((d&4)?0xF0:0x0F);
+  const uint8_t c = ledpin[d];  
+  for(uint8_t i=0, s=0b10000000; s; i++, s>>=1)
+      scanpin(c,ledpin[i],x,s);  
+  d++;
+}
+
 void loop()
 {
-  for(uint8_t i=0, s=0b1000000; s; i++, s>>=1)
-    digitalWrite(ledpin[i], (disp[0] & s)?1:0);
+  scanner(); delay(1);
   if (every300()) {
-    cnt++; if (cnt > 9) cnt = 0;
-    disp[0]=digs[cnt];
-    disp[1]=digs[9-cnt];
-    disp[2]=digs[(cnt+1)%10];
-    disp[3]=digs[(cnt+2)%10];
+    cnt++; if (cnt > 99) cnt = 0;
+    const uint8_t d = disp[0]&0x80;
+    disp[0]=digs[cnt/10] | (disp[1]&0x80);
+    disp[1]=digs[cnt%10] | (disp[2]&0x80);
+    disp[2]=digs[(99-cnt)/10] | (disp[3]&0x80);
+    disp[3]=digs[(99-cnt)%10] | d;
   }
 }
