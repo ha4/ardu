@@ -11,7 +11,11 @@ const uint8_t digs[] = {
   0b1111011  // 9
 };  
 
+#if defined(__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) || defined(__AVR_ATtiny84__)
+const uint8_t ledpin[] = /* h,a..g */ {7, 8, 9, 10,  3, 2, 1, 0};
+#else
 const uint8_t ledpin[] = /* h,a..g */ {2, 3, 4, 5,   6, 7, 8, 9};
+#endif
 
 uint8_t disp[4];
 static int cnt;
