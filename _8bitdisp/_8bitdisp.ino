@@ -3,7 +3,7 @@
 uint8_t disp[4];
 
 const uint8_t addr = 0x6f;
-const uint8_t div1khz = 124; // FOSC/64/1000-1
+const uint8_t div1khz = F_CPU/64/1000-1; // FOSC/64/1000-1
 
 #if defined(__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) || defined(__AVR_ATtiny84__)
 
@@ -60,16 +60,29 @@ ISR(INTVEC)
 void timer_setup()
 {
   noInterrupts(); // Set up timer 1 in mode 2 (CTC mode)
-  GTCCR = 0;
-  TCCR0B = 0;			// set the mode, clock stopped for now
+//  GTCCR = 0;
+//  TCCR0B = 0;			// set the mode, clock stopped for now
   TCNT0 = 0;
-  OCR0A = div1khz;
-  TIFR0 = _BV(OCF0A);	// clear any pending interrupt
-  TIMSK0 = _BV(OCIE0A);	// enable the timer 0 compare match B interrupt
+  TIFR0 |= _BV(OCF0A);	// clear any pending interrupt
+  TIMSK0 = _BV(OCIE0A);	// enable the timer 0 compare match interrupt
   TCCR0A = 0b00000010;	// no direct outputs, mode 2 wgm[2:0]=010
+  OCR0A = div1khz; // why it here, not understand,  but it works only after TCCR0A set
   TCCR0B = 0b00000011;	// start the clock, prescaler = 64
   interrupts();
 }
+
+uint16_t bcd(uint8_t b) 
+{
+  uint16_t c;
+  uint8_t n;
+  for(c=0, n=0; n < 8; n++) {
+   if ((c&0x0f) >= 0x05) c+=0x03;
+   if ((c&0xf0) >= 0x50) c+=0x30;
+   c<<=1; if(b&0x80) c++; b<<=1;
+  }
+  return c;
+}
+
 
 
 static int cnt = 0;
@@ -88,18 +101,28 @@ const uint8_t digs[] = {
 
 void demo()
 {
-    cnt++; if (cnt > 99) cnt = 0;
+    cnt++; //if (cnt > 99) cnt = 0;
     const uint8_t d = disp[0]&0x80;
+    uint16_t y=(uint16_t)TCNT0;
+    uint16_t x = bcd(cnt);
+   /* 
     disp[0]=digs[cnt/10] | (disp[1]&0x80);
     disp[1]=digs[cnt%10] | (disp[2]&0x80);
     disp[2]=digs[(99-cnt)/10] | (disp[3]&0x80);
     disp[3]=digs[(99-cnt)%10] | d;
+    */
+    disp[0]=digs[0] | (disp[1]&0x80);
+    disp[1]=digs[x>>8] | (disp[2]&0x80);
+    disp[2]=digs[(x>>4)&15] | (disp[3]&0x80);
+    disp[3]=digs[x&15] | d;
 }
 
 
 bool every300() {
   static uint16_t t0=0;
-  uint16_t t=cntr1k;
+  noInterrupts();
+  uint16_t t=cntr1k;//millis();
+  interrupts();
   if (t-t0 > 300) { t0=t; return 1; }
   return 0;
 }
@@ -116,9 +139,7 @@ void setup()
 
 void loop()
 {
-//    if(every2())  
-// scanner();
-// delay(1);
+// scanner(); delay(1);
 if (every300()) demo();
 //  if (usiTwiDataInReceiveBuffer()) usiTwiReceiveByte();
 }
