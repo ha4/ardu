@@ -6,6 +6,8 @@ const uint8_t addr = 0x6f;
 const uint8_t div1khz = 124; // FOSC/64/1000-1
 
 #if defined(__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) || defined(__AVR_ATtiny84__)
+
+#define INTVEC TIM0_COMPA_vect
 // const uint8_t ledpin[] = /* h,a..g */ {7, 8, 9, 10,  3, 2, 1, 0};
 volatile uint8_t d = 0;
 volatile uint8_t c = 0;
@@ -20,7 +22,11 @@ void scanner()
   DDRB = (DDRB & 0xF8) | (((x | c)>>4) & 7);
   d++; c>>=1;
 }
+
 #else
+
+#define INTVEC TIMER0_COMPA_vect
+
 const uint8_t ledpin[] = /* h,a..g */ {2, 3, 4, 5,   6, 7, 8, 9};
 
 void scanpin(const uint8_t c, const uint8_t p, const uint8_t x, const uint8_t s)
@@ -43,24 +49,25 @@ void scanner() {
 }
 #endif
 
-volatile uint32_t cntr1k=0;
+volatile uint16_t cntr1k=0;
+
+ISR(INTVEC)
+{
+  scanner();
+  cntr1k++;
+}
 
 void timer_setup()
 {
   noInterrupts(); // Set up timer 1 in mode 2 (CTC mode)
-//  GTCCR = 0;
-  TCCR0B = 0;				// set the mode, clock stopped for now
+  GTCCR = 0;
+  TCCR0B = 0;			// set the mode, clock stopped for now
   TCNT0 = 0;
   OCR0A = div1khz;
-  OCR0B = 0;
-  TIFR0 = _BV(OCF0A);			// clear any pending interrupt
-  TIMSK0 = _BV(OCIE0A);			// enable the timer 0 compare match A interrupt
-
-//s  TIFR0 = _BV(TOIE0);			// clear any pending interrupt
-//  TIMSK0 = _BV(TOV0);			// enable the timer 0 compare match A interrupt
-  
-  TCCR0A = _BV(WGM01);			// no direct outputs, mode 2
-  TCCR0B = _BV(CS01)|_BV(CS00);	// start the clock, prescaler = 64
+  TIFR0 = _BV(OCF0A);	// clear any pending interrupt
+  TIMSK0 = _BV(OCIE0A);	// enable the timer 0 compare match B interrupt
+  TCCR0A = 0b00000010;	// no direct outputs, mode 2 wgm[2:0]=010
+  TCCR0B = 0b00000011;	// start the clock, prescaler = 64
   interrupts();
 }
 
@@ -96,12 +103,6 @@ bool every300() {
   if (t-t0 > 300) { t0=t; return 1; }
   return 0;
 }
-bool every2() {
-  static uint16_t t02=0;
-  uint16_t t=cntr1k;
-  if (t-t02 > 2) { t02=t; return 1; }
-  return 0;
-}
 
 void setup()
 {
@@ -109,22 +110,17 @@ void setup()
   disp[1]=0xff;
   disp[2]=0;
   disp[3]=0x80;
-  usiTwiSlaveInit(addr);
-//  timer_setup();
+//  usiTwiSlaveInit(addr);
+  timer_setup();
 }
 
 void loop()
 {
 //    if(every2())  
- scanner();
-/// delay(1);
-//  if (every300()) demo();
+// scanner();
+// delay(1);
+if (every300()) demo();
 //  if (usiTwiDataInReceiveBuffer()) usiTwiReceiveByte();
 }
 
-ISR(TIMER0_COMPA_vect)
-{
-  // scanner();
-  cntr1k++;
-}
 
