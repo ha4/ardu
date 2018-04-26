@@ -87,34 +87,32 @@ uint16_t bcd(uint8_t b)
 
 static int cnt = 0;
 const uint8_t digs[] = {
-  0b1111110, // 0 abcdefg
-  0b0110000, // 1
-  0b1101101, // 2
-  0b1111001, // 3
-  0b0110011, // 4
-  0b1011011, // 5
-  0b1011111, // 6
-  0b1110000, // 7
-  0b1111111, // 8
-  0b1111011  // 9
+  0b1111110, // 0 7E abcdefg
+  0b0110000, // 1 30
+  0b1101101, // 2 6D
+  0b1111001, // 3 79
+  0b0110011, // 4 33
+  0b1011011, // 5 5B
+  0b1011111, // 6 5F
+  0b1110000, // 7 70
+  0b1111111, // 8 7F
+  0b1111011  // 9 7B
 };
 
 void demo()
 {
-    cnt++; //if (cnt > 99) cnt = 0;
-    const uint8_t d = disp[0]&0x80;
-    uint16_t y=(uint16_t)TCNT0;
-    uint16_t x = bcd(cnt);
+    uint16_t x = bcd(addr);
+    disp[3]=digs[x&15]; x>>=4;
+    disp[2]=(x)?digs[x&15]:0; x>>=4;
+    disp[1]=(x)?digs[x]:0;
+    disp[0]=0;
    /* 
+    static uint8_t cnt = 0;
     disp[0]=digs[cnt/10] | (disp[1]&0x80);
     disp[1]=digs[cnt%10] | (disp[2]&0x80);
     disp[2]=digs[(99-cnt)/10] | (disp[3]&0x80);
     disp[3]=digs[(99-cnt)%10] | d;
     */
-    disp[0]=digs[0] | (disp[1]&0x80);
-    disp[1]=digs[x>>8] | (disp[2]&0x80);
-    disp[2]=digs[(x>>4)&15] | (disp[3]&0x80);
-    disp[3]=digs[x&15] | d;
 }
 
 
@@ -129,19 +127,31 @@ bool every300() {
 
 void setup()
 {
-  disp[0]=0x80;
-  disp[1]=0xff;
+  disp[0]=0;
+  disp[1]=0;
   disp[2]=0;
   disp[3]=0x80;
-//  usiTwiSlaveInit(addr);
+  usiTwiSlaveInit(addr);
   timer_setup();
+  demo();
+  while(!every300());
+  disp[0]=0;
+  disp[1]=0;
+  disp[2]=0;
+  disp[3]=0;
 }
+
+static uint8_t ptr = 0;
 
 void loop()
 {
 // scanner(); delay(1);
-if (every300()) demo();
-//  if (usiTwiDataInReceiveBuffer()) usiTwiReceiveByte();
+// if (every300()) demo();
+ if (usiTwiDataInReceiveBuffer()) {
+   if (usiTwiDataStart()) ptr = 0;
+   if (ptr < 4) disp[ptr++]=usiTwiReceiveByte();
+   else usiTwiReceiveByte();
+ }
 }
 
 
