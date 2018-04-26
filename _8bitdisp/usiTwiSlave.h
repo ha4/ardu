@@ -40,7 +40,7 @@ void usiTwiSlaveInit(uint8_t ownAddress);
 void    usiTwiTransmitByte(uint8_t data);
 uint8_t usiTwiReceiveByte(void);
 bool    usiTwiDataInReceiveBuffer(void);
-
+bool    usiTwiDataStart(void);
 
 // permitted RX buffer sizes: 1, 2, 4, 8, 16, 32, 64, 128 or 256
 
