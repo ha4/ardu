@@ -406,7 +406,7 @@ bool usiTwiDataStart(void)
 {
   if (beginState) {
     beginState = 0;
-    return 0;
+    return 1;
   }
   else return 0;
 }
