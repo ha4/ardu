@@ -1,5 +1,6 @@
 #include "usiTwiSlave.h"
 
+static uint8_t ptr = 0;
 uint8_t disp[4];
 
 const uint8_t addr = 0x6f;
@@ -99,13 +100,21 @@ const uint8_t digs[] = {
   0b1111011  // 9 7B
 };
 
-void demo()
+void dispbcd(uint8_t n)
 {
-    uint16_t x = bcd(addr);
-    disp[3]=digs[x&15]; x>>=4;
-    disp[2]=(x)?digs[x&15]:0; x>>=4;
+    uint16_t x = bcd(n);
+
+    disp[3]=digs[x&15];
+    x>>=4;
+    disp[2]=(x)?digs[x&15]:0;
+    x>>=4;
     disp[1]=(x)?digs[x]:0;
     disp[0]=0;
+}
+
+void demo()
+{
+  dispbcd(addr);
    /* 
     static uint8_t cnt = 0;
     disp[0]=digs[cnt/10] | (disp[1]&0x80);
@@ -141,7 +150,6 @@ void setup()
   disp[3]=0;
 }
 
-static uint8_t ptr = 0;
 
 void loop()
 {
@@ -149,8 +157,8 @@ void loop()
 // if (every300()) demo();
  if (usiTwiDataInReceiveBuffer()) {
    if (usiTwiDataStart()) ptr = 0;
-   if (ptr < 4) disp[ptr++]=usiTwiReceiveByte();
-   else usiTwiReceiveByte();
+   const uint8_t v=usiTwiReceiveByte();
+   if (ptr < 4) disp[ptr++]=v;
  }
 }
 
