@@ -1,0 +1,84 @@
+
+<html>
+<body>
+<h2 class="wsite-content-title" style="text-align:left;">Calculating the dose on the SBM 20</h2>
+<em><u><span id="selectionBoundary_1420281095238_920799566898495" class="rangySelectionBoundary" style="line-height: 0; display: none;">﻿</span>The Roengten to Gray (or Sievert) "conversion"</u></em><br>
+<span id="selectionBoundary_1420281095238_8751127910800278" class="rangySelectionBoundary" style="line-height: 0; display: none;">﻿</span><br>
+The problem initially is that the datasheet of the SBM20 gives the number which can be used for dose calculations in a legacy unit mR.&nbsp;<br>
+<br>
+Roengten is the measure of ionization in AIR and not in tissue or other material for x rays and gamma rays in the few MeV range. It is the charge produced by ionization divided by the mass of air. In SI units this would be expressed as Coulombs/kg. According to the international conventions 1 Roengten = 2.58 x 10^-4 C/kg (this is the calculation used by the NIST and the EU).&nbsp;<br>
+<br>
+T<strong>his is an entirely different unit to the dose units (joules/kg) of today.</strong> Which are absorbed energy/mass in the first order of approximation so to speak.<br>
+<br>
+So how do you convert? Well, <strong>you can not convert in the mathematical sense</strong>, contrary to the popular belief.<br>
+<br>
+What can you do?&nbsp;<br>
+<br>
+Now this is the sort of thing people do, but usually without realizing the limitations of this.<br>
+<br>
+<span style="line-height: 1.5; background-color: initial;">Since the Roengten is defined as the ionization produced in air by x rays and gamma rays in the few MeV range (that is luckily our range)<a href="http://en.wikipedia.org/wiki/Roentgen_%28unit%29" title="">international organisations have said</a> that this is equal to 8.77 mGy (1Gy = 1 J/kg) absorbed dose in AIR (1 Sv = 1 J/kg, too, but it's different see below). Now we have a sort of "conversion" from Roengten to Gy for a certain material for a certain type of radiation. This number is 9.6 for human tissue for X-Rays and gamma rays in the few MeV range, but this is in Gy not in Sv!!!</span><br>
+<br>
+<span style="line-height: 1.5; background-color: initial;">This is the number you can change in the settings.py.</span><br>
+<br>
+Do you wonder why my display does not say Sievert? Although 1 Sv = 1 J/kg = 1Gy, but Gy does not take into account the biological effect, whereas Sv does. We simply usually don't know what sort of radiation we measure with the GM tube and what the radiation weighing factor of that is. You'll have to know this if you wanted to convert to Sieverts.<br>
+<br>
+However there's another complication if you wanted ANY dose measurements with a Geiger Müller tube. Here it comes.<br>
+<br>
+<em><u>Sensitivity of the GM tube or THE FLUX TO DOSE "CONVERSION"</u></em><br>
+<br>
+This is the feature of the GM tube, this is found in the datasheet and it is not to be confused with the Roengten - Gray conversion. This tells you what the ionizing effect of a <strong>certain count rate</strong> measured by the GM tube is for a certain type of radiation. <em>This has nothing to do with the R - Gy or Sv business.&nbsp;</em><br>
+<br>
+The estimation for my detector. The datasheet says that for Ra-226 the ionization measured by the SBM20 is 1 mR/h for 29 counts per second for gamma. For Co-60 the same number is 22 CPS. I used 24 cps/mR/h as an overall estimate based on the fact that only higher energy particles will enter the lead block, and the Co-60 gammas (<a href="http://en.wikipedia.org/wiki/Cobalt-60" title="">1.17 MeV and 1.33 MeV</a>) are typically the double of the energy of the Ra-226 gammas (typically 609 keV, but there's a large range of them). However, some lower energies will hit the tubes on the top, too. This is strictly an estimate at this point, it would require further research to estimate this more accurately.&nbsp;<a href="http://www.bio-conferences.org/articles/ndata/pdf/2007/01/ndata07122.pdf" title="">To get the full picture of Ra-226 gammas look at the table on p78 in this article.</a> That is 1440 cpm/mR/h.<br>
+<br>
+Anyway, knowing your source and equipment you can change this in settings.py for each tube / signal source therefore achieving a much more accurate dose measurement using this program on the Raspberry Pi.<br>
+<br>
+<strong><u>What are the limitations here? Why does this program display uGy and not uSv?<br></u></strong><br>
+The limitations are quite substantial, actually. There are two non mathematical conversions involved in here. The one is the R to Gy and the other one is from CPM to R.<br>
+<br>
+The conversion factor you used to convert from Roengten to Gray (or even worse Sievert), <strong>ideally has to be for the same type of radiation and the same material as the conversion rate you used for CPM to R</strong>. This R to Gy is an experimental conversion for certain radiations and materials, not a conversion similar to from m to mm for instance. So in other words it's not a mathematical conversion.&nbsp;<br>
+<br>
+<u><strong>Formulae</strong></u><br>
+<br>
+To sum it up, here are calculations to enlighten the difference between mR/h, uGy/h and uSv/h.<br>
+<br>
+sensitivity is expressed in CPS/mR/h - this is what you get from the GM datasheet<br>
+for 30 CPM and for SBM20 with Co-60 gamma = 22 CPS/mR/h (you can't just use this you'll have think what factor you use, you can't just take the average of the sensitivites if more given, either)<br>
+<br>
+Ionization effect only in air (mR/h) = ( CPM/60 ) / sensitivity<br>
+<span style="line-height: 1.5; background-color: initial;">Ionization effect = ( 30 / 60 ) / 22 =&nbsp;0.0227 mR/h</span><br>
+&nbsp;<br>
+Dose (uGy/h) = ("conversion" factor from mR to uGy) * ionization effect in air<br>
+This dose is called the <em>absorbed dose</em> and this does not take any biological effects into account.<br>
+<br>
+for air it would be using the example above<br>
+Dose (uGy / h) = 8.77 * 0.0227 =&nbsp;0.199 uGy/h<br>
+for tissue<br>
+Dose (uGy / h) = 9.6 * 0.0227 =&nbsp;0.218 uGy/h<br>
+<br>
+in Sieverts for gamma for human tissue<br>
+<span style="line-height: 1.5; background-color: initial;">Dose (uSv/h) = (</span><a href="http://www.euronuclear.org/info/encyclopedia/r/radiation-weight-factor.htm" title="" style="line-height: 1.5; background-color: initial;">radiation weighing factor</a><span style="line-height: 1.5; background-color: initial;">) *&nbsp;("conversion" factor from mR to uGy) * ionization effect in air</span><br>
+This is called the <em>equivalent dose</em> and it does take the biological effect of different types of radiation into account.<br>
+<br>
+<span style="line-height: 1.5; background-color: initial;">This is derived from the ionization effect in air not in human tissue... That's why people don't like these conversions from Roengten to Sv, and this is why it was changed on an international level.</span><span style="line-height: 1.5; background-color: initial;"><br></span><br>
+<span style="line-height: 1.5; background-color: initial;">Anyway, if you really want to proceed... The radiation weighing factor for gamma is 1.</span><br>
+Dose (uSv / h) = 1 * 9.6 * 0.0227 =&nbsp;0.218 uSv/h<br>
+You got lucky, huh? The uSv/h is the same as the uGy/h for gamma. So what's the fuss about. Part of it is that Roengten is only in air, this is an inherent weakness, but here comes the big bang.<br>
+<br>
+Let's assume we have alpha (of course the GM tube's sensitivity is given in Co-60 gamma equivalent, so using this for alpha is not a wise thing to do, however just for the sake of the example, I carry on.) The radiation weighing factor is 20 not 1, whoooops.<br>
+<br>
+Dose (uSv/h) = 20&nbsp;<span style="line-height: 1.5; background-color: initial;">* 9.6 * 0.0227 =&nbsp;</span><span style="background-color: initial;">4.358 uSv/h and your counter which doesn't know this happily displays 0.218 uSv/h.</span><br>
+<br>
+Another example with LND 712<br>
+<br>
+Dose (uSv/h) = (<a href="http://www.euronuclear.org/info/encyclopedia/r/radiation-weight-factor.htm" title="" style="">radiation weighing factor</a>) *&nbsp;<span style="">(conversion factor from mR to uGy) * ( (CPM/60) / sensitivity )</span><br>
+<span style="">Eg. Dose for an alpha source for LND 712 for 30 CPM using Co-60 gamma = 18 CPS/mR/h :&nbsp;</span><br>
+Dose (uSv / h) = 20 * 8.77 * ( ( 30 / 60 ) / 18 )&nbsp;<br>
+Whereas dose in uGy / h is only&nbsp;<span style="">8.77 * ( ( 30 / 60 ) / 18 ) note there's a 20 TIMES DIFFERENCE!!!!</span><br>
+<br>
+To calculate the <em>effective dose</em>, or <em>committed dose</em> you'd have to take the tissue weighing factor, the absorption factor of the certain tissue or location into account. <a href="http://en.wikipedia.org/wiki/Effective_dose_(radiation)" title="" style="">See here</a>.<br>
+<br>
+<strong>To measure the dose properly</strong> you'd have to use a calorimeter which measures the energy of radiation. In contrast to the flux of the particles what the GM tube measures. The capability of GM tubes in measuring dose are very limited.<br>
+<br>
+<br>
+</body>
+</html>

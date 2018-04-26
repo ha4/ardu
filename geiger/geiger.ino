@@ -153,6 +153,11 @@ float pulse_new(uint32_t dt)
 }
 */
 
+/*
+http://www.muonhunter.com/blog/category/raspberry-pi/2  Calculating the dose on the SBM 20
+
+*/
+
 void gm_counter()
 {
     float cpm,urph,usvph;
