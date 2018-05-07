@@ -1,10 +1,16 @@
-
-#define SUPPORT_CALIBRATION	(0)
+#include <Arduino.h>
 /* set nonzero to flash LED when it changes range */
 #define RANGE_DEBUG /* SetOutputOn() */
 #define ACTIVE_LOW  (1)
+#define SERIALPIN 3
 
 #if defined(__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)
+
+#if defined(SERIALPIN)
+#include "SerialSend.h"
+#define SERIALPORT mySerial
+SerialSend mySerial(SERIALPIN);
+#endif
 	
 /* 
   Pin assignments tiny25:
@@ -48,6 +54,10 @@ const uint8_t PortUnusedBitMask = 0;
 #else
 
 /* Arduino Uno */
+#if defined(SERIALPIN)
+#define SERIALPORT Serial
+#endif
+
 #define PortOUT PORTD
 #define PortDIR DDRD
 #define RegTI  TIFR0
@@ -164,7 +174,6 @@ public:
 
 IrData nearData, farData, offData;
 
-	
 /*
   General variables
  */
@@ -251,6 +260,14 @@ ISR(TIMER0_COMPA_vect)
 	++tickCounter;
 }
 
+#if defined(SERIALPORT)
+void
+serial_init()
+{
+	PortDIR &= ~_BV(Duet3K6OutputBit); /* pin to an input, no interfere with serial */
+	SERIALPORT.begin(9600);
+}
+#endif
 
 /*
   Get the tick counter from outside the ISR.
@@ -449,8 +466,11 @@ setup(void)
 	tickCounter = 0;
 	interrupts();
 
+#if defined(SERIALPORT)
+	serial_init();
+#else
 	check_mode();
-
+#endif
 	/* start collecting the data */
 	clearAll();
 	running = true;
@@ -458,16 +478,44 @@ setup(void)
 }
 
 int 
-every100()
+every300()
 {
 	static uint16_t x= 0;
 	const uint16_t t = GetTicks();
-	if(t - x  > 1000){
+	if(t - x  > 300){
 		x = t;
 		return 1;
 	}
 	return 0;
 }
+
+
+#if defined(SERIALPORT)
+
+void
+printword(uint16_t v)
+{
+	uint8_t b[5];
+
+	/* bcd conversion */  
+	for(uint8_t z=5; z;)
+		b[--z]=0;
+	for(uint8_t n=16; n--;){
+		for(uint8_t z=5; z;){
+			if(b[--z] >= 5) b[z] += 3;
+			if (b[z]&8) b[z+1]++;
+			b[z]=(b[z]<<1)&15;
+		}
+		if(v&0x8000) b[0]++;
+		v <<= 1;
+	}
+
+	/* printout */
+	for(uint8_t z=5,f=0; z;)
+		if(b[--z] || f) f=SERIALPORT.write('0'+b[z]);
+}
+
+#endif
 
 void
 loop()
@@ -479,14 +527,6 @@ loop()
 	const uint16_t locFarSum = farData.sum;
 	const uint16_t locOffSum = offData.sum;
 	interrupts();
-
-/*
-	if (every100()) {
-		Serial.print(locOffSum); Serial.print(' ');
-		Serial.print(locNearSum); Serial.print(' ');
-		Serial.println(locFarSum);
-	}
-*/
 
 	const bool highSense = IS_HIGHSENSE(ADMUX);
 	if(highSense && (locNearSum >= rangeUpThr || locFarSum >= rangeUpThr)){
@@ -503,6 +543,21 @@ loop()
 		DelayTicks(4 * cyclesAveragedIR + 3);
 		return;
 	}
+
+
+#if defined(SERIALPORT)
+
+	if (every300()) {
+		printword(locOffSum);
+		SERIALPORT.write(' ');
+		printword(locNearSum);
+		SERIALPORT.write(' ');
+		printword(locFarSum);
+		SERIALPORT.write('\r');
+		SERIALPORT.write('\n');
+	}
+
+#else
 
 	/*
           We only report saturation when both readings are in the saturation zone.
@@ -534,7 +589,9 @@ loop()
 		SetOutputApproaching();
 	else
 		SetOutputOff();
+#endif
 }
+
 
 
 
