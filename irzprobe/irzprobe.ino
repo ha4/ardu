@@ -2,7 +2,7 @@
 /* set nonzero to flash LED when it changes range */
 #define RANGE_DEBUG /* SetOutputOn() */
 #define ACTIVE_LOW  (1)
-#define SERIALPIN 3
+//#define SERIALPIN 3
 
 #if defined(__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)
 
@@ -482,7 +482,7 @@ every300()
 {
 	static uint16_t x= 0;
 	const uint16_t t = GetTicks();
-	if(t - x  > 300){
+	if(t - x  > 2666){
 		x = t;
 		return 1;
 	}
