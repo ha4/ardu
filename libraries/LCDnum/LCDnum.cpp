@@ -28,18 +28,14 @@ void LCDnum::refresh(uint8_t flash_clk)
   uint8_t x;
   int8_t  i;
   x = digitalRead(_base_pin)?0:0xff;
+  digitalWrite(_cs_pin, 0);
   if(_flag & LCDN_LEFT)
    for(i=LCDN_MIN;i<=LCDN_MAX;i++)
 	spi_send(_data[i] ^ x);
   else
    for(i=LCDN_MAX;i>=LCDN_MIN;i--)
 	spi_send(_data[i] ^ x);
-  if (_cs_pin != _base_pin || x == 0) {
-	  digitalWrite(_cs_pin, 0);
-	  digitalWrite(_cs_pin, 0);
-	  digitalWrite(_cs_pin, 1);
-	  digitalWrite(_cs_pin, 1);
-  }
+  digitalWrite(_cs_pin, 1);
   digitalWrite(_base_pin, x & 1);
 }
 
@@ -113,6 +109,17 @@ static uint8_t _numidx[] = {
 static uint8_t _alphidx[] = {
 	LCDN_A, LCDN_B, LCDN_C, LCDN_D, LCDN_E, LCDN_F,
 };
+
+size_t LCDnum::vwrite(const uint8_t *buffer, size_t size)
+{
+	uint8_t    a;
+	if (buffer==0) return 0;
+	if (size < 0) size=0;
+	if (size > 4) size=4;
+	a=size;
+	for(;a--;) _data[a]=buffer[a];
+	return size;
+}
 
 inline size_t LCDnum::write(uint8_t value) {
   switch(value) {

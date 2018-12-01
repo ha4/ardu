@@ -70,6 +70,8 @@ public:
   void autoscroll(), noAutoscroll();
 //  void createChar(uint8_t, uint8_t);
   virtual size_t write(uint8_t);
+  size_t vwrite(const uint8_t *buffer, size_t size);
+
   using Print::write;
 
 private:
