@@ -1,5 +1,5 @@
 #include <Wire.h>
-#include "MAX30105.h"
+//#include "MAX30105.h"
 
 #define FreqS 25   //sampling frequency
 #define led 13
@@ -10,35 +10,390 @@ void stream_ir(int32_t ir, int32_t r);
 void zlocs();
 bool store_pulse(int32_t x, int32_t r, int32_t ir);
 void calc_hr_spo2();
+void printNum(unsigned long n);
+uint16_t bcd8(uint8_t b);
+uint16_t bcd16(uint16_t w);
+uint32_t bcd24(uint32_t w);
+void printBcd(uint32_t n);
 
-MAX30105 particleSensor;
+#define MAX30105_ADDRESS          0x57 //7-bit I2C Address
+
+// Status Registers
+static const uint8_t MAX30105_INTSTAT1 =    0x00;
+static const uint8_t MAX30105_INTSTAT2 =    0x01;
+static const uint8_t MAX30105_INTENABLE1 =    0x02;
+static const uint8_t MAX30105_INTENABLE2 =    0x03;
+
+// FIFO Registers
+static const uint8_t MAX30105_FIFOWRITEPTR =  0x04;
+static const uint8_t MAX30105_FIFOOVERFLOW =  0x05;
+static const uint8_t MAX30105_FIFOREADPTR =   0x06;
+static const uint8_t MAX30105_FIFODATA =    0x07;
+
+// Configuration Registers
+static const uint8_t MAX30105_FIFOCONFIG =    0x08;
+static const uint8_t MAX30105_MODECONFIG =    0x09;
+static const uint8_t MAX30105_PARTICLECONFIG =  0x0A;    // Note, sometimes listed as "SPO2" config in datasheet (pg. 11)
+static const uint8_t MAX30105_LED1_PULSEAMP =   0x0C;
+static const uint8_t MAX30105_LED2_PULSEAMP =   0x0D;
+static const uint8_t MAX30105_LED3_PULSEAMP =   0x0E;
+static const uint8_t MAX30105_LED_PROX_AMP =  0x10;
+static const uint8_t MAX30105_MULTILEDCONFIG1 = 0x11;
+static const uint8_t MAX30105_MULTILEDCONFIG2 = 0x12;
+
+// Die Temperature Registers
+static const uint8_t MAX30105_DIETEMPINT =    0x1F;
+static const uint8_t MAX30105_DIETEMPFRAC =   0x20;
+static const uint8_t MAX30105_DIETEMPCONFIG =   0x21;
+
+// Proximity Function Registers
+static const uint8_t MAX30105_PROXINTTHRESH =   0x30;
+
+// Part ID Registers
+static const uint8_t MAX30105_REVISIONID =    0xFE;
+static const uint8_t MAX30105_PARTID =      0xFF;    // Should always be 0x15. Identical to MAX30102.
+
+// MAX30105 Commands
+// Interrupt configuration (pg 13, 14)
+static const uint8_t MAX30105_INT_A_FULL_MASK =   (byte)~0b10000000;
+static const uint8_t MAX30105_INT_A_FULL_ENABLE =   0x80;
+static const uint8_t MAX30105_INT_A_FULL_DISABLE =  0x00;
+
+static const uint8_t MAX30105_INT_DATA_RDY_MASK = (byte)~0b01000000;
+static const uint8_t MAX30105_INT_DATA_RDY_ENABLE = 0x40;
+static const uint8_t MAX30105_INT_DATA_RDY_DISABLE = 0x00;
+
+static const uint8_t MAX30105_INT_ALC_OVF_MASK = (byte)~0b00100000;
+static const uint8_t MAX30105_INT_ALC_OVF_ENABLE =  0x20;
+static const uint8_t MAX30105_INT_ALC_OVF_DISABLE = 0x00;
+
+static const uint8_t MAX30105_INT_PROX_INT_MASK = (byte)~0b00010000;
+static const uint8_t MAX30105_INT_PROX_INT_ENABLE = 0x10;
+static const uint8_t MAX30105_INT_PROX_INT_DISABLE = 0x00;
+
+static const uint8_t MAX30105_INT_DIE_TEMP_RDY_MASK = (byte)~0b00000010;
+static const uint8_t MAX30105_INT_DIE_TEMP_RDY_ENABLE = 0x02;
+static const uint8_t MAX30105_INT_DIE_TEMP_RDY_DISABLE = 0x00;
+
+static const uint8_t MAX30105_SAMPLEAVG_MASK =  (byte)~0b11100000;
+static const uint8_t MAX30105_SAMPLEAVG_1 =   0x00;
+static const uint8_t MAX30105_SAMPLEAVG_2 =   0x20;
+static const uint8_t MAX30105_SAMPLEAVG_4 =   0x40;
+static const uint8_t MAX30105_SAMPLEAVG_8 =   0x60;
+static const uint8_t MAX30105_SAMPLEAVG_16 =  0x80;
+static const uint8_t MAX30105_SAMPLEAVG_32 =  0xA0;
+
+static const uint8_t MAX30105_ROLLOVER_MASK =   0xEF;
+static const uint8_t MAX30105_ROLLOVER_ENABLE = 0x10;
+static const uint8_t MAX30105_ROLLOVER_DISABLE = 0x00;
+
+static const uint8_t MAX30105_A_FULL_MASK =   0xF0;
+
+// Mode configuration commands (page 19)
+static const uint8_t MAX30105_SHUTDOWN_MASK =   0x7F;
+static const uint8_t MAX30105_SHUTDOWN =    0x80;
+static const uint8_t MAX30105_WAKEUP =      0x00;
+
+static const uint8_t MAX30105_RESET_MASK =    0xBF;
+static const uint8_t MAX30105_RESET =       0x40;
+
+static const uint8_t MAX30105_MODE_MASK =     0xF8;
+static const uint8_t MAX30105_MODE_REDONLY =  0x02;
+static const uint8_t MAX30105_MODE_REDIRONLY =  0x03;
+static const uint8_t MAX30105_MODE_MULTILED =   0x07;
+
+// Particle sensing configuration commands (pgs 19-20)
+static const uint8_t MAX30105_ADCRANGE_MASK =   0x9F;
+static const uint8_t MAX30105_ADCRANGE_2048 =   0x00;
+static const uint8_t MAX30105_ADCRANGE_4096 =   0x20;
+static const uint8_t MAX30105_ADCRANGE_8192 =   0x40;
+static const uint8_t MAX30105_ADCRANGE_16384 =  0x60;
+
+static const uint8_t MAX30105_SAMPLERATE_MASK = 0xE3;
+static const uint8_t MAX30105_SAMPLERATE_50 =   0x00;
+static const uint8_t MAX30105_SAMPLERATE_100 =  0x04;
+static const uint8_t MAX30105_SAMPLERATE_200 =  0x08;
+static const uint8_t MAX30105_SAMPLERATE_400 =  0x0C;
+static const uint8_t MAX30105_SAMPLERATE_800 =  0x10;
+static const uint8_t MAX30105_SAMPLERATE_1000 = 0x14;
+static const uint8_t MAX30105_SAMPLERATE_1600 = 0x18;
+static const uint8_t MAX30105_SAMPLERATE_3200 = 0x1C;
+
+static const uint8_t MAX30105_PULSEWIDTH_MASK = 0xFC;
+static const uint8_t MAX30105_PULSEWIDTH_69 =   0x00;
+static const uint8_t MAX30105_PULSEWIDTH_118 =  0x01;
+static const uint8_t MAX30105_PULSEWIDTH_215 =  0x02;
+static const uint8_t MAX30105_PULSEWIDTH_411 =  0x03;
+
+//Multi-LED Mode configuration (pg 22)
+static const uint8_t MAX30105_SLOT1_MASK =    0xF8;
+static const uint8_t MAX30105_SLOT2_MASK =    0x8F;
+static const uint8_t MAX30105_SLOT3_MASK =    0xF8;
+static const uint8_t MAX30105_SLOT4_MASK =    0x8F;
+
+static const uint8_t SLOT_NONE =        0x00;
+static const uint8_t SLOT_RED_LED =       0x01;
+static const uint8_t SLOT_IR_LED =        0x02;
+static const uint8_t SLOT_GREEN_LED =       0x03;
+static const uint8_t SLOT_NONE_PILOT =      0x04;
+static const uint8_t SLOT_RED_PILOT =     0x05;
+static const uint8_t SLOT_IR_PILOT =      0x06;
+static const uint8_t SLOT_GREEN_PILOT =     0x07;
+
+static const uint8_t MAX_30105_EXPECTEDPARTID = 0x15;
+
+uint8_t readRegister8(uint8_t reg) {
+  Wire.beginTransmission(MAX30105_ADDRESS);
+  Wire.write(reg);
+  Wire.endTransmission(false);
+
+  Wire.requestFrom(MAX30105_ADDRESS, 1); // Request 1 byte
+  if (Wire.available())
+    return(Wire.read());
+  return 0; //Fail
+}
+
+uint8_t read_reg(uint8_t reg) {
+  Wire.beginTransmission(I2C_WRITE_ADDR);
+  Wire.write(reg);
+  Wire.endTransmission(false);
+
+  Wire.requestFrom(I2C_READ_ADDR, 1); // Request 1 byte
+//  if (Wire.available())
+    return Wire.read();
+//  return 0; //Fail
+}
+
+void writeRegister8(uint8_t reg, uint8_t value) {
+  Wire.beginTransmission(MAX30105_ADDRESS);
+  Wire.write(reg);
+  Wire.write(value);
+  Wire.endTransmission();
+}
+
+void bitMask(uint8_t reg, uint8_t mask, uint8_t thing)
+{
+  uint8_t originalContents = read_reg(reg);
+  originalContents = originalContents & mask;
+  writeRegister8(reg, originalContents | thing);
+}
+
+#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
+  #define I2C_BUFFER_LENGTH BUFFER_LENGTH
+#elif defined(__SAMD21G18A__)
+  #define I2C_BUFFER_LENGTH SERIAL_BUFFER_SIZE
+#else
+  #define I2C_BUFFER_LENGTH 32
+#endif
+
+#define STORAGE_SIZE 4 //Each long is 4 bytes so limit this to fit on your micro
+uint32_t sens_red[STORAGE_SIZE];
+uint32_t sens_IR[STORAGE_SIZE];
+byte sens_head;
+byte sens_tail;
+byte sens_activeLEDs;
+
+void sens_softReset(void) {
+  bitMask(MAX30105_MODECONFIG, MAX30105_RESET_MASK, MAX30105_RESET);
+  unsigned long startTime = millis();
+  while (millis() - startTime < 100) {
+    uint8_t response = read_reg(MAX30105_MODECONFIG);
+    if ((response & MAX30105_RESET) == 0) break;
+    delay(1);
+  }
+}
+
+void sens_clearFIFO(void) {
+  writeRegister8(MAX30105_FIFOWRITEPTR, 0);
+  writeRegister8(MAX30105_FIFOOVERFLOW, 0);
+  writeRegister8(MAX30105_FIFOREADPTR, 0);
+}
+
+void sens_enableSlot(uint8_t slotNumber, uint8_t device) {
+  switch (slotNumber) {
+    case 1: bitMask(MAX30105_MULTILEDCONFIG1, MAX30105_SLOT1_MASK, device); break;
+    case 2: bitMask(MAX30105_MULTILEDCONFIG1, MAX30105_SLOT2_MASK, device << 4); break;
+    case 3: bitMask(MAX30105_MULTILEDCONFIG2, MAX30105_SLOT3_MASK, device); break;
+    case 4: bitMask(MAX30105_MULTILEDCONFIG2, MAX30105_SLOT4_MASK, device << 4); break;
+  }
+}
 
 void setup()
 {
-  Serial.begin(115200); // initialize serial communication at 115200 bits per second:
+  Serial.begin(250000); // initialize serial communication at 115200 bits per second:
   pinMode(led,OUTPUT);
 
-  // Initialize sensor
-  if (!particleSensor.begin(Wire, I2C_SPEED_FAST)) //Use default I2C port, 400kHz speed
-  {
-    Serial.println(F("MAX30105 was not found. Please check wiring/power."));
-    while (1);
+  Wire.begin();
+  Wire.setClock(400000);
+  if (read_reg(MAX30105_PARTID)!=MAX_30105_EXPECTEDPARTID) {
+    Serial.println("No device");
+    return;
+  }
+  //revisionID = 
+  read_reg(MAX30105_REVISIONID);
+
+  sens_softReset(); //Reset all configuration, threshold, and data registers to POR values
+  bitMask(MAX30105_FIFOCONFIG, MAX30105_SAMPLEAVG_MASK, MAX30105_SAMPLEAVG_2);
+  //  bitMask(MAX30105_FIFOCONFIG, MAX30105_A_FULL_MASK, 2); //Set to 30 samples to trigger an 'Almost Full' interrupt
+  bitMask(MAX30105_FIFOCONFIG, MAX30105_ROLLOVER_MASK, MAX30105_ROLLOVER_ENABLE);
+  sens_activeLEDs = 2;
+  if (sens_activeLEDs == 3) bitMask(MAX30105_MODECONFIG, MAX30105_MODE_MASK, MAX30105_MODE_MULTILED); //Watch all three LED channels
+  else if (sens_activeLEDs == 2) bitMask(MAX30105_MODECONFIG, MAX30105_MODE_MASK, MAX30105_MODE_REDIRONLY); //Red and IR
+  else bitMask(MAX30105_MODECONFIG, MAX30105_MODE_MASK, MAX30105_MODE_REDONLY); //Red only
+  bitMask(MAX30105_PARTICLECONFIG, MAX30105_ADCRANGE_MASK, MAX30105_ADCRANGE_4096); //15.63pA per LSB
+  bitMask(MAX30105_PARTICLECONFIG, MAX30105_SAMPLERATE_MASK, MAX30105_SAMPLERATE_200);
+  bitMask(MAX30105_PARTICLECONFIG, MAX30105_PULSEWIDTH_MASK, MAX30105_PULSEWIDTH_411); //18 bit resolution
+  //Default is 0x1F which gets us 6.4mA
+  //powerLevel = 0x02, 0.4mA - Presence detection of ~4 inch
+  //powerLevel = 0x1F, 6.4mA - Presence detection of ~8 inch
+  //powerLevel = 0x7F, 25.4mA - Presence detection of ~8 inch
+  //powerLevel = 0xFF, 50.0mA - Presence detection of ~12 inch
+  byte powerLevel = 50; //Options: 0=Off to 255=50mA
+  writeRegister8(MAX30105_LED1_PULSEAMP, powerLevel);
+  writeRegister8(MAX30105_LED2_PULSEAMP, powerLevel);
+  writeRegister8(MAX30105_LED3_PULSEAMP, powerLevel);
+  writeRegister8(MAX30105_LED_PROX_AMP, powerLevel);
+  sens_enableSlot(1, SLOT_RED_LED);
+  if (sens_activeLEDs > 1) sens_enableSlot(2, SLOT_IR_LED);
+  if (sens_activeLEDs > 2) sens_enableSlot(3, SLOT_GREEN_LED);
+  //enableSlot(1, SLOT_RED_PILOT); enableSlot(2, SLOT_IR_PILOT); enableSlot(3, SLOT_GREEN_PILOT);
+  sens_clearFIFO(); //Reset the FIFO before we begin checking the sensor
+
+//  zlocs();
+  Serial.println("ired red");
+}
+
+uint32_t read3()
+{
+  byte temp[4];
+  uint32_t *tempLong=(uint32_t*)&temp[0];
+
+  temp[3] = 0;
+  temp[2] = Wire.read();
+  temp[1] = Wire.read();
+  temp[0] = Wire.read();
+
+  return (*tempLong) & 0x3FFFF;
+}
+
+// more/less correct read
+void loop()
+{
+  uint32_t ir, r;
+  while (sens_head == sens_tail) { //do we have new data?
+    //Check the sensor for new data
+    byte rp = read_reg(MAX30105_FIFOREADPTR);
+    byte wp = read_reg(MAX30105_FIFOWRITEPTR);
+
+    int n = 0;
+
+    if (rp == wp) continue;
+    n = wp - rp;
+    if (n < 0) n += 32;
+    int toRead = n * sens_activeLEDs * 3;
+
+    Wire.beginTransmission(MAX30105_ADDRESS);
+    Wire.write(MAX30105_FIFODATA);
+    Wire.endTransmission();
+
+    while (toRead > 0) {
+      int toGet = toRead;
+      if (toGet > I2C_BUFFER_LENGTH) toGet = I2C_BUFFER_LENGTH - (I2C_BUFFER_LENGTH % (sens_activeLEDs * 3));
+      toRead -= toGet;
+
+      Wire.requestFrom(MAX30105_ADDRESS, toGet);
+      while (toGet > 0) {
+        sens_head++; //Advance the head of the storage struct
+        sens_head %= STORAGE_SIZE; //Wrap condition
+        sens_red[sens_head] = read3();
+        if (sens_activeLEDs > 1) sens_IR[sens_head] = read3();
+        if (sens_activeLEDs > 2) read3();
+        toGet -= sens_activeLEDs * 3;
+      }
+    } 
   }
 
-  //  Serial.println(F("Attach sensor to finger with rubber band. Press any key to start conversion"));
-  //  while (Serial.available() == 0) ; //wait until user presses a key
-  //  Serial.read();
+  r = sens_red[sens_tail];
+  ir = sens_IR[sens_tail];
+  sens_tail++;sens_tail %= STORAGE_SIZE;
 
-  byte ledBrightness = 30; //Options: 0=Off to 255=50mA
-  byte sampleAverage = 1; //Options: 1, 2, 4, 8, 16, 32
-  byte ledMode = 2; //Options: 1 = Red only, 2 = Red + IR, 3 = Red + IR + Green
-  byte sampleRate = 100; //Options: 50, 100, 200, 400, 800, 1000, 1600, 3200
-  int pulseWidth = 411; //Options: 69, 118, 215, 411
-  int adcRange = 4096; //Options: 2048, 4096, 8192, 16384
+  printBcd(bcd24(ir));
+  Serial.write(' ');
+  printBcd(bcd24(r));
+  Serial.write('\r');
+  Serial.write('\n');
 
-  particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth, adcRange); //Configure sensor with these settings
-  zlocs();
-  Serial.println("ired red");
+}
+
+void loop1()
+{
+  static uint32_t t0;
+  uint32_t t;
+  t=micros();
+  if (t-t0<10000) // 10 000 us = 10 ms == 100Hz
+    return;
+  t0=t;
+  Serial.write("1 1\r\n",5);
+}
+
+int32_t fr = 0x80000000;
+int32_t fi = 0x80000000;
+
+int32_t mvr[7];
+int32_t mvi[7];
+int32_t pmi = 0, zmi = 0;
+int32_t ci, cr, cx = 0;
+int32_t pi, pr, px = 0;
+
+#define LOCS 15
+int xloc[LOCS];
+int32_t viloc[LOCS];
+int32_t vrloc[LOCS];
+
+
+void loop0()
+{
+  int32_t ir, r;
+//  while (particleSensor.available() == false) //do we have new data?
+//    particleSensor.check(); //Check the sensor for new data
+
+//  r = particleSensor.getRed();
+//  ir = particleSensor.getIR();
+//  particleSensor.nextSample(); //We're finished with this sample so move to next sample
+
+  stream_ir(ir, r);
+  if (cx > 0) {
+/*    
+    Serial.print("t=");
+    Serial.print(cx);
+    Serial.print(" r=");
+    Serial.print(cr);
+    Serial.print(" ir=");
+    Serial.println(ci);
+*/    
+    if (store_pulse(cx, cr, ci)) {
+      digitalWrite(led,1);
+      int32_t iac,idc;
+      int32_t rac,rdc;
+      int dt;
+      calc_ac_dc_dt(0, viloc, &iac, &idc, &dt);
+      calc_ac_dc_dt(0, vrloc, &rac, &rdc, NULL);
+      Serial.print("dt=");
+      Serial.print(dt); Serial.print('i'); Serial.print(idc); Serial.print(' '); Serial.print(iac);
+                        Serial.print('r'); Serial.print(rdc); Serial.print(' '); Serial.print(rac);
+      Serial.println();
+
+      calc_hr_spo2();
+    } else
+      digitalWrite(led,0);
+    cx=0;
+  }
+
+/*
+  Serial.print(ci);
+  Serial.print(' ');
+  Serial.println(pi);
+  */
 }
 
 #define FILTRZRO 0x80000000
@@ -92,15 +447,6 @@ bool zcd(int32_t *p, int32_t x)
   return z;
 }
 
-int32_t fr = 0x80000000;
-int32_t fi = 0x80000000;
-
-int32_t mvr[7];
-int32_t mvi[7];
-int32_t pmi = 0, zmi = 0;
-int32_t ci, cr, cx = 0;
-int32_t pi, pr, px = 0;
-
 void stream_ir(int32_t ir, int32_t r)
 {
   int32_t dr, di;
@@ -120,10 +466,6 @@ void stream_ir(int32_t ir, int32_t r)
   pr = dr;
 }
 
-#define LOCS 15
-int xloc[LOCS];
-int32_t viloc[LOCS];
-int32_t vrloc[LOCS];
 void zlocs()
 {
   for (int k = 0; k < LOCS; k++)
@@ -212,51 +554,6 @@ void calc_hr_spo2()
   */
 }
 
-void loop()
-{
-  int32_t ir, r;
-  while (particleSensor.available() == false) //do we have new data?
-    particleSensor.check(); //Check the sensor for new data
-
-  r = particleSensor.getRed();
-  ir = particleSensor.getIR();
-  particleSensor.nextSample(); //We're finished with this sample so move to next sample
-
-  stream_ir(ir, r);
-  if (cx > 0) {
-/*    
-    Serial.print("t=");
-    Serial.print(cx);
-    Serial.print(" r=");
-    Serial.print(cr);
-    Serial.print(" ir=");
-    Serial.println(ci);
-*/    
-    if (store_pulse(cx, cr, ci)) {
-      digitalWrite(led,1);
-      int32_t iac,idc;
-      int32_t rac,rdc;
-      int dt;
-      calc_ac_dc_dt(0, viloc, &iac, &idc, &dt);
-      calc_ac_dc_dt(0, vrloc, &rac, &rdc, NULL);
-      Serial.print("dt=");
-      Serial.print(dt); Serial.print('i'); Serial.print(idc); Serial.print(' '); Serial.print(iac);
-                        Serial.print('r'); Serial.print(rdc); Serial.print(' '); Serial.print(rac);
-      Serial.println();
-
-      calc_hr_spo2();
-    } else
-      digitalWrite(led,0);
-    cx=0;
-  }
-
-/*
-  Serial.print(ci);
-  Serial.print(' ');
-  Serial.println(pi);
-  */
-}
-
 void sort_ascend(int *x, int n)
 {
   // insertion sort
@@ -266,4 +563,71 @@ void sort_ascend(int *x, int n)
       x[j] = x[j - 1];
     x[j] = temp;
   }
+}
+
+void printNum(unsigned long n)
+{
+  static char buf[12];
+  char *str = &buf[sizeof(buf) - 1];
+  byte n1=0;
+
+  *str = '\0';
+  do { char c = n % 10;  n /= 10;
+    *--str = c + '0';
+    n1++;
+  } while(n);
+  Serial.write((const uint8_t *)str,n1);
+}
+
+uint16_t bcd8(uint8_t b) //bcd8 20us bcd16 52us bcd32 300us
+{
+  uint16_t c=0;
+  for(byte n=0; n < 8; n++) {
+   if ((c&0x0f) >= 0x05) c+=0x03;
+   if ((c&0xf0) >= 0x50) c+=0x30;
+   c<<=1; if(b&0x80) c++; b<<=1;
+  }
+  return c;
+}
+
+uint16_t bcd16(uint16_t w) // bcd16 52us
+{
+  uint16_t c=0;
+  for(byte n=0; n < 16; n++) {
+   if ((c&0xf) >= 0x5) c+=0x3;
+   if ((c&0xf0) >= 0x50) c+=0x30;
+   if ((c&0xf00) >= 0x500) c+=0x300;
+   if ((c&0xf000) >= 0x5000) c+=0x3000;
+   c<<=1; if(w&0x8000) c++; w<<=1;
+  }
+  return c;
+}
+
+uint32_t bcd24(uint32_t w) // bcd16 52us
+{
+  union { uint32_t c; uint8_t b[4]; } uc,uw;
+  uc.c=0;
+  uw.c=w;
+  for(byte n=0; n < 24; n++) {
+   if ((uc.b[0]&0xf) >= 0x5) uc.b[0]+=0x3;
+   if ((uc.b[0]&0xf0)>= 0x50) uc.b[0]+=0x30;
+   if ((uc.b[1]&0xf) >= 0x5) uc.b[1]+=0x3;
+   if ((uc.b[1]&0xf0)>= 0x50) uc.b[1]+=0x30;
+   if ((uc.b[2]&0xf) >= 0x5) uc.b[2]+=0x3;
+   if ((uc.b[2]&0xf0)>= 0x50) uc.b[2]+=0x30;
+   if ((uc.b[3]&0xf) >= 0x5) uc.b[3]+=0x3;
+   if ((uc.b[3]&0xf0)>= 0x50) uc.b[3]+=0x30;
+   uc.c<<=1; if(uw.b[2]&0x80) uc.c++; uw.c<<=1;
+  }
+  return uc.c;
+}
+
+void printBcd(uint32_t n) // conversion 32..8 us
+{
+  static char buf[10];
+  char *str = &buf[sizeof(buf) - 1];
+
+  *str = '\0';
+  do { *--str = (n & 0xf) + '0'; n>>=4; } while(n);
+  while(*str) Serial.write(*str++);
 }
