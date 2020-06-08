@@ -60,7 +60,7 @@ void pinLow(byte n)
 /*
  * standard scan
  */
-word kbd_scan_std()
+void kbd_scan_std()
 {
   word c = 0;
   for(int i=0; i < ROWS; i++) {
@@ -71,18 +71,14 @@ word kbd_scan_std()
       if (j!=i) r = (r<<1) | (1^digitalRead(rowpin(j)));
     tmpmap[i]=r;
     pinMode(n, INPUT_PULLUP); 
-
-    c |= kbdmap[i]^tmpmap[i]; 
   }
-  return c;
 }
 
 /*
  *  analog scan
  */ 
-word kbd_scan_analog()
+void kbd_scan_analog()
 {
-  word c = 0;
   for(byte i=0; i < ROWS; i++) {
     // scan row N
     byte n = rowpin(i);
@@ -92,18 +88,14 @@ word kbd_scan_analog()
       if (j!=i) r = (r<<1) | readac(j); // readac(j);
     tmpmap[i]=r;
     pinMode(n, INPUT_PULLUP); 
-    
-    c |= kbdmap[i]^tmpmap[i]; 
   }
-  return c;
 }
 
 /* 
  * charlieplex scan 
  */
-word kbd_scan_chpx()
+void kbd_scan_chpx()
 {
-  word c = 0;
   for(byte i=0; i< ROWS; i++) {
     byte n=rowpin(i);
     word r = 0;
@@ -116,15 +108,12 @@ word kbd_scan_chpx()
       pinMode(m, INPUT);
     }
     tmpmap[i] = r;
-    c |= kbdmap[i]^tmpmap[i];
     pinMode(n, INPUT);
   }
-  return c;
 }
 
-word kbd_scan_chpx2()
+void kbd_scan_chpx2()
 {
-  word c = 0;
   for(byte i=0; i< ROWS; i++) {
     byte n=rowpin(i);
     word r = 0;
@@ -137,10 +126,8 @@ word kbd_scan_chpx2()
       pinMode(m, INPUT);
     }
     tmpmap[i] = r;
-    c |= kbdmap[i]^tmpmap[i];
     pinMode(n, INPUT);
   }
-  return c;
 }
 
 /*
@@ -156,24 +143,28 @@ void printbin(word b, byte n)
   Serial.println();
 }
 
+word kbd_cmp()
+{
+  word c = 0;
+  for(byte i=0; i < ROWS; i++)
+    c |= kbdmap[i]^tmpmap[i]; 
+  return c;
+}
+
 void keyboard_process()
 {
   uint32_t x;
-  if (kbd_scan_analog()) {
+  if (kbd_cmp()) {
     x=micros();
     Serial.print("------");
     Serial.println((x-kbdt)*0.001);
     kbdt=x;
-    for(int i=0; i < ROWS; i++) { kbdmap[i]=tmpmap[i]; printbin(kbdmap[i], 3); }
+    for(int i=0; i < ROWS; i++) { kbdmap[i]=tmpmap[i]; printbin(kbdmap[i], ROWS); }
   }
 }
 
-void setup()
+void ac_setup()
 {
-  Serial.begin(115200);
-  analogReference(INTERNAL);
-  analogRead(0);
-  // analog comparator setup
   //ADCSRB |= 0<<ACME; // analog comp multiplexer disable, AIN1(-)=D7 input
   //pinMode(7, INPUT_PULLUP);
  // pinMode(6, INPUT_PULLUP);
@@ -181,12 +172,27 @@ void setup()
   ADCSRA &=~(1<<ADEN);// disable ADC to use ADMUX by AC
   ACSR |= (0<<ACD)|(0<<ACBG);  pinMode(6, INPUT_PULLUP); // no bangap, external reference  AIN0(+)=D6
   //ACSR |= (0<<ACD)|(1<<ACBG);  // bangap to (+), AIN0(+)=D6 unused
-  
-  for(int i=0; i < ROWS; i++) kbdmap[i]=0;
+}
+
+void vd_setup()
+{
+  analogReference(INTERNAL);
+  analogRead(0);
+}
+
+void setup()
+{
+  Serial.begin(115200);
+//  vd_setup();
+//  ac_setup();
+  for(int i=0; i < ROWS; i++) tmpmap[i]=kbdmap[i]=0;
 }
 
 void loop()
 {
+//   kbd_scan_std();
+//  kbd_scan_chpx2();
+//  kbd_scan_analog();
+//  kbd_scan_chpx();
   keyboard_process();
 }
-
