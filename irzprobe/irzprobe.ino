@@ -16,9 +16,9 @@ SerialSend mySerial(SERIALPIN);
   Pin assignments tiny25:
    PB0/MOSI     #5   far LED drive, active low
    PB1/MISO     #6   near LED drive, active low
-   PB2/ADC1/SCK #7   output to Duet via 3K6 (12K) resistor, input mode select pin
-   PB3/ADC3     #2   LED indicator, output to Duet via 3K (10K) resistor, gnd phototransistor (-)
-   PB4/ADC2     #3   input from phototransistor (+)
+   PB2/ADC1/SCK #7   output to Duet via 3K6 (12K) resistor
+   PB3/ADC3     #2   output to Duet via 3K (10K) resistor
+   PB4/ADC2     #3   input from phototransistor
    PB5/ADC0/RESET #1 not available, used for programming
    VCC,GND     #8,#4 decouple 0.1u
 */
@@ -33,7 +33,7 @@ SerialSend mySerial(SERIALPIN);
 #define RegTI  TIFR
 #define RegTM  TIMSK
 
-const unsigned int AdcPhototransistorChan = 2;	/* PB4 ADC channel for the phototransistor */
+const unsigned int AdcPhototransistorChan = 2;	/*  ADC channel for the phototransistor */
 const unsigned int AdcDuet3K0OutputChan = 3; /* ADC channel for the 3K0 and LED output bit, when we use it as an input */
 const unsigned int AdcDuet3K6OutputChan = 1; /* ADC channel for the 3K6 output bit, when we use it as an input */
 const unsigned int NearLedBit = 1;
@@ -43,13 +43,8 @@ const unsigned int Duet3K6OutputBit = 2;
 
 const uint8_t PortUnusedBitMask = 0;
 
-#define SELCHK 0b00000001 /* adc1, 3.6k output chan, PB2 */
 #define REFVCC 0b00000000
 #define REF1V1 0b10000000
-/* ADC PB4(+) PB3(-) to GND */
-#define SELVCC 0b00000110
-#define SEL1V1 0b10000110
-#define SEL20X 0b10000111
 
 #define IS_HIGHSENSE(reg) ((reg & (1 << REFS1)) != 0)
 
