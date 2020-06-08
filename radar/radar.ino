@@ -15,10 +15,10 @@
 #endif
 
 // How many NeoPixels are attached to the Arduino?
-#define NUMPIXELS      42
+#define NUMPIXELS      45
 #define SUBPIXELS      4
 #define SHSPIX         2
-#define NUMRAMP        11 /* 11 or 9, rest < 4 */
+#define NUMRAMP        9 /* 11 or 9, rest < 4 */
 #define PIXMAX         255
 #define PIXSTEP        ((int)PIXMAX/NUMRAMP)
 #define PIXBASE        (PIXMAX-(NUMRAMP)*(PIXSTEP))
@@ -28,7 +28,7 @@
 // example for more information on possible values.
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
-int delayval = 23; // delay for half a second
+int delayval = 17; // delay for half a second
 int pix  = 0;
 int spix = 0;
 
@@ -50,7 +50,7 @@ void loop()
     if (i==NUMRAMP) c1=0;
     int a = i+pix; if (a>=NUMPIXELS) a-=NUMPIXELS;
     int c = (c1*(SUBPIXELS-spix) + (c0*spix)) >> SHSPIX;
-    pixels.setPixelColor(a, pixels.Color(c/10,c,c/4));
+    pixels.setPixelColor(a, pixels.Color(c,0,0));
     c0 = c1;
     c1 += PIXSTEP;
   }
