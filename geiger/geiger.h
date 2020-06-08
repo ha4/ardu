@@ -40,7 +40,8 @@ extern void par_show();
 /* u-converter */
 extern uint16_t  volatile setp;
 extern float kp, ki;
-extern float volatile u, ui, mv;
+extern float volatile u, ui, mv, ub;
+extern void ubatt();
 extern void ustab();
 extern void ustab_show();
 
@@ -75,4 +76,3 @@ extern void menu_cmd(byte c);
 #endif
 
 #endif
-

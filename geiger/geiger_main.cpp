@@ -26,12 +26,13 @@ uint8_t msg_cpm[] ={0b00111000, 0b11011100, 0b01011010, 0}; // c:deg p:abefg m:a
 uint8_t msg_uSv[] ={0b10011100, 0b11101010, 0b10110010, 0}; // u:befg s:acdfg v:cdef
 uint8_t msg_rcpm[]={0b00011000, 0b00111000, 0b11011100, 0b01011010}; // r:eg c:deg p:abefg m: aceg
 uint8_t msg_icpm[]={0b00000010, 0b00111000, 0b11011100, 0b01011010}; // i:c c:deg p:abefg m: aceg
+uint8_t msg_batt[]={0b10111010, 0b11011110, 0b10111000, 0b10111000}; // b:cdefg a:abcefg t:defg
 uint8_t msg_u[]   ={0b00110010, 0,0,0}; // u:cde
 uint8_t msg_fact[]={0b11011000, 0b11011110, 0b00111000, 0b10111000}; // f:aefg a:abcefg c:deg t:defg
 uint8_t msg_save[]={0b11101010, 0b11011110, 0b10110010, 0b11111000}; // s:acdfg a:abcefg v:cdef e:adefg
 uint8_t msg_quit[]={0b11001110, 0b00110010, 0b00010000, 0b10111000}; // q:abcfg u:cde i:e t:defg
 
-#define MENU_ITEMS 6
+#define MENU_ITEMS 7
 uint8_t menu_mdf=0, menu_idx=0, menu_dir=0, menu_poptime=0;
 void menu_popup(uint8_t *x)
 {
@@ -44,17 +45,19 @@ void menu_level()
   if (menu_mdf==1) switch(menu_idx) {
     case 0: lcd_msg(msg_cpm); break;
     case 1: lcd_msg(msg_rcpm); break;
-    case 2: lcd_msg(msg_u); break;
-    case 3: lcd_msg(msg_fact); break;
-    case 4: lcd_msg(msg_save); break;
-    case 5: lcd_msg(msg_quit); break;
+    case 2: lcd_msg(msg_batt); break;
+    case 3: lcd_msg(msg_u); break;
+    case 4: lcd_msg(msg_fact); break;
+    case 5: lcd_msg(msg_save); break;
+    case 6: lcd_msg(msg_quit); break;
   } else if (menu_mdf==2) switch(menu_idx) {
     case 0: lcd_msg(use_cpm?msg_cpm:msg_uSv); break;
     case 1: lcd_msg(msg_rcpm?msg_rcpm:msg_icpm); break;
-    case 2: lcd_float(u*CONVERTER_MULT); break;
-    case 3: lcd_float(cpmfactor); break;
-    case 4: wpar(); menu_mode(0); break;
-    case 5: menu_mode(0); break;
+    case 2: ubatt(); lcd_float(ub*BATTERY_MULT); break;
+    case 3: lcd_float(u*CONVERTER_MULT); break;
+    case 4: lcd_float(cpmfactor); break;
+    case 5: wpar(); menu_mode(0); break;
+    case 6: menu_mode(0); break;
   }
 }
 void menu_action(uint8_t a)
@@ -63,10 +66,11 @@ void menu_action(uint8_t a)
   else if (a==1) switch(menu_idx) {
     case 0: use_cpm = use_cpm? 0:1; lcd_msg(use_cpm?msg_cpm:msg_uSv); break;
     case 1: use_rcpm = use_rcpm? 0:1; lcd_msg(use_rcpm?msg_rcpm:msg_icpm); break;
-    case 2: if (menu_dir) setp--; else setp++; lcd_float(u*CONVERTER_MULT); break;
-    case 3: if (menu_dir) cpmfactor-=0.00001; else cpmfactor+=0.00001; lcd_float(cpmfactor); break;
-    case 4: break;
+    case 2: ubatt(); lcd_float(ub*BATTERY_MULT); break;
+    case 3: if (menu_dir) setp--; else setp++; lcd_float(u*CONVERTER_MULT); break;
+    case 4: if (menu_dir) cpmfactor-=0.00001; else cpmfactor+=0.00001; lcd_float(cpmfactor); break;
     case 5: break;
+    case 6: break;
   }
 }
 
@@ -125,6 +129,10 @@ void setup()
   analogReference(INTERNAL);
 #endif
 
+#ifdef USE_BATT
+  pinMode(BATTERY_PIN, INPUT);
+#endif
+
 //  panel.rightToLeft();
 //3  #1  PD3:OC2B
 //5  #9  PD5:OC0B
@@ -151,7 +159,13 @@ void setup()
 #endif
 
 #ifdef USE_DISPLAY
+#ifdef USE_BATT
+  menu_popup(msg_batt);
+  for(int i=10; i--; ) ubatt();
+  lcd_float(ub*BATTERY_MULT);
+#else
   lcd_float(123.4);
+#endif
 #endif
 
 #ifdef USE_COUNTER
@@ -205,6 +219,9 @@ void i_serial(char c)
 #ifdef USE_COUNTER
      MYSERIAL.print(":f");     MYSERIAL.println(cpmfactor,6);
      MYSERIAL.print(":c");      MYSERIAL.println(use_rcpm);
+#endif
+#ifdef USE_BATT
+     MYSERIAL.print(":b");  ubatt();   MYSERIAL.println(ub*BATTERY_MULT,3);
 #endif
 
      break;
@@ -268,4 +285,3 @@ void counter_int(uint16_t n)
   if(olcd)lcd_int(n);
 #endif
 }
-

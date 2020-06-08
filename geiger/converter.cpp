@@ -5,7 +5,7 @@ uint16_t  volatile setp = CONVERTER_SETPOINT;
 float kp=5, ki=10; // kp=Gain, ki=Gain/Tau
 float eprev=0;
 uint32_t ty;
-float volatile u = 0, ui = 0, mv = 224;
+float volatile u = 0, ui = 0, mv = 224, ub = 0;
 
 // Dout = kp*Derr + ki*err*dt
 float pi_ctrl(float sp, float pv)
@@ -58,3 +58,10 @@ void ustab_show()
     DEBUG(' ');
 }
 
+void ubatt()
+{
+  int x1;
+
+  x1 = analogRead(BATTERY_PIN);
+  ub = filter(ub, x1*BATTERY_FACTOR, 0.3);
+}
