@@ -1,0 +1,14 @@
+Fs6,0,Cs7,Fs6,
+D7,0,Cs7,B6,
+Cs7,0,B6,Cs7,
+D7,D7,Cs7,B6,
+
+Fs6,0,Cs7,Fs6,
+D7,0,Cs7,B6,
+A6,0,B6,A6,
+Gs6,Gs6,A6,Gs6,
+
+bass (part1):
+B5,E6,D6,G6
+
+tempo: 1/4 60bpm
