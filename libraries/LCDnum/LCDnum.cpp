@@ -28,17 +28,20 @@ void LCDnum::refresh(uint8_t flash_clk)
   uint8_t x;
   int8_t  i;
   x = digitalRead(_base_pin)?0:0xff;
-  digitalWrite(_cs_pin, 0);
   if(_flag & LCDN_LEFT)
    for(i=LCDN_MIN;i<=LCDN_MAX;i++)
 	spi_send(_data[i] ^ x);
   else
    for(i=LCDN_MAX;i>=LCDN_MIN;i--)
 	spi_send(_data[i] ^ x);
-  digitalWrite(_cs_pin, 1);
+  if (_cs_pin != _base_pin || x == 0) {
+	  digitalWrite(_cs_pin, 0);
+	  digitalWrite(_cs_pin, 0);
+	  digitalWrite(_cs_pin, 1);
+	  digitalWrite(_cs_pin, 1);
+  }
   digitalWrite(_base_pin, x & 1);
 }
-
 /********** high level commands, for the user! */
 void LCDnum::clear()
 {
