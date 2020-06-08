@@ -31,7 +31,7 @@ Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ80
 #define TRACK_STEP 40     // длина хвоста шарика (чем больше цифра, тем хвост короче)
 
 // эффект "квадратик"
-#define BALL_SIZE 3       // размер шара
+#define BALL_SIZE 1       // размер шара
 #define RANDOM_COLOR 1    // случайный цвет при отскоке
 
 // эффект "огонь"
@@ -42,6 +42,8 @@ Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ80
 #define TAIL_STEP 30      // длина хвоста кометы
 #define SATURATION 150    // насыщенность кометы (от 0 до 255)
 
+byte hue;
+bool loadingFlag=true;
 
 void fadePixel(byte i, byte j, byte step) {
   uint32_t thisColor = getPixColorXY(i, j);
@@ -70,6 +72,13 @@ void fader() {
     for (byte j = 0; j < HEIGHT; j++) {
       fadePixel(i, j, TRACK_STEP);
     }
+  }
+}
+
+void colorsRoutine() {
+  hue += 4;
+  for (int i = 0; i < NUMPIXELS; i++) {
+    if (getPixColor(i) > 0) pixels.setPixelColorHsv(i, hue, 255, 255);
   }
 }
 
@@ -107,7 +116,7 @@ void effect1()
 }
 
 
-void effect2() {
+void matrixRoutine() {
     for (byte x = 0; x < WIDTH; x++) {
       // заполняем случайно верхнюю строку
       uint32_t thisColor = getPixColorXY(x, HEIGHT - 1);
@@ -127,17 +136,51 @@ void effect2() {
     }
 }
 
-byte hue;
+int coordB[2];
+int8_t vectorB[2];
+uint32_t ballColor;
 
-void colorsRoutine() {
-    hue += 2;
-    for (int i = 0; i < NUMPIXELS; i++) {
-      if (getPixColor(i) > 0) pixels.setPixelColorHsv(i, hue, 255, 255);
+void ballRoutine() {
+  bool hit=false;
+  if (loadingFlag) {
+    for (byte i = 0; i < 2; i++) {
+      coordB[i] = WIDTH / 2 * 10;
+      vectorB[i] = random(8, 20);
+      ballColor = pixels.ColorHsv(random(0, 9) * 28, 255, 255);
     }
+    loadingFlag = false;
+  }
+  for (byte i = 0; i < 2; i++) {
+    coordB[i] += vectorB[i];
+    if (coordB[i] < 0) {
+      hit=true;
+      coordB[i] = 0;
+      vectorB[i] = -vectorB[i];
+      vectorB[i] += random(0, 6) - 3;
+    }
+  }
+  if (coordB[0] >= (WIDTH - BALL_SIZE) * 10) {
+    hit=true;
+    coordB[0] = (WIDTH - BALL_SIZE) * 10;
+    vectorB[0] = -vectorB[0];
+    vectorB[0] += random(0, 6) - 3;
+  }
+  if (coordB[1] >= (HEIGHT - BALL_SIZE) * 10) {
+    hit=true;
+    coordB[1] = (HEIGHT - BALL_SIZE) * 10;
+    vectorB[1] = -vectorB[1];
+    vectorB[1] += random(0, 6) - 3;
+  }
+  if (RANDOM_COLOR && hit) ballColor = pixels.ColorHsv(random(0, 9) * 28, 255, 255);
+  pixels.clear();
+  for (byte i = 0; i < BALL_SIZE; i++)
+    for (byte j = 0; j < BALL_SIZE; j++)
+      pixels.setPixelColor(getPixelNumber(coordB[0] / 10 + i, coordB[1] / 10 + j), ballColor);
 }
 
+
 // *********** снегопад 2.0 ***********
-void effect() {
+void snowRoutine() {
     // сдвигаем всё вниз
     for (byte x = 0; x < WIDTH; x++) {
       for (byte y = 0; y < HEIGHT - 1; y++) {
@@ -155,13 +198,14 @@ void effect() {
     }
 }
 
-void effect3() {
-    hue++;
-    for (byte i = 0; i < WIDTH; i++) {
-//      CHSV thisColor = CHSV((byte)(hue + i * float(255 / WIDTH)), 255, 255);
-//      for (byte j = 0; j < HEIGHT; j++)
-//        if (getPixColor(getPixelNumber(i, j)) > 0) leds[getPixelNumber(i, j)] = thisColor;
-    }
+void rainbowRoutine() {
+
+  hue += 3;
+  for (byte i = 0; i < WIDTH; i++) {
+    uint32_t thisColor = pixels.ColorHsv((byte)(hue + i * float(255 / WIDTH)), 255, 255);
+    for (byte j = 0; j < HEIGHT; j++)
+      drawPixelXY(i, j, thisColor);
+  }
 }
 
 void setup() {
@@ -177,101 +221,7 @@ void setup() {
 uint32_t te=0;
 void loop() {
   uint32_t t=millis();
-  if(t-te > 50) te=t, effect();
+  if(t-te > 250) te=t, ballRoutine();
   pixels.show(); // This sends the updated pixel color to the hardware.
 }
-
-#if 0
-
-  void setPixelColorHsv(uint16_t n, uint16_t h, uint8_t s, uint8_t v);
-
-
-// Set pixel color from HSV colorspace:
-// See http://www.vagrearg.org/content/hsvrgb for in depth algorithm and
-// implementation explanation.
-void Adafruit_NeoPixel::setPixelColorHsv(
- uint16_t n, uint16_t h, uint8_t s, uint8_t v) {
-  if(n >= numLEDs)
-    return;
-  uint8_t r, g, b;
-  if(!s) {
-    // Monochromatic, all components are V
-    r = g = b = v;
-  } else {
-    uint8_t sextant = h >> 8;
-    if(sextant > 5)
-      sextant = 5;  // Limit hue sextants to defined space
-    g = v;    // Top level
-    // Perform actual calculations
-    /*
-     * Bottom level:
-     * --> (v * (255 - s) + error_corr + 1) / 256
-     */
-    uint16_t ww;        // Intermediate result
-    ww = v * (uint8_t)(~s);
-    ww += 1;            // Error correction
-    ww += ww >> 8;      // Error correction
-    b = ww >> 8;
-    uint8_t h_fraction = h & 0xff;  // Position within sextant
-    uint32_t d;      // Intermediate result
-    if(!(sextant & 1)) {
-      // r = ...slope_up...
-      // --> r = (v * ((255 << 8) - s * (256 - h)) + error_corr1 + error_corr2) / 65536
-      d = v * (uint32_t)(0xff00 - (uint16_t)(s * (256 - h_fraction)));
-      d += d >> 8;  // Error correction
-      d += v;       // Error correction
-      r = d >> 16;
-    } else {
-      // r = ...slope_down...
-      // --> r = (v * ((255 << 8) - s * h) + error_corr1 + error_corr2) / 65536
-      d = v * (uint32_t)(0xff00 - (uint16_t)(s * h_fraction));
-      d += d >> 8;  // Error correction
-      d += v;       // Error correction
-      r = d >> 16;
-    }
-    // Swap RGB values according to sextant. This is done in reverse order with
-    // respect to the original because the swaps are done after the
-    // assignments.
-    if(!(sextant & 6)) {
-      if(!(sextant & 1)) {
-        uint8_t tmp = r;
-        r = g;
-        g = tmp;
-      }
-    } else {
-      if(sextant & 1) {
-        uint8_t tmp = r;
-        r = g;
-        g = tmp;
-      }
-    }
-    if(sextant & 4) {
-      uint8_t tmp = g;
-      g = b;
-      b = tmp;
-    }
-    if(sextant & 2) {
-      uint8_t tmp = r;
-      r = b;
-      b = tmp;
-    }
-  }
-  // At this point, RGB values are assigned.
-  if(brightness) { // See notes in setBrightness()
-    r = (r * brightness) >> 8;
-    g = (g * brightness) >> 8;
-    b = (b * brightness) >> 8;
-  }
-  uint8_t *p;
-  if(wOffset == rOffset) { // Is an RGB-type strip
-    p = &pixels[n * 3];    // 3 bytes per pixel
-  } else {                 // Is a WRGB-type strip
-    p = &pixels[n * 4];    // 4 bytes per pixel
-    p[wOffset] = 0;        // But only R,G,B passed -- set W to 0
-  }
-  p[rOffset] = r;          // R,G,B always stored
-  p[gOffset] = g;
-  p[bOffset] = b;
-}
-#endif
 
