@@ -27,6 +27,9 @@ enum { pinLED = 18 } ;
 xtimer timer;
 xtimer flsh;
 
+void ppm_start() {
+  
+}
 
 void setup()
 {
@@ -38,7 +41,15 @@ void setup()
   flsh.start(millis());
   timer.set(0);
   timer.start(micros());
+//  Serial.println("Throttle Rudder Elevation Aileron Flags");
+  ppm_start();
 }
+
+unsigned int byte2rc(unsigned int b)
+{ /* 0..256 -> 1000..2000 scale=125/32 */
+  return 1000+(125*b)>>5; 
+}
+/* AETR1234 */
 
 void loop() 
 { 
@@ -47,13 +58,11 @@ void loop()
   if (symax_binding()) { if (flsh.check(millis())) digitalWrite(pinLED, 1-digitalRead(pinLED)); }
   else {
       digitalWrite(pinLED,1);
-      Serial.print("T"); Serial.print(values[0]);
-      Serial.print(" R");  Serial.print(values[1]);
-      Serial.print(" E");Serial.print(values[2]);
-      Serial.print(" A"); Serial.print(values[3]);
-      Serial.print(" F");     Serial.print(values[4]);
+      Serial.print(""); Serial.print(values[0]);
+      Serial.print(" ");  Serial.print(values[1]);
+      Serial.print(" ");Serial.print(values[2]);
+      Serial.print(" "); Serial.print(values[3]);
+      Serial.print(" ");     Serial.print(values[4]);
       Serial.println();
   }
   }
-
-

@@ -11,5 +11,3 @@ word symax_run(int *TREAF_values);
 int  symax_binding(); // 1 binding, -1 no values, 0 - ok data
 
 #endif //_INTERFACE_H_
-
-

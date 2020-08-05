@@ -15,7 +15,7 @@ static byte phase = SYMAX_INIT;
 
 #define BIND_COUNT          346
 #define FIRST_PACKET_DELAY  12000
-#define PACKET_PERIOD        4000
+#define PACKET_PERIOD        8000
 #define INITIAL_WAIT          500
 
 #define PAYLOADSIZE 10
@@ -31,7 +31,7 @@ static byte update;
 
 // frequency channel management
 #define MAX_RF_CHANNELS    4
-static byte current_chan;
+volatile byte current_chan;
 static byte chans[MAX_RF_CHANNELS];
 
 static byte checksum(byte *data)
@@ -86,40 +86,6 @@ static void set_channels(byte laddress) {
   }
 }
 
-void prhex(byte a)
-{
-      if (a < 16) Serial.print('0');
-      Serial.print(a,HEX);
-}
-
-
-void prhexln(byte a)
-{
-      if (a < 16) Serial.print('0');
-      Serial.println(a,HEX);
-}
-
-void printpkt()
-{
-  Serial.print("pkt: ");
-  for(byte i = 0; i < PAYLOADSIZE; i++) prhex(packet[i]);
-  Serial.println("");
-}
-
-void printaddr()
-{
-  Serial.print("addr: ");
-  for(byte i = 0; i < 5; i++) prhex(rx_tx_addr[4-i]);
-  Serial.println("");
-}
-
-void printchn()
-{
-  Serial.print("chans: ");
-  for(byte i = 0; i < 4; i++) prhex(chans[i]);
-  Serial.println("");
-}
-
 int rxFlag()
 {
     return (NRF24L01_ReadReg(NRF24L01_07_STATUS) & (1 << NRF24L01_07_RX_DR)) != 0;
@@ -129,19 +95,7 @@ void freqHop()
 {
     NRF24L01_WriteReg(NRF24L01_05_RF_CH, chans[current_chan]);
     NRF24L01_FlushRx();
-    // use each channel twice
-    if (packet_counter++ % 2) current_chan = (current_chan + 1) % 4;
-
-//    current_chan = (current_chan + 1) % 4;
-}
-
-void setphase(byte p)
-{
-//  Serial.print("Phaase:");
-//  Serial.print(phase);
-//  Serial.print("->");
-  phase = p;
-//  Serial.println(p);
+    current_chan = (current_chan + 1) % 4;
 }
 
 #define TX_EMPTY    4
@@ -150,7 +104,6 @@ void setphase(byte p)
 
 void rx_ini()
 {
-        packet_counter = 0;
         NRF24L01_Initialize();
 
         NRF24L01_WriteReg(NRF24L01_00_CONFIG, _BV(NRF24L01_00_EN_CRC) | _BV(NRF24L01_00_CRCO)); 
@@ -171,7 +124,6 @@ void rx_ini()
         delayMicroseconds(50);
         NRF24L01_ReadReg(NRF24L01_07_STATUS);
         
-        setphase(SYMAX_NO_BIND);
         memcpy(chans, (byte*)"\x4b\x30\x40\x20", 4); // chan list first data
         current_chan = 0;
         packet_counter = 0;
@@ -189,12 +141,34 @@ void receive_packet()
       }
 
       NRF24L01_FlushRx();
+      packet_counter++;
 }
 
-#define NBABS(X) ((X & 0x80) ? -(X&0x7F) : (X))
 int convert_channel(byte num)
 {
-    return NBABS(num);
+    return ((num & 0x80) ? -(num&0x7F) : (num));
+}
+int convert_trim(byte num)
+{
+    return ((num & 0x20) ? -(num&0x1F) : (num&0x1F));
+}
+
+/* packet: T[7:0] E[7:0] R[7:0] A[7:0] fVid,fPict[7:6] fLow[7],tE[5:0] fFlip[6],tR[5:0] fHLess[7],tA[5:0]*/
+void decode_packet(int *TREAF_values)
+{
+      if (packet[9] != checksum(packet) || packet[8] != 0x00) return;
+    
+      update = 1;
+      TREAF_values[0]=packet[0]; // throttle
+      TREAF_values[2]=convert_channel(packet[1]) + convert_trim(packet[5]); // elevator
+      TREAF_values[1]=convert_channel(packet[2]) + convert_trim(packet[6]); // rudder
+      TREAF_values[3]=convert_channel(packet[3]) + convert_trim(packet[7]); // aileron
+      TREAF_values[4] =
+  ((packet[4] & 0x80) ? FLAG_VIDEO   : 0 ) |
+  ((packet[4] & 0x40) ? FLAG_PICTURE : 0 ) |
+  ((packet[5] & 0x80) ? 0 : FLAG_LOW ) |
+  ((packet[6] & 0x40) ? FLAG_FLIP    : 0 ) |
+  ((packet[7] & 0x80) ? FLAG_HEADLESS: 0 );
 }
 
 word symax_run(int *TREAF_values)
@@ -202,7 +176,8 @@ word symax_run(int *TREAF_values)
   switch(phase) {
   case SYMAX_INIT:
         rx_ini();
-	return INITIAL_WAIT;
+        phase = (SYMAX_NO_BIND);
+        return INITIAL_WAIT;
 
   case SYMAX_NO_BIND:
         if (!rxFlag()) {  // switch search channels
@@ -211,17 +186,14 @@ word symax_run(int *TREAF_values)
         }
 
         receive_packet();
-//        printpkt();
-        if(initialize_rx_tx_addr()) {
+        if(initialize_rx_tx_addr()) { // binding packet
           NRF24L01_WriteRegisterMulti(NRF24L01_0A_RX_ADDR_P0, rx_tx_addr, 5);
           set_channels(rx_tx_addr[0] & 0x1f);
           current_chan = 0;
           packet_counter = 0;
           counter = 0;
           freqHop();
-//          printaddr();
-//          printchn();
-          setphase(SYMAX_WAIT_FSYNC);
+          phase = (SYMAX_WAIT_FSYNC);
           return INITIAL_WAIT;
         }
         return PACKET_PERIOD;
@@ -229,47 +201,32 @@ word symax_run(int *TREAF_values)
   case SYMAX_WAIT_FSYNC:
         if (rxFlag()) {
           receive_packet();
-//          printpkt();
           freqHop();
-          setphase(SYMAX_BOUND);
+          phase = (SYMAX_BOUND);
           counter = 0;
           return PACKET_PERIOD;
         }
-        if (counter++ > 40) setphase(SYMAX_INIT);
+        if (counter++ > 40) phase = (SYMAX_INIT);
         return PACKET_PERIOD * 8; // repeat 4 channels twice
       
   case SYMAX_BOUND:
         if (!rxFlag()) {  // switch search channels
-            freqHop();
-            if (counter++ > 40) setphase(SYMAX_LOST_BOUND);
-            return PACKET_PERIOD*8;
-        } else {
-          counter = 0;
-          receive_packet();
-          if (packet[9] == checksum(packet) && packet[8] == 0x00) {
-            update = 1;
-            TREAF_values[0]=packet[0]; // throttle
-            TREAF_values[2]=convert_channel(packet[1]) + convert_channel((packet[5] & 0x3F) << 2)/4; // elevator
-            TREAF_values[1]=convert_channel(packet[2]) + convert_channel((packet[6] & 0x3F) << 2)/4; // rudder
-            TREAF_values[3]=convert_channel(packet[3]) + convert_channel((packet[7] & 0x3F) << 2)/4; // aileron
-            TREAF_values[4] =
-        ((packet[4] & 0x80) ? FLAG_VIDEO   : 0 ) |
-        ((packet[4] & 0x40) ? FLAG_PICTURE : 0 ) |
-        ((packet[5] & 0x80) ? 0 : FLAG_LOW ) |
-        ((packet[6] & 0x40) ? FLAG_FLIP    : 0 ) |
-        ((packet[7] & 0x80) ? FLAG_HEADLESS: 0 );
-          }
-//          printpkt();
-          freqHop();
-        }
+            //freqHop();
+            if (counter++ > 40) phase = (SYMAX_LOST_BOUND);
+            return PACKET_PERIOD/8;
+        } 
+        counter = 0;
+        receive_packet();
+        decode_packet(TREAF_values);
+        freqHop();
+     
       return PACKET_PERIOD;
 
   case SYMAX_LOST_BOUND:
         if (rxFlag()) {
           receive_packet();
-//          printpkt();
           freqHop();
-          setphase(SYMAX_BOUND);
+          phase = (SYMAX_BOUND);
           counter = 0;
           return PACKET_PERIOD;
         }
@@ -283,5 +240,3 @@ int  symax_binding() // 1 binding, -1 no values, 0 - ok data
   if (update) { update = 0; return 0; }
   return 1;
 }
-
-
