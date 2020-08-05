@@ -3,7 +3,7 @@
 #include "config.h"
 #include "fncs.h"
 
-volatile uint16_t _adc_val = 0;
+volatile uint16_t _adc_val;
 
 void adc_init(uint8_t amode)
 {
@@ -33,6 +33,7 @@ uint16_t adc_get()
 	return v;
 }
 
+/*
 uint16_t adc_read()
 {
 	uint8_t low, high;
@@ -45,4 +46,4 @@ uint16_t adc_read()
         return res;
 
 }
-
+*/

@@ -4,6 +4,7 @@
 #include "fncs.h"
 
 /* static */ 
+/*
 inline void tunedDelay0(uint16_t delay) { 
   uint8_t tmp=0;
   asm volatile("sbiw    %0, 0x01 \n\t"
@@ -15,6 +16,7 @@ inline void tunedDelay0(uint16_t delay) {
     : "0" (delay)
     );
 }
+*/
 
 void tunedDelay(uint16_t __count)
 {
@@ -26,20 +28,6 @@ void tunedDelay(uint16_t __count)
 	);
 }
 
-
-// 9600 bps
-#if F_CPU == 16000000
-#define XMIT_DELAY 233
-#define XMIT_START_ADJUSTMENT 5
-#elif F_CPU == 8000000
-#define XMIT_DELAY 112
-#define XMIT_START_ADJUSTMENT 4
-#elif F_CPU == 20000000
-#define XMIT_DELAY  294
-#define XMIT_START_ADJUSTMENT 6
-#else
-#error This version of SoftwareSerial supports only 20, 16 and 8MHz processors
-#endif
 
 volatile uint16_t _tx_delay2;
 uint16_t _tx_delay, _rx_delay_centering, _rx_delay_intrabit, _rx_delay_stopbit;
@@ -54,7 +42,7 @@ uint16_t sub_sat(uint16_t num, uint16_t sub) {
     return 1;
 }
 
-void ser_init(uint32_t rate)
+void ser_init(uint16_t bittime)
 {
 	SDDR &= ~(STXBIT|SRXBIT);
 	SDDR |= STXBIT;
@@ -62,18 +50,21 @@ void ser_init(uint32_t rate)
 
 	_rx_delay_centering = _rx_delay_intrabit = _rx_delay_stopbit = _tx_delay = 0;
 
-	uint16_t bit_delay = (F_CPU / rate) / 4;
+	uint16_t bit_delay = bittime / 4;
 	_tx_delay = sub_sat(bit_delay, 15 / 4);
 	_tx_delay2=42;
 
 #if GCC_VERSION > 40800
 	_rx_delay_centering = sub_sat(bit_delay / 2, (4 + 4 + 75 + 17 - 23) / 4);
 	_rx_delay_intrabit = sub_sat(bit_delay, 23 / 4);
-	_rx_delay_stopbit = sub_sat(bit_delay * 3 / 4, (37 + 11) / 4);
+//	_rx_delay_stopbit = sub_sat(bit_delay *3 / 4, (37 + 11) / 4);
+	_rx_delay_stopbit = sub_sat((bittime-bit_delay) / 4, (37 + 11) / 4);
 #else // Timings counted from gcc 4.3.2 output
+	// WORKINGPART
 	_rx_delay_centering = sub_sat(bit_delay / 2, (4 + 4 + 97 + 29 - 11) / 4);
 	_rx_delay_intrabit = sub_sat(bit_delay, 11 / 4);
-	_rx_delay_stopbit = sub_sat(bit_delay * 3 / 4, (44 + 17) / 4);
+//	_rx_delay_stopbit = sub_sat(bit_delay *3 / 4, (44 + 17) / 4);
+	_rx_delay_stopbit = sub_sat((bittime-bit_delay) / 4, (44 + 17) / 4);
 #endif
 	PCMSK = 0;
 	GIMSK |= _BV(PCIE);
@@ -83,8 +74,8 @@ void ser_init(uint32_t rate)
 
 void ser_recv()
 {
-
-#if GCC_VERSION < 40302
+                        
+#if GCC_VERSION < 40302 && 0
 // Work-around for avr-gcc 4.3.0 OSX version bug
   asm volatile(
     "push r18 \n\t"
@@ -113,7 +104,7 @@ void ser_recv()
 		ser_RxIntOn();
 	}             	
 
-#if GCC_VERSION < 40302
+#if GCC_VERSION < 40302 && 0
   asm volatile(
     "pop r27 \n\t"
     "pop r26 \n\t"
@@ -179,7 +170,7 @@ void ser_print(char *s)
 {
 	while(*s) ser_write(*s++);
 }
-
+/*
 uint16_t ser_parseInt()
 {
 	uint32_t t,t0;
@@ -199,38 +190,29 @@ uint16_t ser_parseInt()
 	}
 	return d;
 }
+*/
+#define BCDCORR(x)  { if ((x&0x0f) > 4) x+=3;  if (x > 0x4F) x+=0x30; }
 
-#define BCDCORR(x)  {  if ((x&0x0f) >= 0x05) x+=0x03;  if ((x&0xf0) >= 0x50) x+=0x30; }
+uint16_t b2digit(uint16_t n, uint16_t b)
+{
+	uint8_t c='0';
+//	if (b==1 || n >= b) {
+		while (n >= b) c++,n-=b;
+		ser_write(c);
+//	}
+	return n; 
+}
 
 void ser_printInt(uint16_t n)
 {
-	uint8_t a,b,c;
-	a=b=c=0;
-	for(uint8_t i=16;i--;) {
-		BCDCORR(a);
-		BCDCORR(b);
-		BCDCORR(c);
-		a <<=1; if (b&0x80) a++;
-		b <<=1; if (c&0x80) b++;
-		c <<=1; if (n&0x8000) c++;
-		n<<=1;
-	}
-
-	uint8_t h;
-	     if (a!=0) { h=6; if (a < 10) h--;}
-	else if (b!=0) { h=4; if (b < 10) h--;}
-	else { h=2; if (c < 10) h--; }
-
-	switch(h) {
-	default:
-	case 5: ser_write('0'+(a&15));
-	case 4: ser_write('0'+(b>>4));
-	case 3: ser_write('0'+(b&15));
-	case 2: ser_write('0'+(c>>4));
-	case 1: ser_write('0'+(c&15));
-	}
+//	b2digit(b2digit(b2digit(b2digit(b2digit(n,10000),1000),100),10),1);
+	n=b2digit(n,10000);
+	n=b2digit(n,1000);
+	n=b2digit(n,100);
+	n=b2digit(n,10);
+	ser_write('0'+n);
 }
-
+/*
 void ser_printLong(uint32_t n)
 {
 	uint8_t a[5];
@@ -260,7 +242,7 @@ void ser_printLong(uint32_t n)
 		ser_write('0'+s);
 	}
 }
-
+*/
 void ser_println()
 {
 	ser_write('\r');

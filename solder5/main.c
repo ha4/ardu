@@ -29,52 +29,60 @@ void terminal()
 	}
 }
 */
+
 static uint32_t t0;
-static uint16_t y;
+//static uint16_t y;
+/*
 void terminal()
 {
 	uint32_t t;
 	for(;;) {
-	        t=micros();
-		if (t-t0 >= 10000L) t0=t;
+	        t=ticks();
+		if (t-t0 >= USEC2TICK(10000L)) t0=t;
 		else continue;
-		y++;
-		if (y>=10) { y=0;
-			ser_printLong(t0);
-			ser_println();
-		}
+//		if (++y>=10) { y=0; ser_printInt(t0); ser_println(); }
 		if (ser_available())
 			ser_write(ser_read());
 
-//		x = adc_get(); if (x == 0xFFFF) continue;
-//		ser_printInt(_tx_delay2);
-//		ser_println();
+		uint16_t x = adc_get(); if (x == 0xFFFF) continue;
+		ser_printInt(x);
+		ser_println();
 
 	}
 }
+*/
 
 //void terminal() { for(;;) if (SPIN & SRXBIT) SPORT |=STXBIT; else SPORT &= ~STXBIT; }
-
+extern uint16_t _rx_delay_stopbit;
 void loop()
 {
 	uint16_t x;
 	for(;;) {
+/*
 		if (!ser_available()) continue;
-		switch(ser_read()) {
-		case ' ': x=adc_get(); ser_printInt(x); ser_println(); break;
-		case 'p': x=ser_parseInt(); ser_print("pwm:"); ser_printInt(x); ser_println(); timer_pwm(x); break;
-		}
+		x=ser_read();
+		ser_write(x);
+		ser_printInt(_rx_delay_stopbit);
+*/
+		_delay_ms(500);
+		x=adc_get();
+		ser_printInt(x); ser_println();
+//		switch(x) {
+//		case ' ': x=adc_get(); ser_printInt(_rx_delay_stopbit); ser_println(); break;
+//		case 'p': x=ser_parseInt(); ser_print("pwm:"); ser_printInt(x); ser_println(); timer_pwm(x); break;
+//		}
 	}
 }
 
+
 int main(void)
 {
-	t0=0;
+//	t0=0;
 	timer_init(TMODE);
-	timer_pwm(0);
+//	timer_pwm(0);
 	ser_init(SBAUD);
 	adc_init(AMODE);
-	//terminal();
+//	terminal();
 	loop();
 	return 0;
 }

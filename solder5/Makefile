@@ -2,12 +2,13 @@
 ## General Flags
 PROJECT = solder5v
 TARGET = $(PROJECT).elf
-OP_MHZ = 8
+OP_kHZ = 9600
+OP_MHZ = 9.6
 CC = avr-gcc
 CPP = avr-g++
 CFLAGS = -Wall
-MCU = attiny45
-PARTNO = t45
+MCU = attiny13
+PARTNO = t13
 PROGRAMMER=usbtiny
 PORT=usb
 AVRDUDE_BAUD = -b 19200
@@ -15,15 +16,15 @@ RMRF=del
 #RMRF=rm -rf
 
 MKFILES = Makefile fncs.h config.h
-CFLAGS += -mcall-prologues
+CFLAGS += -mcall-prologues -fno-zero-initialized-in-bss
 
 ##General options
 #ifeq ($(WITH_LCD_ST7565),1327)
 #CFLAGS += -DLCD_ST_TYPE=1327
 #endif
 
-CFLAGS += -DF_CPU=$(OP_MHZ)000000UL
-CFLAGS += -DF_CPU_HZ=$(OP_MHZ)000000
+CFLAGS += -DF_CPU=$(OP_kHZ)000UL
+CFLAGS += -DF_CPU_HZ=$(OP_kHZ)000
 CFLAGS += -DMHZ_CPU=$(OP_MHZ)
 
 ## Options common to compile, link and assembly rules
@@ -122,10 +123,16 @@ steril:
 
 flash:
 	avrdude -v -c $(PROGRAMMER) $(AVRDUDE_BAUD) -p $(PARTNO) -P $(PORT) -U flash:w:./$(PROJECT).hex:a 
+#tiny45
 #defl: efuse:0xFF(noSelfPgm) hfuse:0xDF(noRstDis,noDWen,SPIen,noWD,noEEsv,BOD=7) lfuse:62(8MhzRC,Div8,noCkOut)
+#tiny13a
+#defl: hfuse:0xFF(noSelfpgm,noDWen,BOD=11,noRstDis) lfuse:6A (SPIen,noEEsv,noWD,Div8,9.6Mhz)
 deviceinfo:
 	avrdude -v -c $(PROGRAMMER) $(AVRDUDE_BAUD) -p $(PARTNO) -P $(PORT) -v
+#tiny45
 #lfuse:0xE2(8MHzRC,noDiv8,noCkOut)
+#tiny13a
+#lfuse:0x7a (SPIen,noEEsv,noWD,noDiv8,9.6Mhz)
 devicefuse:
-	avrdude -v -c $(PROGRAMMER) $(AVRDUDE_BAUD) -p $(PARTNO) -P $(PORT) -U lfuse:w:0xE2:m
+	avrdude -v -c $(PROGRAMMER) $(AVRDUDE_BAUD) -p $(PARTNO) -P $(PORT) -U lfuse:w:0x7A:m
 
