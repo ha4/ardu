@@ -15,7 +15,7 @@ static byte phase = SYMAX_INIT;
 
 #define BIND_COUNT          346
 #define FIRST_PACKET_DELAY  12000
-#define PACKET_PERIOD        8000
+#define PACKET_PERIOD        4000
 #define INITIAL_WAIT          500
 
 #define PAYLOADSIZE 10
@@ -204,7 +204,7 @@ word symax_run(int *TREAF_values)
           freqHop();
           phase = (SYMAX_BOUND);
           counter = 0;
-          return PACKET_PERIOD;
+          return PACKET_PERIOD*2;
         }
         if (counter++ > 40) phase = (SYMAX_INIT);
         return PACKET_PERIOD * 8; // repeat 4 channels twice
@@ -212,7 +212,10 @@ word symax_run(int *TREAF_values)
   case SYMAX_BOUND:
         if (!rxFlag()) {  // switch search channels
             //freqHop();
-            if (counter++ > 40) phase = (SYMAX_LOST_BOUND);
+            if (counter++ > 40) {
+              counter = 0;
+              phase = (SYMAX_LOST_BOUND);
+            }
             return PACKET_PERIOD/8;
         } 
         counter = 0;
@@ -220,7 +223,7 @@ word symax_run(int *TREAF_values)
         decode_packet(TREAF_values);
         freqHop();
      
-      return PACKET_PERIOD;
+      return PACKET_PERIOD*2;
 
   case SYMAX_LOST_BOUND:
         if (rxFlag()) {
@@ -228,8 +231,9 @@ word symax_run(int *TREAF_values)
           freqHop();
           phase = (SYMAX_BOUND);
           counter = 0;
-          return PACKET_PERIOD;
+          return PACKET_PERIOD*2;
         }
+        if (counter++ > 40) phase = (SYMAX_INIT);
         return PACKET_PERIOD * 8; // repeat 4 channels twice
   }
   return PACKET_PERIOD;
@@ -237,6 +241,10 @@ word symax_run(int *TREAF_values)
 
 int  symax_binding() // 1 binding, -1 no values, 0 - ok data
 {
-  if (update) { update = 0; return 0; }
-  return 1;
+  if (update) {
+    update = 0;
+    return 0; 
+  }
+  if (phase==SYMAX_NO_BIND || phase==SYMAX_WAIT_FSYNC) return 1;
+  return -1;
 }
