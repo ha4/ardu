@@ -1,8 +1,16 @@
 // moving to https://github.com/arduino/Arduino/wiki/PluggableUSB-and-PluggableHID-howto
 
-#include "Platform.h"
-#include "USBAPI.h"
-#include "USBDesc.h"
+#include <HID.h>
+
+struct {
+  uint16_t buttons;
+  int8_t leftX;
+  int8_t leftY;
+  int8_t rightX;
+  int8_t rightY;
+} rpt_data; // 6 bytes
+
+uint32_t t0;
 
 // 74hc164 pin 1&2 - DATA
 #define DATAPIN 4
@@ -25,9 +33,7 @@
 #define MAXM    (1048576L)
 #define MAXS    (20-7)
 
-
-extern const u8 _hid_rpt_descr[] PROGMEM;
-const u8 _hid_rpt_descr[] = {
+const uint8_t _hid_rpt_descr[] PROGMEM = {
 			0x05, 0x01,                    // USAGE_PAGE (Generic Desktop)
 			0x09, 0x05,                    // USAGE (Game Pad)
 			0xa1, 0x01,                    // COLLECTION (Application)
@@ -90,65 +96,76 @@ const u8 _hid_rpt_descr[] = {
 	0x81, 0x02, /*          Input (Variable),           */
 #endif
 
+
+#if !defined(_USING_HID)
+
+#include "USBAPI.h"
+#include "USBDesc.h"
+
+#warning "Using legacy HID core (non pluggable)"
 extern const HIDDescriptor _hid_iface PROGMEM;
 const HIDDescriptor _hid_iface =
 {
-	D_INTERFACE(HID_INTERFACE,1,3,0,0),  //n, endpoints, class, subclass,proto
-	D_HIDREPORT(sizeof(_hid_rpt_descr)),
+  D_INTERFACE(HID_INTERFACE,1,3,0,0),  //n, endpoints, class, subclass,proto
+  D_HIDREPORT(sizeof(_hid_rpt_descr)),
         // addr,attr,_packetsize,interval
-	D_ENDPOINT(USB_ENDPOINT_IN (HID_ENDPOINT_INT),USB_ENDPOINT_TYPE_INTERRUPT,64,1)
+  D_ENDPOINT(USB_ENDPOINT_IN (HID_ENDPOINT_INT),USB_ENDPOINT_TYPE_INTERRUPT,64,1)
 };
 
 
 u8 _hid_proto = 1;
 u8 _hid_idlex = 1;
-uint32_t t0;
 
 
 int HID_GetInterface(u8* interfaceNum)
 {
-	interfaceNum[0] += 1;	// uses 1
-	return USB_SendControl(TRANSFER_PGM,&_hid_iface,sizeof(_hid_iface));
+  interfaceNum[0] += 1; // uses 1
+  return USB_SendControl(TRANSFER_PGM,&_hid_iface,sizeof(_hid_iface));
 }
 
 
 int HID_GetDescriptor(int i)
 {
-	return USB_SendControl(TRANSFER_PGM,_hid_rpt_descr,sizeof(_hid_rpt_descr));
-}
-
-void HID_SendReport(u8 id, const void* data, int len)
-{
-	USB_Send(HID_TX, &id, 1);
-	USB_Send(HID_TX | TRANSFER_RELEASE,data,len);
+  return USB_SendControl(TRANSFER_PGM,_hid_rpt_descr,sizeof(_hid_rpt_descr));
 }
 
 bool HID_Setup(Setup& setup)
 {
-	u8 r = setup.bRequest;
-	if (setup.bmRequestType == REQUEST_DEVICETOHOST_CLASS_INTERFACE) {
-		if (HID_GET_REPORT == r) { /*HID_GetReport();*/	return true; }
-		if (HID_GET_PROTOCOL == r) {/*Send8(_hid_protocol);	// TODO */ return true; }
-	}
+  u8 r = setup.bRequest;
+  if (setup.bmRequestType == REQUEST_DEVICETOHOST_CLASS_INTERFACE) {
+    if (HID_GET_REPORT == r) { /*HID_GetReport();*/ return true; }
+    if (HID_GET_PROTOCOL == r) {/*Send8(_hid_protocol); // TODO */ return true; }
+  }
         else if (setup.bmRequestType == REQUEST_HOSTTODEVICE_CLASS_INTERFACE) {
-		if (HID_SET_PROTOCOL == r) { _hid_proto = setup.wValueL; return true; }
-		if (HID_SET_IDLE == r) { _hid_idlex = setup.wValueL; return true; }
-	} else
+    if (HID_SET_PROTOCOL == r) { _hid_proto = setup.wValueL; return true; }
+    if (HID_SET_IDLE == r) { _hid_idlex = setup.wValueL; return true; }
+  } else
               return false;
 }
 
-struct {
-  uint16_t buttons;
-  int8_t leftX;
-  int8_t leftY;
-  int8_t rightX;
-  int8_t rightY;
-} rpt_data; // 6 bytes
+void send_report()
+{
+  uint8_t id=3;
+  USB_Send(HID_TX, &id, 1);
+  USB_Send(HID_TX | TRANSFER_RELEASE,&rpt_data,sizeof(rpt_data));
+}
+
+#else
+
+void mygamepad_init(void) {
+    static HIDSubDescriptor node(_hid_rpt_descr, sizeof(_hid_rpt_descr));
+    HID().AppendDescriptor(&node);
+  }
+
+//mygamepad_ mygamepad;
 
 void send_report()
 {
-        HID_SendReport(3, &rpt_data, sizeof(rpt_data));
+  HID().SendReport(3, &rpt_data, sizeof(rpt_data));
 }
+
+#endif
+
 
 /*
 L   0008 L2  0800 R2   0004 R    0400
@@ -173,21 +190,21 @@ uint16_t permb(uint16_t in)
 uint16_t hatb(uint16_t b)
 {
   switch(b&0xF000) {
-  case 0x8000: return 0;
-  case 0xC000: return 7;
-  case 0xA000: return 1;
-  case 0x2000: return 2;
-  case 0x1000: return 4;
-  case 0x3000: return 3;
-  case 0x5000: return 5;
-  case 0x4000: return 6;
-  default: return 8;
+  case 0x8000: return 0x0000;
+  case 0xC000: return 0x7000;
+  case 0xA000: return 0x1000;
+  case 0x2000: return 0x2000;
+  case 0x1000: return 0x4000;
+  case 0x3000: return 0x3000;
+  case 0x5000: return 0x5000;
+  case 0x4000: return 0x6000;
+  default: return 0x8000;
   }
 }
 
 uint16_t permhat(uint16_t in)
 {
-  return (in & 0xFFF) | (hatb(in)<<12);
+  return (in & 0xFFF) | hatb(in);
 }
 
 void scan_init()
@@ -241,6 +258,18 @@ bool scanall()
   return c;
 }
 
+bool scantest()
+{
+  bool c = 0;
+  static int dir=1;
+  rpt_data.rightY+=dir;
+  rpt_data.rightX+=dir;
+  c=1;
+  if (rpt_data.rightY >=127) dir=-dir;
+  if (rpt_data.rightY <=-127) dir=-dir;
+  return c;
+}
+
 void setup()
 {
   scan_init();
@@ -248,6 +277,9 @@ void setup()
   t0=0;
   // release hat
   rpt_data.buttons = 0x8000;
+#if defined(_USING_HID)
+mygamepad_init();
+#endif
 }
 
 void loop()
@@ -255,4 +287,3 @@ void loop()
   uint32_t t=millis();  
   if(t-t0 > 1) { t0=t; if (scanall()) send_report(); }
 }
-
