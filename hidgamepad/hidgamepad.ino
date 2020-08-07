@@ -1,3 +1,4 @@
+// moving to https://github.com/arduino/Arduino/wiki/PluggableUSB-and-PluggableHID-howto
 
 #include "Platform.h"
 #include "USBAPI.h"
