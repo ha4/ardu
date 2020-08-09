@@ -23,11 +23,18 @@
 #include "interface.h"
 #include "xtimer.h"
 
+#define USE_SERIALSTRING
+//#define USE_PPM
+//#define USE_SBUS
+
 enum { pinLED = 18, pinPPM = 5, pinSync= 4} ;
 
 xtimer timer;
 xtimer flsh;
 
+/*
+ * PPM part
+ */
 #define PPM_number 8  //set the number of chanels
 #define PPM_micros 2  // timer resolution scale factor 16Mhz==2
 #define default_servo_value 1500  //set the default servo value
@@ -97,23 +104,77 @@ ISR(TIMER1_COMPA_vect)
   PPM_phase = true;
 }
 
+/*
+ * SBUS part
+ */
+#define SBUS_FLAG_SIGNAL_LOSS       (1 << 2)
+#define SBUS_FLAG_FAILSAFE_ACTIVE   (1 << 3)
+
+typedef struct sbusChannels_s {
+    // 176 bits of data (11 bits per channel * 16 channels) = 22 bytes.
+    unsigned int chan0 : 11;
+    unsigned int chan1 : 11;
+    unsigned int chan2 : 11;
+    unsigned int chan3 : 11;
+    unsigned int chan4 : 11;
+    unsigned int chan5 : 11;
+    unsigned int chan6 : 11;
+    unsigned int chan7 : 11;
+    unsigned int chan8 : 11;
+    unsigned int chan9 : 11;
+    unsigned int chan10 : 11;
+    unsigned int chan11 : 11;
+    unsigned int chan12 : 11;
+    unsigned int chan13 : 11;
+    unsigned int chan14 : 11;
+    unsigned int chan15 : 11;
+    uint8_t flags;
+} __attribute__((__packed__)) sbusChannels_t;
+
+ sbusChannels_t sbus;
+
+void sbus_start() 
+{
+  Serial.begin(100000,SERIAL_8E2);
+  memset(&sbus,0,sizeof(sbus));
+}
+
+void sbus_send() {
+  Serial.write("\x0F",1);
+  Serial.write((uint8_t*)&sbus,sizeof(sbus));
+  Serial.write("\x00",1);
+}
+
 void setup()
 {
+#ifdef USE_SERIALSTRING
   Serial.begin(115200);
-  
+  while(!Serial);
+  Serial.println("Throttle Rudder Elevation Aileron Flags");
+#endif
+
+#ifdef USE_SBUS
+  sbus_start();
+#endif
   pinMode(pinLED,OUTPUT);
 
   flsh.set(500);
   flsh.start(millis());
   timer.set(0);
   timer.start(micros());
-//  Serial.println("Throttle Rudder Elevation Aileron Flags");
+#ifdef USE_PPM
   ppm_stop();
+#endif
 }
 
 unsigned int byte2rc(unsigned int b)
-{ /* 0..256 -> 1000..2000 scale=125/32 */
+{ /* 0..255 -> 1000..2000 scale=125/32 */
   return 1000+((125*b)>>5); 
+}
+
+unsigned int byte2sbus(unsigned int b)
+{ /* 0..255 -> 192..1792 scale=25/4 */
+  return 192+((25*b)>>2); 
 }
 /* AETR1234 */
 
@@ -129,10 +190,28 @@ void loop()
   if (rc) {
     if (rc > 0) {
       if (flsh.check(millis())) digitalWrite(pinLED, 1-digitalRead(pinLED));
+#ifdef USE_PPM
       if (PPM_state) ppm_stop();
+#endif
     }
     return;
   }
+    digitalWrite(pinLED,1);
+
+#ifdef USE_SBUS
+  /* convert TREAF -> AETR1234 */
+  sbus.chan0=byte2sbus(128-values[3]);
+  sbus.chan1=byte2sbus(128+values[2]);
+  sbus.chan2=byte2sbus(values[0]);
+  sbus.chan3=byte2sbus(128-values[1]);
+  sbus.chan4=(values[4]&FLAG_LOW)?192:1792;
+  sbus.chan5=(values[4]&FLAG_FLIP)?1792:192;
+  sbus.chan6=(values[4]&FLAG_VIDEO)?1792:192;
+  sbus.chan7=(values[4]&FLAG_PICTURE)?1792:192;
+  sbus_send();
+#endif
+
+#ifdef USE_PPM
   /* convert TREAF -> AETR1234 */
   ppmvalues[0]=byte2rc(128-values[3]);
   ppmvalues[1]=byte2rc(128+values[2]);
@@ -147,18 +226,14 @@ void loop()
     { for(int i=0;i<8;i++) ppm[i]=ppmvalues[i]; }
 
   if (!PPM_state) ppm_start();
-  digitalWrite(pinLED,1);
-    
-  //for(int i=0;i<5;i++) {Serial.print(values[i]); Serial.print(' ');}
   //for(int i=0;i<8;i++) {Serial.print(ppmvalues[i]); Serial.print(' ');}
-  
-  /*
-  Serial.print(""); Serial.print(values[0]);
-  Serial.print(" ");  Serial.print(values[1]);
-  Serial.print(" ");Serial.print(values[2]);
-  Serial.print(" "); Serial.print(values[3]);
-  Serial.print(" ");     Serial.print(values[4]);
-  //Serial.println();
-  */
+#endif
 
+#ifdef USE_SERIALSTRING
+  for(int i=0;i<5;i++) {
+    Serial.print(values[i]);
+    Serial.print(' ');
+    }
+  Serial.println();
+#endif
 }
