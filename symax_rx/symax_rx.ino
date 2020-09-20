@@ -150,7 +150,7 @@ void setup()
 #ifdef USE_SERIALSTRING
   Serial.begin(115200);
   while(!Serial);
-  Serial.println("Throttle Rudder Elevation Aileron Flags");
+  Serial.println("timing Throttle Rudder Elevation Aileron Flags");
 #endif
 
 #ifdef USE_SBUS
@@ -177,14 +177,16 @@ unsigned int byte2sbus(unsigned int b)
   return 192+((25*b)>>2); 
 }
 /* AETR1234 */
+uint32_t yy;
 
 void loop() 
 { 
   int values[8];
   int ppmvalues[8];
   int rc;
-  
-  if (timer.check(micros()))  timer.set(symax_run(values));
+  uint32_t dy,t;
+  t=micros();
+  if (timer.check(t))  timer.set(symax_run(values));
 
   rc=symax_binding();
   if (rc) {
@@ -230,6 +232,10 @@ void loop()
 #endif
 
 #ifdef USE_SERIALSTRING
+  dy=t-yy;
+  yy=t;
+    Serial.print(dy);
+    Serial.print(' ');  
   for(int i=0;i<5;i++) {
     Serial.print(values[i]);
     Serial.print(' ');

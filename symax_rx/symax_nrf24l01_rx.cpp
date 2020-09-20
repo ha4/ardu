@@ -44,6 +44,11 @@ static byte checksum(byte *data)
     return sum + 0x55;
 }
 
+
+/*
+  Access level routines
+ */
+
 // Generate address to use from TX id and manufacturer id (STM32 unique id)
 byte initialize_rx_tx_addr()
 {
@@ -56,35 +61,12 @@ byte initialize_rx_tx_addr()
       rx_tx_addr[2] = packet[2];
       rx_tx_addr[1] = packet[3];
       rx_tx_addr[0] = packet[4];
+
+      NRF24L01_WriteRegisterMulti(NRF24L01_0A_RX_ADDR_P0, rx_tx_addr, 5);
       
       return 1;
 }
 
-
-// channels determined by last byte (LSB) of tx address
-// set_channels(rx_tx_addr[0] & 0x1f) - little endian
-static void set_channels(byte laddress) { 
-
-  static const byte start_chans_1[] = {0x0a, 0x1a, 0x2a, 0x3a};
-  static const byte start_chans_2[] = {0x2a, 0x0a, 0x42, 0x22};
-  static const byte start_chans_3[] = {0x1a, 0x3a, 0x12, 0x32};
-
-  uint32_t *pchans = (uint32_t *)chans;   // avoid compiler warning
-
-  if (laddress < 0x10) {
-    if (laddress == 6) laddress = 7;
-    for(byte i=0; i < 4; i++) chans[i] = start_chans_1[i] + laddress;
-  } else if (laddress < 0x18) {
-    for(byte i=0; i < 4; i++)  chans[i] = start_chans_2[i] + (laddress & 0x07);
-    if (laddress == 0x16) { chans[0]++; chans[1] ++; }
-  } else if (laddress < 0x1e) {
-    for(byte i=0; i < 4; i++) chans[i] = start_chans_3[i] + (laddress & 0x07);
-  } else if (laddress == 0x1e) {
-      *pchans = 0x38184121;
-  } else {
-      *pchans = 0x39194121;
-  }
-}
 
 int rxFlag()
 {
@@ -144,6 +126,36 @@ void receive_packet()
       packet_counter++;
 }
 
+
+/*
+   Protocol level routines
+ */
+
+// channels determined by last byte (LSB) of tx address
+// set_channels(rx_tx_addr[0] & 0x1f) - little endian
+static void set_channels(byte laddress) { 
+
+  static const byte start_chans_1[] = {0x0a, 0x1a, 0x2a, 0x3a};
+  static const byte start_chans_2[] = {0x2a, 0x0a, 0x42, 0x22};
+  static const byte start_chans_3[] = {0x1a, 0x3a, 0x12, 0x32};
+
+  uint32_t *pchans = (uint32_t *)chans;   // avoid compiler warning
+
+  if (laddress < 0x10) {
+    if (laddress == 6) laddress = 7;
+    for(byte i=0; i < 4; i++) chans[i] = start_chans_1[i] + laddress;
+  } else if (laddress < 0x18) {
+    for(byte i=0; i < 4; i++)  chans[i] = start_chans_2[i] + (laddress & 0x07);
+    if (laddress == 0x16) { chans[0]++; chans[1] ++; }
+  } else if (laddress < 0x1e) {
+    for(byte i=0; i < 4; i++) chans[i] = start_chans_3[i] + (laddress & 0x07);
+  } else if (laddress == 0x1e) {
+      *pchans = 0x38184121;
+  } else {
+      *pchans = 0x39194121;
+  }
+}
+
 int convert_channel(byte num)
 {
     return ((num & 0x80) ? -(num&0x7F) : (num));
@@ -187,7 +199,6 @@ word symax_run(int *TREAF_values)
 
         receive_packet();
         if(initialize_rx_tx_addr()) { // binding packet
-          NRF24L01_WriteRegisterMulti(NRF24L01_0A_RX_ADDR_P0, rx_tx_addr, 5);
           set_channels(rx_tx_addr[0] & 0x1f);
           current_chan = 0;
           packet_counter = 0;
@@ -208,7 +219,14 @@ word symax_run(int *TREAF_values)
         }
         if (counter++ > 40) phase = (SYMAX_INIT);
         return PACKET_PERIOD * 8; // repeat 4 channels twice
-      
+
+  case SYMAX_LOST_BOUND:
+        if (!rxFlag()) {
+              if (counter++ > 40) phase = (SYMAX_INIT);
+              return PACKET_PERIOD * 8; // repeat 4 channels twice
+        }
+        phase = (SYMAX_BOUND);
+
   case SYMAX_BOUND:
         if (!rxFlag()) {  // switch search channels
             //freqHop();
@@ -224,17 +242,6 @@ word symax_run(int *TREAF_values)
         freqHop();
      
       return PACKET_PERIOD*2;
-
-  case SYMAX_LOST_BOUND:
-        if (rxFlag()) {
-          receive_packet();
-          freqHop();
-          phase = (SYMAX_BOUND);
-          counter = 0;
-          return PACKET_PERIOD*2;
-        }
-        if (counter++ > 40) phase = (SYMAX_INIT);
-        return PACKET_PERIOD * 8; // repeat 4 channels twice
   }
   return PACKET_PERIOD;
 }
