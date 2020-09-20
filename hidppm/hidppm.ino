@@ -3,33 +3,38 @@
 #include <HID.h>
 
 //#define USE_SERIALSTRING
-//#define USE_PPM
-#define USE_SBUS
 
-#ifdef USE_SBUS
-#define dflt_max    1792
-#define dflt_middle 992
-#define dflt_min    192
-#define dflt_ibase  1984
-#else
-#define dflt_max    2000
-#define dflt_middle 1500
-#define dflt_min    1000
-#define dflt_ibase  3000
-#endif
+// min 192  max 1720 span 1600 middle 992
+#define sbus_scale  5
+#define sbus_middle 992
+#define sbus_min    192
+//#define SBUS_to_HID(x) (((x) - sbus_min)*sbus_scale)
+#define SBUS_to_HID(x) ((x)+((x)<<2) - sbus_min*sbus_scale)
+
+// min 1000 max 2000 span 1000 middle 1500
+#define ppm_middle 1500
+#define ppm_scale  8
+#define ppm_min 1000
+#define ppm_max 2000
+//#define PPM_to_HID(x) (((x) - ppm_min)*ppm_scale)
+#define PPM_to_HID(x) (((x)<<3) - ppm_min*ppm_scale)
+
+#define output_max 8000
+#define output_min 0
+#define I(x) (output_max-(x))
 
 struct {
   uint8_t buttons;
-  uint16_t rotY;
-  uint16_t rotX;
-  uint16_t slider;
-  uint16_t rotZ;
+  int16_t X;
+  int16_t Y;
+  int16_t Rx;
+  int16_t Ry;
 } rpt_data; // 9 bytes
 
 uint32_t t0;
 
 // int0 = D3 in leonardo, int0=D2 in UNO, etc
-#define pinINT0 3
+#define pinINT0 2
 
 /*
  * USB HID part
@@ -54,15 +59,10 @@ const uint8_t _hid_rpt_descr[] PROGMEM = {
                        
 			0x09, 0x30,                    //     USAGE (x)     A
       0x09, 0x31,                    //     USAGE (y)     E
-      0x09, 0x33,                    //     USAGE (Rx) T
-      0x09, 0x34,                    //     USAGE (Ry)     R
-#ifdef USE_SBUS
-      0x16, 0xc0, 0x00,              //     LOGICAL_MINIMUM (192)
-      0x26, 0x00, 0x07,              //     LOGICAL_MAXIMUM (1792)
-#else
-      0x16, 0xe8, 0x03,              //     LOGICAL_MINIMUM (1000)
-      0x26, 0xd0, 0x07,              //     LOGICAL_MAXIMUM (2000)
-#endif
+      0x09, 0x33,                    //     USAGE (Rx)    T
+      0x09, 0x34,                    //     USAGE (Ry)    R
+      0x16, 0x00, 0x00,              //     LOGICAL_MINIMUM (0)
+      0x26, 0x40, 0x1F,              //     LOGICAL_MAXIMUM (8000)
 			0x75, 0x10,                    //     REPORT_SIZE (16)
 			0x95, 0x04,                    //     REPORT_COUNT (4)
 			0x81, 0x02,                    //     INPUT (Data,Var,Abs)
@@ -161,13 +161,13 @@ void ISR1()
 //  pulse >>=1; // div 2
 
   if (pulse > 3000) {
+    if (PPM_chan > 0) PPM_state= 1;
     PPM_chan = 0;
-    PPM_state= 1;
     return;
   }
   if (pulse < 500) return; // skip it
-  if (pulse < dflt_min) pulse = dflt_min;
-  if (pulse > dflt_max) pulse = dflt_max;
+  if (pulse < ppm_min) pulse = ppm_min;
+  if (pulse > ppm_max) pulse = ppm_max;
   ppm[PPM_chan] = pulse;
   if (PPM_chan < PPM_number-1) PPM_chan++; //else PPM_chan=0;
 }
@@ -190,14 +190,14 @@ bool scanppm()
 {
   if (!PPM_state) return false;
   PPM_state=0;
-  rpt_data.rotY=dflt_ibase-ppm[0];
-  rpt_data.rotX=ppm[1];
-  rpt_data.slider=ppm[2];
-  rpt_data.rotZ=dflt_ibase-ppm[3];
-  if (ppm[4] > dflt_middle) rpt_data.buttons |= 0x01; else rpt_data.buttons &= ~0x01;
-  if (ppm[5] > dflt_middle) rpt_data.buttons |= 0x02; else rpt_data.buttons &= ~0x02;
-  if (ppm[6] > dflt_middle) rpt_data.buttons |= 0x04; else rpt_data.buttons &= ~0x04;
-  if (ppm[7] > dflt_middle) rpt_data.buttons |= 0x08; else rpt_data.buttons &= ~0x08;
+  rpt_data.X     =  PPM_to_HID(ppm[0]);
+  rpt_data.Y     =  PPM_to_HID(ppm[1]);
+  rpt_data.Rx    =  PPM_to_HID(ppm[2]);
+  rpt_data.Ry    =I(PPM_to_HID(ppm[3]));
+  if (ppm[4] > ppm_middle) rpt_data.buttons |= 0x01; else rpt_data.buttons &= ~0x01;
+  if (ppm[5] > ppm_middle) rpt_data.buttons |= 0x02; else rpt_data.buttons &= ~0x02;
+  if (ppm[6] > ppm_middle) rpt_data.buttons |= 0x04; else rpt_data.buttons &= ~0x04;
+  if (ppm[7] > ppm_middle) rpt_data.buttons |= 0x08; else rpt_data.buttons &= ~0x08;
   return true;
 }
 
@@ -245,14 +245,14 @@ void sbus_input_init()
 
 bool sbus_decode()
 {
-  rpt_data.rotY=dflt_ibase-sbus.chan0;
-  rpt_data.rotX=sbus.chan1;
-  rpt_data.slider=sbus.chan2;
-  rpt_data.rotZ=dflt_ibase-sbus.chan3;
-  if (sbus.chan4 > dflt_middle) rpt_data.buttons |= 0x01; else rpt_data.buttons &= ~0x01;
-  if (sbus.chan5 > dflt_middle) rpt_data.buttons |= 0x02; else rpt_data.buttons &= ~0x02;
-  if (sbus.chan6 > dflt_middle) rpt_data.buttons |= 0x04; else rpt_data.buttons &= ~0x04;
-  if (sbus.chan7 > dflt_middle) rpt_data.buttons |= 0x08; else rpt_data.buttons &= ~0x08;
+  rpt_data.X     =  SBUS_to_HID(sbus.chan0);
+  rpt_data.Y     =  SBUS_to_HID(sbus.chan1);
+  rpt_data.Rx    =  SBUS_to_HID(sbus.chan2);
+  rpt_data.Ry    =I(SBUS_to_HID(sbus.chan3));
+  if (sbus.chan4 > sbus_middle) rpt_data.buttons |= 0x01; else rpt_data.buttons &= ~0x01;
+  if (sbus.chan5 > sbus_middle) rpt_data.buttons |= 0x02; else rpt_data.buttons &= ~0x02;
+  if (sbus.chan6 > sbus_middle) rpt_data.buttons |= 0x04; else rpt_data.buttons &= ~0x04;
+  if (sbus.chan7 > sbus_middle) rpt_data.buttons |= 0x08; else rpt_data.buttons &= ~0x08;
   return true;
 }
 
@@ -285,36 +285,27 @@ bool scantest()
 {
   bool c = 0;
   static int dir=1;
-  rpt_data.rotY+=dir;
-  rpt_data.rotX+=dir;
+  rpt_data.X+=dir;
+  rpt_data.Y+=dir;
   c=1;
-  if (rpt_data.rotY >=2000) dir=-dir;
-  if (rpt_data.rotY <=1000) dir=-dir;
+  if (rpt_data.X >=8000) dir=-dir;
+  if (rpt_data.X <=0) dir=-dir;
   return c;
 }
 
 void setup()
 {
   memset(&rpt_data,0,sizeof(rpt_data));
-#ifdef USE_PPM
+  t0=0;
+
   pinMode(pinINT0,INPUT_PULLUP);
   ppm_input_start();
-#endif
-  t0=0;
-  // release hat
-  rpt_data.buttons = 0x00;
-  rpt_data.rotX=dflt_middle;
-  rpt_data.rotY=dflt_middle;
-  rpt_data.rotZ=dflt_middle;
-  rpt_data.slider=dflt_min;
   
 #if defined(_USING_HID)
-mygamepad_init();
+  mygamepad_init();
 #endif
 
-#ifdef USE_SBUS
   sbus_input_init();
-#endif
 
 #ifdef USE_SERIALSTRING
   Serial.begin(115200);
@@ -325,22 +316,20 @@ mygamepad_init();
 
 void loop()
 {
+  bool sbus;
   uint32_t t=micros();
   if(t-t0 < 1000) return;
   t0=t;
-#ifdef USE_SBUS
-  if (scansbus(t)) 
-#else
-  if (scanppm()) 
-#endif
-  {
+
+  sbus=scansbus(t);
+  if(scanppm() || sbus) {
     send_report(); 
 #ifdef USE_SERIALSTRING
     Serial.print(rpt_data.buttons,HEX); Serial.print(' ');
-    Serial.print(rpt_data.rotY); Serial.print(' ');
-    Serial.print(rpt_data.rotX); Serial.print(' ');
-    Serial.print(rpt_data.slider); Serial.print(' ');
-    Serial.print(rpt_data.rotZ);
+    Serial.print(rpt_data.X); Serial.print(' ');
+    Serial.print(rpt_data.Y); Serial.print(' ');
+    Serial.print(rpt_data.Rx); Serial.print(' ');
+    Serial.print(rpt_data.Ry);
     Serial.println();
 #endif
   }
