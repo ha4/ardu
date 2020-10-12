@@ -1,6 +1,8 @@
 #include "iface_nrf24l01.h"
 
 #define DEBUG
+//#define USE_PPM
+//#define USE_SBUS
 
 /*
  SPI Comm.pins with nRF24L01
@@ -25,18 +27,6 @@
 #define RF_POWER TX_POWER_158mW 
 //TX_POWER_5mW  80 20 158
 
-/* 
- PPM CONFIGURATION
-*/
-#define channel_number 6  //set the number of channels
-#define PPM_pin 2  //set PPM signal output pin on the arduino
-#define PPM_FrLen 27000  //set the PPM frame length in microseconds (1ms = 1000µs)
-#define PPM_PulseLen 400  //set the pulse length
-#define PPM_on PORTD |= _BV(2)
-#define PPM_off PORTD &= ~_BV(2) 
-
-int ppm[channel_number];
-
 struct MyData {
   uint16_t throttle;
   uint16_t yaw;
@@ -46,9 +36,22 @@ struct MyData {
 };
 
 MyData data;
+#ifdef USE_SBUS
+#include "sbus.h"
+extern sbusChannels_t sbus;
+#endif
+
+#ifdef USE_PPM
+#include "ppm.h"
+extern int ppm[];
+#endif
+
 
 uint32_t ref_t;
 uint32_t timout;
+uint32_t t1s;
+uint32_t tsbus;
+uint32_t pps,ppscnt;
 
 void setup()
 {
@@ -63,11 +66,19 @@ void setup()
     Serial.println("starting radio");
 #endif
 
-//    setupPPM();
+#ifdef USE_PPM
+    setupPPM();
+#endif
+
+#ifdef USE_SBUS
+    sbus_start();
+#endif
 
     BAYANG_RX_data(&data);
     timout=BAYANG_RX_init();
     ref_t=micros();
+    tsbus=ref_t;
+    t1s=ref_t;
 }
 
 void loop()
@@ -78,16 +89,36 @@ void loop()
       ref_t = t;
       timout=BAYANG_RX_callback();
     }
+    if(t-t1s >= 1000000L) {
+      t1s=t;
+      pps=ppscnt;
+      ppscnt=0;
+    }
     if(BAYANG_RX_available()) {
+      ppscnt++;
+#ifdef DEBUG
+      Serial.print(pps);Serial.print(' ');
       Serial.print(data.roll);Serial.print(' ');
       Serial.print(data.pitch);Serial.print(' ');
       Serial.print(data.throttle);Serial.print(' ');
       Serial.print(data.yaw);Serial.println();
-      
-      // setPPMValuesFromData();
+#endif
+
+#ifdef USE_PPM
+      setPPMValuesFromData();
+#endif
+
+#ifdef USE_SBUS
+//    if(t-tsbus >= SBUS_HIGHSPEED_PERIOD) { // decimate
+      tsbus=t;
+      setSBUSValuesFromData();
+      sbus_send();
+//    }
+#endif
     }
 }
 
+#ifdef USE_PPM
 void setPPMValuesFromData()
 {
   ppm[0] = map(data.roll,     0, 1023, 1000, 2000);  
@@ -97,50 +128,16 @@ void setPPMValuesFromData()
   ppm[4] = map(data.aux1,     0, 1, 1000, 2000);
   ppm[5] = 1000;
 }
+#endif
 
-void setupPPM() {
-  pinMode(PPM_pin, OUTPUT);
-  PPM_off;
-
-  cli();
-  TCCR1A = 0; // set entire TCCR1 register to 0
-  TCCR1B = 0;
-
-  OCR1A = 100;  // compare match register (not very important, sets the timeout for the first interrupt)
-  TCCR1B |= (1 << WGM12);  // turn on CTC mode
-  TCCR1B |= (1 << CS11);  // 8 prescaler: 0,5 microseconds at 16mhz
-  TIMSK1 |= (1 << OCIE1A); // enable timer compare interrupt
-  sei();
+#ifdef USE_SBUS
+void setSBUSValuesFromData()
+{
+  sbus.chan0 = map(data.roll,     0, 1023, 172, 1811);
+  sbus.chan1 = map(data.pitch,    0, 1023, 172, 1811);
+  sbus.chan2 = map(data.yaw,      0, 1023, 172, 1811);
+  sbus.chan3 = map(data.throttle, 0, 1023, 172, 1811);
+  sbus.chan4 = map(data.aux1,     0,    1, 172, 1811);
+  sbus.chan5 = 172;
 }
-
-//#error This line is here to intentionally cause a compile error. Please make sure you set clockMultiplier below as appropriate, then delete this line.
-#define clockMultiplier 2 // set this to 2 if you are using a 16MHz arduino, leave as 1 for an 8MHz arduino
-
-ISR(TIMER1_COMPA_vect){
-  static boolean pulse = true;
-  static byte n=0;
-  static unsigned int rest=PPM_FrLen;
-
-  TCNT1 = 0;
-
-  if(pulse) { //end pulse
-    PPM_off;
-    OCR1A = PPM_PulseLen * clockMultiplier;
-    pulse = false;
-    return;
-  }
-
-  PPM_on;
-  pulse = true;
-
-  if(n >= channel_number) {
-      rest -= PPM_PulseLen;
-      OCR1A = rest * clockMultiplier;
-      rest = PPM_FrLen;
-      n=0;
-  } else {
-      rest -= ppm[n];
-      OCR1A = (ppm[n] - PPM_PulseLen) * clockMultiplier;
-      n++;
-  }     
-}
+#endif
