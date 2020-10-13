@@ -1,8 +1,8 @@
 #include "iface_nrf24l01.h"
 
-#define DEBUG
+//#define DEBUG
 //#define USE_PPM
-//#define USE_SBUS
+#define USE_SBUS
 
 /*
  SPI Comm.pins with nRF24L01
@@ -107,15 +107,15 @@ void loop()
 #ifdef USE_PPM
       setPPMValuesFromData();
 #endif
+    }
 
 #ifdef USE_SBUS
-//    if(t-tsbus >= SBUS_HIGHSPEED_PERIOD) { // decimate
+    if(t-tsbus >= SBUS_HIGHSPEED_PERIOD) { // decimate
       tsbus=t;
       setSBUSValuesFromData();
       sbus_send();
-//    }
-#endif
     }
+#endif
 }
 
 #ifdef USE_PPM

@@ -11,7 +11,7 @@ set sertime 5
 set chans(f) 0
 set PortMsg ""
 
-proc sbus_decode {msg} {
+proc sbus_decode0 {msg} {
 	global chans
 	binary scan $msg {c*} chanx
 	if {[llength $chanx] != 23} return
@@ -39,6 +39,16 @@ proc sbus_decode {msg} {
 	}
 	set j [lindex $chanx $indx]
 	set chans(f) [expr $j&0xFF]
+}
+
+proc sbus_decode {msg} {
+	global chans
+	if {[binary scan $msg b184 x] != 1} return
+	set y [regexp -all -inline {.{8,11}} $x]
+	for {set i 1} {$i <= 16} {incr i} {
+		binary scan [binary format b11 [lindex $y $i-1]] s chans($i)
+	}
+	binary scan [binary format b11 [lindex $y 16]] s chans(f)
 }
 
 proc ser_port_in {} {
@@ -82,7 +92,7 @@ proc ser_stop {} {
 	if {$chan != ""} { close $chan }
         set chan ""
 }
-
+                                                                       
 proc pps_check {} {
 	global chanpps
 	global chancnt

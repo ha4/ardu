@@ -13,6 +13,8 @@
   If not, see <http://www.gnu.org/licenses/>.
 */
 
+//#define BIND_DEBUG
+
 #define BAYANG_BIND_COUNT       1000
 #define BAYANG_PACKET_PERIOD    2000
 #define BAYANG_PACKET_TELEM_PERIOD  5000
@@ -160,12 +162,15 @@ void BAYANG_eeprom(bool save)
     for (int i = 0; i < BAYANG_RF_NUM_CHANNELS; i++)
       rf_channels[i] = eeprom_read_byte((EE_ADDR)temp++);
   }
+
+#ifdef BIND_DEBUG
   Serial.print("bind-info:");
   for(int i = 0; i < BAYANG_ADDRESS_LENGTH; i++)
     { Serial.print(rx_tx_addr[i],HEX); Serial.print(' '); }
   for(int i = 0; i < BAYANG_RF_NUM_CHANNELS; i++)
     { Serial.print(rf_channels[i],HEX); Serial.print(' '); }
   Serial.println();
+#endif
 
   XN297_SetTXAddr(rx_tx_addr, BAYANG_ADDRESS_LENGTH);
   XN297_SetRXAddr(rx_tx_addr, BAYANG_ADDRESS_LENGTH);
@@ -191,7 +196,9 @@ uint16_t BAYANG_RX_callback()
         XN297_ReadPayload(packet, BAYANG_PACKET_SIZE);
 
         if(validPacket() && (packet[0] == 0xA4 || packet[0] == 0xA2)) {
-          //Serial.println("got bind");
+#ifdef BIND_DEBUG
+          Serial.println("got bind packet");
+#endif
           BAYANG_eeprom(true);
           phase = BAYANG_RX_DATA;
         }
