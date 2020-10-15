@@ -14,6 +14,7 @@
 */
 
 //#define BIND_DEBUG
+//#define BAYANG_AUTOBIND
 
 #define BAYANG_BIND_COUNT       1000
 #define BAYANG_PACKET_PERIOD    2000
@@ -38,7 +39,7 @@ static uint8_t rf_channels[BAYANG_RF_NUM_CHANNELS] = {0,};
 static uint8_t rx_tx_addr[BAYANG_ADDRESS_LENGTH];
 char aux[AUXNUMBER];
 uint32_t lastRxTime;
-bool rx_started, rx_received, rx_available;
+bool rx_received, rx_available;
 int8_t slip_retry;
 uint16_t bind_counter;
 uint32_t pps_timer;
@@ -63,7 +64,8 @@ enum {
 enum {
   BAYANG_RX_BINDING = 0,
   BAYANG_RX_BIND,
-  BAYANG_RX_DATA
+  BAYANG_RX_DATA,
+  BAYANG_RX_DATA_LOSS,
 };
 
 #define EE_ADDR uint8_t*
@@ -179,13 +181,30 @@ void BAYANG_eeprom(bool save)
 uint16_t BAYANG_RX_init()
 {
   BAYANG_init_nrf();
+#ifdef BAYANG_AUTOBIND
   phase = BAYANG_RX_BINDING;
+#else
+  phase = BAYANG_RX_BIND;
+#endif
   rf_chan = 0;
-  rx_started = false;
   rx_received = false;
   bind_counter=0;
 
   return BAYANG_PACKET_PERIOD / 2;
+}
+
+uint16_t BAYANG_RX_bind()
+{
+  uint16_t t=BAYANG_RX_init();
+  phase = BAYANG_RX_BINDING;
+  return t;
+}
+
+int BAYANG_RX_state()
+{
+  if (phase==BAYANG_RX_DATA) return 1;
+  if (phase==BAYANG_RX_DATA_LOSS) return -1;
+  return 0;
 }
 
 uint16_t BAYANG_RX_callback()
@@ -210,7 +229,9 @@ uint16_t BAYANG_RX_callback()
       break;
 
     case BAYANG_RX_BIND:
-      //Serial.println("read bind");
+#ifdef BIND_DEBUG
+      Serial.println("read bind");
+#endif
       BAYANG_eeprom(false);
       NRF24L01_FlushRx();
       NRF24L01_WriteReg(NRF24L01_07_STATUS, 0x70);
@@ -218,11 +239,12 @@ uint16_t BAYANG_RX_callback()
       break;
 
     case BAYANG_RX_DATA:
+    case BAYANG_RX_DATA_LOSS:
       if (NRF24L01_ReadReg(NRF24L01_07_STATUS) & _BV(NRF24L01_07_RX_DR)) {
         XN297_ReadPayload(packet, BAYANG_PACKET_SIZE);
         if (validPacket() &&  packet[0] == 0xA5) {
           if (bdata) BAYANG_decode(bdata);
-          rx_started = true;
+          phase = BAYANG_RX_DATA;
           rx_received = true;
           slip_retry = 8;
           pps_counter++;
@@ -242,14 +264,14 @@ uint16_t BAYANG_RX_callback()
         NRF24L01_WriteReg(NRF24L01_05_RF_CH, rf_channels[rf_chan]);
         NRF24L01_FlushRx();
         NRF24L01_WriteReg(NRF24L01_07_STATUS, 0x70);
-        if (rx_started) {
+        if (phase==BAYANG_RX_DATA) {
           if (rx_received) { // in sync
             rx_received = false;
             slip_retry = 1;
             return BAYANG_PACKET_PERIOD - BAYANG_PACKET_PERIOD / 4; // 1500us
           } else { // lost packet
             slip_retry = 0;
-            if (rx_lqi == 0) rx_started = false;
+            if (rx_lqi == 0) phase = BAYANG_RX_DATA_LOSS;
           }
         } else
           slip_retry = -8;
