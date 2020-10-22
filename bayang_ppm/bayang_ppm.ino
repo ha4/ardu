@@ -151,7 +151,7 @@ int8_t btnflt;
 void scan_button()
 {
   // debounce
-  int8_t j=IO_read;
+  int8_t j=!IO_read;
   btnflt += j+j - ((btnflt)>>2); // alphafilter y=0.75y+0.25x: y=y-0.25y+0.25x: y+=0.25x-0.25y: 8y=2x-2y
   if (btnflt > 4) j=0; else j=1;
   // changestate
@@ -164,7 +164,7 @@ void scan_button()
   Serial.print("button changed:");
   Serial.println(j);
 #endif
-  if (!j) { // release
+  if (j) { // release
     if (btncnt >= 200) bind(micros()); // 1s press
   }
   btncnt=0;

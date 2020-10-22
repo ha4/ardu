@@ -64,6 +64,7 @@ proc ser_port_in {} {
 	if {$chanpha==0 && $m==0x0f} {
 		incr chanpha
 		incr chancnt
+		set PortMsg ""
 	} elseif {$chanpha<24} {
 		append PortMsg $rd
 		incr chanpha
