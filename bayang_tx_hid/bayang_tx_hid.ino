@@ -288,18 +288,98 @@ void loop0()
   if(t-t0 > 1) { t0=t; if (scanall()) send_report(); }
 }
 
+#define POT_THROTTLE 2
+#define POT_RUDDER   0
+#define POT_ELEVATOR 1
+#define POT_AILERON  3
+#define ADC0_RUDDER   7
+#define ADC1_ELEVATOR 6
+#define ADC2_THROTTLE 5
+#define ADC3_AILERON  4
+
+byte adc_chan;
+volatile uint16_t adc_values[4];
+
+ISR(ADC_vect)
+{
+#if defined(__AVR_ATmega32U4__)
+  /* now prev idx Achan
+   * 7   4    3   3
+   * 6   7    2   0
+   * 5   6    1   1
+   * 4   5    0   2
+   */
+  ADMUX = adc_chan; // catch before sample hold
+  uint16_t v = ADC;
+  adc_values[adc_chan&0x3]=v;
+  adc_chan--;
+  adc_chan&=0x3;
+  adc_chan|=_BV(REFS0) | 0x04;
+#endif
+}
+
+uint16_t adc_read(uint8_t chan)
+{
+  /*  idx Achan ~achn ~achn-1
+   *  3   3     0     3
+   *  0   2     1     0
+   *  1   1     2     1
+   *  2   0     3     2   */
+  uint8_t  x;
+  uint16_t v;
+  x=~chan;
+//  x--;
+  x&=0x3;
+  noInterrupts();
+  v = adc_values[x];
+  interrupts();
+  return v;
+}
+
+void adc_setup()
+{
+  // 125khz (ADPS=0b111, 16MHz div128)
+  noInterrupts();
+  adc_chan=0x07|_BV(REFS0);
+  ADMUX  = adc_chan;
+  ADCSRA = _BV(ADEN)|_BV(ADSC)|_BV(ADATE)|_BV(ADIE)|_BV(ADPS2)|_BV(ADPS1)|_BV(ADPS0);
+  ADCSRB = 0;
+  DIDR0  = 0xF0; // digital input disable channel 4..7
+  interrupts();
+}
+
+uint16_t channels[4];
+
+void getADC0()
+{
+  for(int i=0; i < 4; i++)
+    channels[i]=analogRead(i);
+}
+
+void getADC1()
+{
+  for(int i=0; i < 4; i++)
+    channels[i]=adc_read(i);
+}
+
+void printChans()
+{
+  for(int i=0; i < 4; i++) {
+    Serial.print(channels[i]);
+    if (i==3) Serial.println(); else Serial.print(' ');
+  }
+}
+
 void setup()
 {
   while(!Serial);
   Serial.begin(115200);
+  adc_setup();
 }
 
 void loop()
 {
-  Serial.print(analogRead(A0)); Serial.print(' ');
-  Serial.print(analogRead(A1)); Serial.print(' ');
-  Serial.print(analogRead(A2)); Serial.print(' ');
-  Serial.print(analogRead(A3)); Serial.print(' ');
-  Serial.println("test");
+  getADC1();
+  printChans();
   delay(100);
 }
