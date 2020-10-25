@@ -3,7 +3,7 @@
 #include <HID.h>
 
 struct {
-//  uint8_t buttons;
+  uint8_t buttons;
   uint16_t leftX;
   uint16_t leftY;
   uint16_t rightX;
@@ -25,7 +25,7 @@ const uint8_t _hid_rpt_descr[] PROGMEM = {
 			0xa1, 0x01,                    // COLLECTION (Application)
 			0xa1, 0x00,                    //   COLLECTION (Physical)
 			0x85, 0x03,                	   //     REPORT_ID (3)
-/*
+
 			0x05, 0x09,                    //     USAGE_PAGE (Button)
 			0x19, 0x01,                    //     USAGE_MINIMUM (Button 1)
 			0x29, 0x08,                    //     USAGE_MAXIMUM (Button 8)
@@ -34,7 +34,7 @@ const uint8_t _hid_rpt_descr[] PROGMEM = {
 			0x75, 0x01,                    //     REPORT_SIZE (1)
 			0x95, 0x08,                    //     REPORT_COUNT (8)
 			0x81, 0x02,                    //     INPUT (Data,Var,Abs)
-  */                      
+                       
       0x05, 0x01,                    //     USAGE_PAGE (Generic Desktop)
 			0x09, 0x30,                    //     USAGE (X)
 			0x09, 0x31,                    //     USAGE (Y)
@@ -44,7 +44,7 @@ const uint8_t _hid_rpt_descr[] PROGMEM = {
       0x46, 0xff, 0x03,              //     PHYSICAL_MAXIMUM (1023)
 			0x15, 0x00,                    //     LOGICAL_MINIMUM (0)
 			0x26, 0xff,0x03,               //     LOGICAL_MAXIMUM (1023)
-			0x75, 0x08,                    //     REPORT_SIZE (16)
+			0x75, 0x10,                    //     REPORT_SIZE (16)
 			0x95, 0x04,                    //     REPORT_COUNT (4)
 			0x81, 0x02,                    //     INPUT (Data,Var,Abs)
 
@@ -126,10 +126,6 @@ void send_report()
 #define POT_RUDDER   0
 #define POT_ELEVATOR 1
 #define POT_AILERON  3
-#define ADC0_RUDDER   7
-#define ADC1_ELEVATOR 6
-#define ADC2_THROTTLE 5
-#define ADC3_AILERON  4
 
 byte adc_chan, adc_next;
 volatile uint16_t adc_values[4];
@@ -196,7 +192,7 @@ bool scanall()
   uint16_t rx=adc_read(POT_AILERON);
   uint16_t ly=adc_read(POT_THROTTLE);
   uint16_t lx=adc_read(POT_RUDDER);
-//  if (b!= rpt_data.buttons) { rpt_data.buttons=b; c=1; }
+  if (b!= rpt_data.buttons) { rpt_data.buttons=b; c=1; }
   if (ry!= rpt_data.rightY) { rpt_data.rightY=ry; c=1; }
   if (rx!= rpt_data.rightX) { rpt_data.rightX=rx; c=1; }
   if (ly!= rpt_data.leftY) { rpt_data.leftY=ly; c=1; }
@@ -207,11 +203,12 @@ bool scanall()
 
 void setup()
 {
+  //  while(!Serial); Serial.begin(115200);
   scan_init();
- // adc_setup();
+  adc_setup();
   memset(&rpt_data,0,sizeof(rpt_data));
   t0=0;
-//  rpt_data.buttons = 0x00;
+  rpt_data.buttons = 0x00;
 #if defined(_USING_HID)
 mygamepad_init();
 #endif
@@ -221,41 +218,6 @@ void loop()
 {
   uint32_t t=millis();  
   if(t-t0 > 1) { t0=t; if (scanall()) send_report(); }
-}
-
-uint16_t channels[4];
-
-void getADC1()
-{
-  for(int i=0; i < 4; i++)
-    channels[i]=adc_read(i);
-}
-
-
-void getADC0()
-{
-  for(int i=0; i < 4; i++)
-    channels[i]=analogRead(i);
-}
-
-void printChans()
-{
-  for(int i=0; i < 4; i++) {
-    Serial.print(channels[i]);
-    if (i==3) Serial.println(); else Serial.print(' ');
-  }
-}
-
-void setup0()
-{
-  while(!Serial);
-  Serial.begin(115200);
-  adc_setup();
-}
-
-void loop0()
-{
-  getADC1();
-  printChans();
-  delay(100);
+  // for(int i=0; i < 4; i++) { Serial.print(adc_read(i)); if (i==3) Serial.println(); else Serial.print(' '); }
+  // delay(100);
 }
