@@ -3,12 +3,12 @@
 #include <HID.h>
 
 struct {
-  uint16_t buttons;
-  int8_t leftX;
-  int8_t leftY;
-  int8_t rightX;
-  int8_t rightY;
-} rpt_data; // 6 bytes
+//  uint8_t buttons;
+  uint16_t leftX;
+  uint16_t leftY;
+  uint16_t rightX;
+  uint16_t rightY;
+} rpt_data; // 9 bytes
 
 uint32_t t0;
 
@@ -19,82 +19,38 @@ uint32_t t0;
 #define COLPINA 5
 #define COLPINB 2
 
-#define RY0 470
-#define RX0 528
-#define LY0 517
-#define LX0 481
-#define RYM 439
-#define RXM 445
-#define LYM 256
-#define LXM 406
-
-// power(2,20)/MAX
-#define REVM(a) (1048576L/a)
-#define MAXM    (1048576L)
-#define MAXS    (20-7)
-
 const uint8_t _hid_rpt_descr[] PROGMEM = {
 			0x05, 0x01,                    // USAGE_PAGE (Generic Desktop)
 			0x09, 0x05,                    // USAGE (Game Pad)
 			0xa1, 0x01,                    // COLLECTION (Application)
 			0xa1, 0x00,                    //   COLLECTION (Physical)
 			0x85, 0x03,                	   //     REPORT_ID (3)
-
+/*
 			0x05, 0x09,                    //     USAGE_PAGE (Button)
 			0x19, 0x01,                    //     USAGE_MINIMUM (Button 1)
-			0x29, 0x10,                    //     USAGE_MAXIMUM (Button 16)
+			0x29, 0x08,                    //     USAGE_MAXIMUM (Button 8)
 			0x15, 0x00,                    //     LOGICAL_MINIMUM (0)
 			0x25, 0x01,                    //     LOGICAL_MAXIMUM (1)
 			0x75, 0x01,                    //     REPORT_SIZE (1)
-			0x95, 0x0c,                    //     REPORT_COUNT (12)
+			0x95, 0x08,                    //     REPORT_COUNT (8)
 			0x81, 0x02,                    //     INPUT (Data,Var,Abs)
-
-			0x05, 0x01,                    //     USAGE_PAGE (Generic Desktop)
-		        0x09, 0x39,                    // USAGE (Hat Switch)
-		        0x15, 0x00,                    // LOGICAL_MINIMUM (0)
-                        0x25, 0x07,                    // LOGICAL_MAXIMUM (7)   // if 8, hat switch is released
-                        0x35, 0x00,                    // PHYSICAL_MINIMUM (0)
-                        0x46, 0x3B, 0x01,              // PHYSICAL_MAXIMUM (315)
-                        0x65, 0x14,                    // UNIT (Eng Rot:Angular Pos)
-                        0x75, 0x04,                    // REPORT_SIZE (4)
-                        0x95, 0x01,                    // REPORT_COUNT (1)
-                        0x81, 0x02,                    // INPUT (Data,Var,Abs)
-                        
+  */                      
+      0x05, 0x01,                    //     USAGE_PAGE (Generic Desktop)
 			0x09, 0x30,                    //     USAGE (X)
 			0x09, 0x31,                    //     USAGE (Y)
 			0x09, 0x33,                    //     USAGE (Rx)
 			0x09, 0x34,                    //     USAGE (Ry)
-			0x15, 0x81,                    //     LOGICAL_MINIMUM (-127)
-			0x25, 0x7f,                    //     LOGICAL_MAXIMUM (127)
-			0x75, 0x08,                    //     REPORT_SIZE (8)
+      0x35, 0x00,                    //     PHYSICAL_MINIMUM (0)
+      0x46, 0xff, 0x03,              //     PHYSICAL_MAXIMUM (1023)
+			0x15, 0x00,                    //     LOGICAL_MINIMUM (0)
+			0x26, 0xff,0x03,               //     LOGICAL_MAXIMUM (1023)
+			0x75, 0x08,                    //     REPORT_SIZE (16)
 			0x95, 0x04,                    //     REPORT_COUNT (4)
 			0x81, 0x02,                    //     INPUT (Data,Var,Abs)
 
 			0xc0,                          //     END_COLLECTION
 			0xc0                           // END_COLLECTION
 };
-
-#if 0
-	0x05, 0x01,         /*          Usage Page (Desktop),       */
-	0x75, 0x10,         /*          Report Size (16),           */
-	0x46, 0xFF, 0xFF,   /*          Physical Maximum (65535),   */
-	0x27, 0xFF, 0xFF, 0x00, 0x00, /*      Logical Maximum (65535),    */
-	0x95, 0x03,         /*          Report Count (3),           * 3x Accels */
-	0x09, 0x33,         /*              Usage (rX),             */
-	0x09, 0x34,         /*              Usage (rY),             */
-	0x09, 0x35,         /*              Usage (rZ),             */
-	0x81, 0x02,         /*          Input (Variable),           */
-	0x06, 0x00, 0xFF,   /*          Usage Page (FF00h),         */
-	0x95, 0x03,         /*          Report Count (3),           * Skip Accels 2nd frame */
-	0x81, 0x02,         /*          Input (Variable),           */
-	0x05, 0x01,         /*          Usage Page (Desktop),       */
-	0x09, 0x01,         /*          Usage (Pointer),            */
-	0x95, 0x03,         /*          Report Count (3),           * 3x Gyros */
-	0x81, 0x02,         /*          Input (Variable),           */
-	0x06, 0x00, 0xFF,   /*          Usage Page (FF00h),         */
-	0x95, 0x03,         /*          Report Count (3),           * Skip Gyros 2nd frame */
-	0x81, 0x02, /*          Input (Variable),           */
-#endif
 
 
 #if !defined(_USING_HID)
@@ -166,45 +122,47 @@ void send_report()
 
 #endif
 
+#define POT_THROTTLE 2
+#define POT_RUDDER   0
+#define POT_ELEVATOR 1
+#define POT_AILERON  3
+#define ADC0_RUDDER   7
+#define ADC1_ELEVATOR 6
+#define ADC2_THROTTLE 5
+#define ADC3_AILERON  4
 
-/*
-L   0008 L2  0800 R2   0004 R    0400
-Hu  0020 Hl  0010 Hr   2000 Hd   1000
-MIN 0080 PLS 8000 Lstk 0040 Rstk 4000
-X   0200 Y   0002 A    0100 B    0001
-LX A3 LY A2 RX A1 RY A0
-*/
+byte adc_chan, adc_next;
+volatile uint16_t adc_values[4];
 
-uint16_t permb(uint16_t in)
-{ /// 4000,8000 <-> 0020,0010
-  uint16_t perm1 = (in & 0x0030) << 10;
-  uint16_t perm2 = (in >> 10) & 0x0030;
-  return (in & ~0xC030)|perm1|perm2;
+ISR(ADC_vect)
+{
+#if defined(__AVR_ATmega32U4__)
+  adc_values[adc_chan&0x3]=ADC;
+  ADMUX = adc_next; // catch before sample hold
+  adc_chan=adc_next;
+  adc_next = ((adc_next+1)&0x3)|0x04|_BV(REFS0);
+#endif
 }
 
-/*  after permutation: ^8000 >2000 v1000 <4000
-  7 0 1
- 6     2
-  5 4 3
-*/
-uint16_t hatb(uint16_t b)
+uint16_t adc_read(uint8_t chan)
 {
-  switch(b&0xF000) {
-  case 0x8000: return 0x0000;
-  case 0xC000: return 0x7000;
-  case 0xA000: return 0x1000;
-  case 0x2000: return 0x2000;
-  case 0x1000: return 0x4000;
-  case 0x3000: return 0x3000;
-  case 0x5000: return 0x5000;
-  case 0x4000: return 0x6000;
-  default: return 0x8000;
-  }
+  uint16_t v;
+  noInterrupts();
+  v = adc_values[((~chan)+1)&0x3];
+  interrupts();
+  return v;
 }
 
-uint16_t permhat(uint16_t in)
+void adc_setup()
 {
-  return (in & 0xFFF) | hatb(in);
+  // 125khz (ADPS=0b111, 16MHz div128)
+  noInterrupts();
+  adc_chan=adc_next=0x04|_BV(REFS0);
+  ADMUX  = adc_chan;
+  ADCSRA = _BV(ADEN)|_BV(ADSC)|_BV(ADATE)|_BV(ADIE)|_BV(ADPS2)|_BV(ADPS1)|_BV(ADPS0);
+  ADCSRB = 0;
+  DIDR0  = 0xF0; // digital input disable channel 4..7
+  interrupts();
 }
 
 void scan_init()
@@ -229,27 +187,16 @@ uint16_t scanmx()
   return (pa << 8) | pb;
 }
 
-int8_t cart(int16_t a, int16_t offs, int32_t scale)
-{
-  int z = a-offs;
-  int32_t z2 = z*scale;
-  int8_t p;
-  if (z2 >= MAXM) z2=MAXM-1;
-  if (z2 <= -MAXM) z2=-MAXM;
-  p = z2 >> MAXS;
-  return p;
-}
-
 bool scanall()
 {
   bool c = 0;
   
-  uint16_t b=permhat(permb(scanmx()));
-  int8_t ry=cart(analogRead(A0),RY0,REVM(RYM));
-  int8_t rx=cart(analogRead(A1),RX0,REVM(RXM));
-  int8_t ly=cart(analogRead(A2),LY0,REVM(LYM));
-  int8_t lx=cart(analogRead(A3),LX0,REVM(LXM));
-  if (b!= rpt_data.buttons) { rpt_data.buttons=b; c=1; }
+  uint8_t b=0;
+  uint16_t ry=adc_read(POT_ELEVATOR);
+  uint16_t rx=adc_read(POT_AILERON);
+  uint16_t ly=adc_read(POT_THROTTLE);
+  uint16_t lx=adc_read(POT_RUDDER);
+//  if (b!= rpt_data.buttons) { rpt_data.buttons=b; c=1; }
   if (ry!= rpt_data.rightY) { rpt_data.rightY=ry; c=1; }
   if (rx!= rpt_data.rightX) { rpt_data.rightX=rx; c=1; }
   if (ly!= rpt_data.leftY) { rpt_data.leftY=ly; c=1; }
@@ -258,108 +205,37 @@ bool scanall()
   return c;
 }
 
-bool scantest()
-{
-  bool c = 0;
-  static int dir=1;
-  rpt_data.rightY+=dir;
-  rpt_data.rightX+=dir;
-  c=1;
-  if (rpt_data.rightY >=127) dir=-dir;
-  if (rpt_data.rightY <=-127) dir=-dir;
-  return c;
-}
-
-void setup0()
+void setup()
 {
   scan_init();
+ // adc_setup();
   memset(&rpt_data,0,sizeof(rpt_data));
   t0=0;
-  // release hat
-  rpt_data.buttons = 0x8000;
+//  rpt_data.buttons = 0x00;
 #if defined(_USING_HID)
 mygamepad_init();
 #endif
 }
 
-void loop0()
+void loop()
 {
   uint32_t t=millis();  
   if(t-t0 > 1) { t0=t; if (scanall()) send_report(); }
 }
 
-#define POT_THROTTLE 2
-#define POT_RUDDER   0
-#define POT_ELEVATOR 1
-#define POT_AILERON  3
-#define ADC0_RUDDER   7
-#define ADC1_ELEVATOR 6
-#define ADC2_THROTTLE 5
-#define ADC3_AILERON  4
-
-byte adc_chan;
-volatile uint16_t adc_values[4];
-
-ISR(ADC_vect)
-{
-#if defined(__AVR_ATmega32U4__)
-  /* now prev idx Achan
-   * 7   4    3   3
-   * 6   7    2   0
-   * 5   6    1   1
-   * 4   5    0   2
-   */
-  ADMUX = adc_chan; // catch before sample hold
-  uint16_t v = ADC;
-  adc_values[adc_chan&0x3]=v;
-  adc_chan--;
-  adc_chan&=0x3;
-  adc_chan|=_BV(REFS0) | 0x04;
-#endif
-}
-
-uint16_t adc_read(uint8_t chan)
-{
-  /*  idx Achan ~achn ~achn-1
-   *  3   3     0     3
-   *  0   2     1     0
-   *  1   1     2     1
-   *  2   0     3     2   */
-  uint8_t  x;
-  uint16_t v;
-  x=~chan;
-//  x--;
-  x&=0x3;
-  noInterrupts();
-  v = adc_values[x];
-  interrupts();
-  return v;
-}
-
-void adc_setup()
-{
-  // 125khz (ADPS=0b111, 16MHz div128)
-  noInterrupts();
-  adc_chan=0x07|_BV(REFS0);
-  ADMUX  = adc_chan;
-  ADCSRA = _BV(ADEN)|_BV(ADSC)|_BV(ADATE)|_BV(ADIE)|_BV(ADPS2)|_BV(ADPS1)|_BV(ADPS0);
-  ADCSRB = 0;
-  DIDR0  = 0xF0; // digital input disable channel 4..7
-  interrupts();
-}
-
 uint16_t channels[4];
-
-void getADC0()
-{
-  for(int i=0; i < 4; i++)
-    channels[i]=analogRead(i);
-}
 
 void getADC1()
 {
   for(int i=0; i < 4; i++)
     channels[i]=adc_read(i);
+}
+
+
+void getADC0()
+{
+  for(int i=0; i < 4; i++)
+    channels[i]=analogRead(i);
 }
 
 void printChans()
@@ -370,14 +246,14 @@ void printChans()
   }
 }
 
-void setup()
+void setup0()
 {
   while(!Serial);
   Serial.begin(115200);
   adc_setup();
 }
 
-void loop()
+void loop0()
 {
   getADC1();
   printChans();
