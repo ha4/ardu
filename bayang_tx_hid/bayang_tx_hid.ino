@@ -10,8 +10,6 @@ struct {
   uint16_t rightY;
 } rpt_data; // 9 bytes
 
-uint32_t t0;
-
 // 74hc164 pin 1&2 - DATA
 #define DATAPIN 4
 // 74hc164 pin 8 - CLOCK, pin 9 - CLEAR (+Vcc)
@@ -161,7 +159,7 @@ void adc_setup()
   interrupts();
 }
 
-void scan_init()
+void kscan_init()
 {
   pinMode(DATAPIN, OUTPUT);
   pinMode(CLKPIN, OUTPUT);
@@ -169,7 +167,7 @@ void scan_init()
   pinMode(COLPINB, INPUT_PULLUP);
 }
 
-uint16_t scanmx()
+uint16_t kscanmx()
 {
   uint8_t cnt, pa, pb;
   for(cnt=pa=pb=0; cnt < 8; cnt++) {
@@ -201,23 +199,42 @@ bool scanall()
   return c;
 }
 
+uint32_t t_scan, t_print;
+
 void setup()
 {
-  //  while(!Serial); Serial.begin(115200);
-  scan_init();
-  adc_setup();
-  memset(&rpt_data,0,sizeof(rpt_data));
-  t0=0;
-  rpt_data.buttons = 0x00;
 #if defined(_USING_HID)
 mygamepad_init();
 #endif
+
+  kscan_init();
+  adc_setup();
+  memset(&rpt_data,0,sizeof(rpt_data));
+  t_scan=micros();
+  t_print=t_scan;
+  rpt_data.buttons = 0x00;
 }
 
 void loop()
 {
-  uint32_t t=millis();  
-  if(t-t0 > 1) { t0=t; if (scanall()) send_report(); }
-  // for(int i=0; i < 4; i++) { Serial.print(adc_read(i)); if (i==3) Serial.println(); else Serial.print(' '); }
-  // delay(100);
+  static bool sertostart=1;
+  uint32_t t=micros();  
+  if(t-t_scan >= 1000) {
+    t_scan=t;
+    if (scanall()) send_report(); 
+  }
+  if(t-t_print>=100000L) {
+    t_print=t;
+    if(Serial.dtr()) {
+      if (sertostart) {
+        sertostart=0;
+        Serial.begin(115200);
+      }
+      for(int i=0; i < 4; i++)
+        { Serial.print(adc_read(i)); if (i==3) Serial.println(); else Serial.print(' '); }
+    } else if (!sertostart) {
+      sertostart=1;
+      Serial.end();
+    }
+  }
 }
