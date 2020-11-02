@@ -1,17 +1,6 @@
-/*
-  This program is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License.
-  If not, see <http://www.gnu.org/licenses/>.
-*/
+#include <Arduino.h>
+#include "bayang_rx.h"
+#include "nRF24L01.h"
 
 //#define BIND_DEBUG
 //#define BAYANG_AUTOBIND
@@ -27,17 +16,9 @@
 
 #define BAYANG_RX_EEPROM_OFFSET  762   // (5) TX ID + (4) channels, 9 bytes, end is 771 
 
-#define AUXNUMBER 5
-#define CH_FLIP 0
-#define CH_EXPERT 1
-#define CH_HEADFREE 2
-#define CH_RTH 3
-#define CH_INV 4
-
 static uint8_t rf_chan = 0;
 static uint8_t rf_channels[BAYANG_RF_NUM_CHANNELS] = {0,};
 static uint8_t rx_tx_addr[BAYANG_ADDRESS_LENGTH];
-char aux[AUXNUMBER];
 uint32_t lastRxTime;
 bool rx_received, rx_available;
 int8_t slip_retry;
@@ -47,19 +28,6 @@ uint16_t pps_counter, rx_lqi;
 uint8_t packet[32];
 uint8_t phase;
 
-enum {
-  // flags going to packet[2]
-  BAYANG_FLAG_RTH      = 0x01,
-  BAYANG_FLAG_HEADLESS = 0x02,
-  BAYANG_FLAG_FLIP     = 0x08,
-  BAYANG_FLAG_VIDEO    = 0x10,
-  BAYANG_FLAG_SNAPSHOT = 0x20,
-};
-
-enum {
-  // flags going to packet[3]
-  BAYANG_FLAG_INVERT   = 0x80,
-};
 
 enum {
   BAYANG_RX_BINDING = 0,
@@ -70,7 +38,7 @@ enum {
 
 #define EE_ADDR uint8_t*
 
-MyData *bdata = NULL;
+struct BayangData *bdata = NULL;
 
 bool validPacket()
 {
@@ -85,9 +53,8 @@ void BAYANG_init_nrf()
 {
   const u8 bind_address[] = {0, 0, 0, 0, 0};
 
-  SPI_Begin();
-  NRF24L01_Reset();
   NRF24L01_Initialize();
+  NRF24L01_Reset();
   XN297_SetRXAddr(bind_address, BAYANG_ADDRESS_LENGTH);
   XN297_SetTXAddr(bind_address, BAYANG_ADDRESS_LENGTH);
   NRF24L01_FlushTx();
@@ -118,31 +85,32 @@ uint8_t BAYANG_RX_available()
   return false;
 }
 
-void BAYANG_RX_data(MyData *t)
+void BAYANG_RX_data(struct BayangData *t)
 {
   bdata = t;
 }
 
-void BAYANG_decode(MyData* data)
+void BAYANG_RX_decode(struct BayangData* data)
 {
   data->roll = (packet[4] & 0x03) * 256 + packet[5];
   data->pitch = (packet[6] & 0x03) * 256 + packet[7];
-  data->yaw = (packet[10] & 0x03) * 256 + packet[11];
   data->throttle = (packet[8] & 0x03) * 256 + packet[9];
+  data->yaw = (packet[10] & 0x03) * 256 + packet[11];
 
-  char trims[4];
-  trims[0] = packet[6] >> 2;
-  trims[1] = packet[4] >> 2;
-  trims[2] = packet[8] >> 2;
-  trims[3] = packet[10] >> 2;
+  data->trims[0] = packet[6] >> 2;
+  data->trims[1] = packet[4] >> 2;
+  data->trims[2] = packet[8] >> 2;
+  data->trims[3] = packet[10] >> 2;
+  data->trims[0] -= 0x1f;
+  data->trims[1] -= 0x1f;
+  data->trims[2] -= 0x1f;
+  data->trims[3] -= 0x1f;
 
-  aux[CH_INV] = (packet[3] & 0x80) ? 1 : 0; // inverted flag
-  aux[CH_FLIP] = (packet[2] & 0x08) ? 1 : 0;
-  data-> aux1 = aux[CH_EXPERT] = (packet[1] == 0xfa) ? 1 : 0;
-  aux[CH_HEADFREE] = (packet[2] & 0x02) ? 1 : 0;
-  aux[CH_RTH] = (packet[2] & 0x01) ? 1 : 0; // rth channel
+  data->aux1 = (packet[1] == 0xfa) ? 1 : 0;
+  data->flags2=packet[2];
+  data->flags3=packet[3];
 
-   rx_available = true;
+  rx_available = true;
 }
 
 void BAYANG_eeprom(bool save)
@@ -243,7 +211,7 @@ uint16_t BAYANG_RX_callback()
       if (NRF24L01_ReadReg(NRF24L01_07_STATUS) & _BV(NRF24L01_07_RX_DR)) {
         XN297_ReadPayload(packet, BAYANG_PACKET_SIZE);
         if (validPacket() &&  packet[0] == 0xA5) {
-          if (bdata) BAYANG_decode(bdata);
+          if (bdata) BAYANG_RX_decode(bdata);
           phase = BAYANG_RX_DATA;
           rx_received = true;
           slip_retry = 8;

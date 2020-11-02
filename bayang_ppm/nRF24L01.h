@@ -18,6 +18,26 @@
 
 #include <Arduino.h>
 
+/*
+ SPI Comm.pins with nRF24L01
+ */
+#define MOSI_pin  11  
+#define SCK_pin   13
+#define CS_pin    10  
+#define MISO_pin  12 
+#define CE_pin    9
+
+#define MOSI_on PORTB |= _BV(3)  
+#define MOSI_off PORTB &= ~_BV(3)
+#define SCK_on PORTB |= _BV(5)   
+#define SCK_off PORTB &= ~_BV(5) 
+#define CE_on PORTB |= _BV(1)   
+#define CE_off PORTB &= ~_BV(1) 
+#define CS_on PORTB |= _BV(2)   
+#define CS_off PORTB &= ~_BV(2) 
+// SPI input
+#define  MISO_on (PINB & _BV(4))
+
 // Register map
 enum {
     NRF24L01_00_CONFIG      = 0x00,
@@ -118,5 +138,25 @@ enum TX_Power {
 #define FLUSH_TX      0xE1
 #define FLUSH_RX      0xE2
 #define REUSE_TX_PL   0xE3
+
+uint8_t NRF24L01_WriteReg(uint8_t address, uint8_t data);
+void NRF24L01_WriteRegisterMulti(uint8_t address, const uint8_t data[], uint8_t len);
+void NRF24L01_Initialize();
+uint8_t NRF24L01_FlushTx();
+uint8_t NRF24L01_FlushRx();
+uint8_t NRF24L01_WritePayload(uint8_t *data, uint8_t length);
+uint8_t NRF24L01_ReadPayload(uint8_t *data, uint8_t length);
+uint8_t NRF24L01_ReadReg(uint8_t reg);
+uint8_t NRF24L01_Activate(uint8_t code);
+void NRF24L01_SetTxRxMode(enum TXRX_State mode);
+uint8_t NRF24L01_Reset();
+uint8_t NRF24L01_SetPower(enum TX_Power power);
+uint8_t NRF24L01_SetBitrate(uint8_t bitrate);
+
+void XN297_SetTXAddr(const uint8_t* addr, uint8_t len);
+void XN297_SetRXAddr(const uint8_t* addr, uint8_t len);
+void XN297_Configure(uint8_t flags);
+uint8_t XN297_WritePayload(uint8_t* msg, uint8_t len);
+uint8_t XN297_ReadPayload(uint8_t* msg, uint8_t len);
 
 #endif

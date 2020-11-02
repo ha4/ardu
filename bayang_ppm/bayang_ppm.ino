@@ -1,47 +1,16 @@
-#include "iface_nrf24l01.h"
+#include "bayang_rx.h"
 
 //#define DEBUG
 //#define USE_PPM
 #define USE_SBUS
 
-/*
- SPI Comm.pins with nRF24L01
- */
-#define MOSI_pin  11  
-#define SCK_pin   13
-#define CS_pin    10  
-#define MISO_pin  12 
-#define CE_pin    9
 #define IO_pin    2
-
-#define MOSI_on PORTB |= _BV(3)  
-#define MOSI_off PORTB &= ~_BV(3)
-#define SCK_on PORTB |= _BV(5)   
-#define SCK_off PORTB &= ~_BV(5) 
-#define CE_on PORTB |= _BV(1)   
-#define CE_off PORTB &= ~_BV(1) 
-#define CS_on PORTB |= _BV(2)   
-#define CS_off PORTB &= ~_BV(2) 
-// SPI input
-#define  MISO_on (PINB & _BV(4))
 
 #define IO_off   pinMode(IO_pin, INPUT_PULLUP)
 #define IO_on   {pinMode(IO_pin, OUTPUT); digitalWrite(IO_pin, 0);}
 #define IO_read  digitalRead(IO_pin)
 
-
-#define RF_POWER TX_POWER_158mW 
-//TX_POWER_5mW  80 20 158
-
-struct MyData {
-  uint16_t throttle;
-  uint16_t yaw;
-  uint16_t pitch;
-  uint16_t roll;
-  byte aux1;
-};
-
-MyData data;
+struct BayangData data;
 
 #ifdef USE_SBUS
 #include "sbus.h"
@@ -63,11 +32,6 @@ uint32_t pps,ppscnt;
 
 void setup()
 {
-    pinMode(MOSI_pin, OUTPUT);
-    pinMode(SCK_pin, OUTPUT);
-    pinMode(CS_pin, OUTPUT);
-    pinMode(CE_pin, OUTPUT);
-    pinMode(MISO_pin, INPUT);
     pinMode(IO_pin, INPUT_PULLUP);
 
 #ifdef DEBUG
@@ -186,8 +150,8 @@ void setPPMValuesFromData()
 {
   ppm[0] = map(data.roll,     0, 1023, 1000, 2000);  
   ppm[1] = map(data.pitch,    0, 1023, 1000, 2000);
-  ppm[3] = map(data.yaw,      0, 1023, 1000, 2000);
   ppm[2] = map(data.throttle, 0, 1023, 1000, 2000);
+  ppm[3] = map(data.yaw,      0, 1023, 1000, 2000);
   ppm[4] = map(data.aux1,     0, 1, 1000, 2000);
   ppm[5] = 1000;
 }
@@ -196,11 +160,11 @@ void setPPMValuesFromData()
 #ifdef USE_SBUS
 void setSBUSValuesFromData()
 {
-  sbus.chan0 = map(data.roll,     0, 1023, 172, 1811);
-  sbus.chan1 = map(data.pitch,    0, 1023, 172, 1811);
-  sbus.chan2 = map(data.yaw,      0, 1023, 172, 1811);
-  sbus.chan3 = map(data.throttle, 0, 1023, 172, 1811);
-  sbus.chan4 = map(data.aux1,     0,    1, 172, 1811);
+  sbus.chan0 = map(data.roll,     0, 1023, 192, 1971);
+  sbus.chan1 = map(data.pitch,    0, 1023, 192, 1971);
+  sbus.chan2 = map(data.throttle, 0, 1023, 192, 197111);
+  sbus.chan3 = map(data.yaw,      0, 1023, 192, 1811);
+  sbus.chan4 = map(data.aux1,     0,    1, 192, 1811);
   sbus.chan5 = 172;
 }
 #endif
