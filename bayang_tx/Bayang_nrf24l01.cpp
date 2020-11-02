@@ -27,6 +27,8 @@
 #define DEBUGLN(x)
 #endif
 
+//#define BAYANG_TX_AUTOBIND
+
 #define BAYANG_BIND_COUNT		1000
 #define BAYANG_PACKET_PERIOD	2000
 #define BAYANG_PACKET_TELEM_PERIOD	5000
@@ -48,7 +50,6 @@ enum {
 #define BAYANG_READ_DELAY   600     // Time before read phase
 
 uint8_t  rx_tx_addr[5];
-uint8_t  rx_id[5];
 uint8_t  phase;
 uint8_t  proto_flags;
 uint8_t  hopping_frequency[BAYANG_RF_NUM_CHANNELS];
@@ -58,7 +59,7 @@ uint8_t  packet[BAYANG_PACKET_SIZE];
 uint16_t bind_counter;
 uint16_t tele_counter;
 uint8_t  packet_count;
-uint16_t *proto_data = NULL;
+struct BayangData *proto_data = NULL;
 
 static uint8_t BAYANG_sum()
 {
@@ -155,38 +156,84 @@ static void __attribute__((unused)) BAYANG_init_nrf()
 // t=trim from -31 to 31, 0 middle
 void BAYANG_enc(int n, int x, int t)
 {
-  x=x-1500+0x1FF;
-  if (x<0) x=0;
-  if (x>1023)x=1023;
+  if (x<0) x=0; else if (x>1023)x=1023;
   t+=0x1F;
-  if (t<0)t=0;
-  if (t>63)t=63;
+  if (t<0)t=0; else if (t>63)t=63;
   packet[n+1]=x&0xff;
   packet[n]=(x>>8) + (t<<2);
 }
-void  BAYANG_bildchannels(uint16_t *AETR1234val)
+
+void  BAYANG_bildchannels(struct BayangData *val)
 {
-  int val;
-  //Flags packet[2]
-  packet[2] = 0x00;
-  packet[2] = BAYANG_FLAG_FLIP;
-  packet[2] |= BAYANG_FLAG_RTH;
-  packet[2] |= BAYANG_FLAG_PICTURE;
-  packet[2] |= BAYANG_FLAG_VIDEO;
-  packet[2] |= BAYANG_FLAG_HEADLESS;
-  //Flags packet[3]
-  packet[3] = 0x00;
-  packet[3] = BAYANG_FLAG_INVERTED;
-  packet[3] |= BAYANG_FLAG_TAKE_OFF;
-  packet[3] |= BAYANG_FLAG_EMG_STOP;
+  packet[2] = val->flags2;
+  packet[3] = val->flags3;
   
-  BAYANG_enc(4,AETR1234val[0],0); //Aileron
-  BAYANG_enc(6,AETR1234val[1],0); //Elevator
-  BAYANG_enc(8,AETR1234val[2],0); //Throttle
-  BAYANG_enc(10,AETR1234val[3],0);//Rudder
+  BAYANG_enc(4, val->roll,   val->trims[0]);
+  BAYANG_enc(6, val->pitch,  val->trims[1]);
+  BAYANG_enc(8, val->throttle,val->trims[2]); 
+  BAYANG_enc(10,val->yaw,    val->trims[3]);
 }
 
-uint16_t BAYANG_callback()
+// Convert 32b id to rx_tx_addr
+void set_rx_tx_addr(uint32_t id)
+{ // Used by almost all protocols
+  rx_tx_addr[0] = (id >> 24) & 0xFF;
+  rx_tx_addr[1] = (id >> 16) & 0xFF;
+  rx_tx_addr[2] = (id >>  8) & 0xFF;
+  rx_tx_addr[3] = (id >>  0) & 0xFF;
+  rx_tx_addr[4] = (rx_tx_addr[2] & 0xF0) | (rx_tx_addr[3] & 0x0F);
+}
+
+static void __attribute__((unused)) BAYANG_initialize_txid()
+{
+  //Could be using txid[0..2] but using rx_tx_addr everywhere instead...
+  hopping_frequency[0] = 0;
+  hopping_frequency[1] = (rx_tx_addr[3] & 0x1F) + 0x10;
+  hopping_frequency[2] = hopping_frequency[1] + 0x20;
+  hopping_frequency[3] = hopping_frequency[2] + 0x20;
+  hopping_frequency_no = 0;
+}
+
+uint16_t BAYANG_TX_init(void)
+{
+  BAYANG_initialize_txid();
+  BAYANG_init_nrf();
+  phase = BAYANG_BIND;
+  // autobind protocol
+#ifdef BAYANG_TX_AUTOBIND
+  bind_counter = BAYANG_BIND_COUNT;
+#else
+  bind_counter = 1;
+#endif
+  packet_count = 0;
+  tele_counter = 0;
+  return BAYANG_INITIAL_WAIT + BAYANG_PACKET_PERIOD;
+}
+
+
+uint16_t BAYANG_TX_bind()
+{
+  uint16_t t=BAYANG_TX_init();
+  bind_counter = BAYANG_BIND_COUNT;
+  return t;
+}
+
+void BAYANG_TX_data(struct BayangData *x)
+{
+  proto_data = x;
+}
+
+void BAYANG_TX_telemetry(uint16_t *tele)
+{
+}
+
+int BAYANG_TX_state()
+{
+  if (phase==BAYANG_BIND) return 0;
+  return 1;
+}
+
+uint16_t BAYANG_TX_callback()
 {
   switch(phase) {
     case BAYANG_BIND:
@@ -227,51 +274,4 @@ uint16_t BAYANG_callback()
       return BAYANG_READ_DELAY;
   }
   return BAYANG_PACKET_PERIOD;
-}
-
-
-// Convert 32b id to rx_tx_addr
-void set_rx_tx_addr(uint32_t id)
-{ // Used by almost all protocols
-  rx_tx_addr[0] = (id >> 24) & 0xFF;
-  rx_tx_addr[1] = (id >> 16) & 0xFF;
-  rx_tx_addr[2] = (id >>  8) & 0xFF;
-  rx_tx_addr[3] = (id >>  0) & 0xFF;
-  rx_tx_addr[4] = (rx_tx_addr[2] & 0xF0) | (rx_tx_addr[3] & 0x0F);
-}
-
-static void __attribute__((unused)) BAYANG_initialize_txid()
-{
-  //Could be using txid[0..2] but using rx_tx_addr everywhere instead...
-  hopping_frequency[0] = 0;
-  hopping_frequency[1] = (rx_tx_addr[3] & 0x1F) + 0x10;
-  hopping_frequency[2] = hopping_frequency[1] + 0x20;
-  hopping_frequency[3] = hopping_frequency[2] + 0x20;
-  hopping_frequency_no = 0;
-}
-
-void BAYANG_bind()
-{
-  phase = BAYANG_BIND; // autobind protocol
-  bind_counter = BAYANG_BIND_COUNT;
-}
-
-uint16_t initBAYANG(void)
-{
-  BAYANG_initialize_txid();
-  BAYANG_init_nrf();
-  BAYANG_bind();
-  packet_count = 0;
-  tele_counter = 0;
-  return BAYANG_INITIAL_WAIT + BAYANG_PACKET_PERIOD;
-}
-
-void BAYANG_data(uint16_t *AETR1234)
-{
-  proto_data = AETR1234;
-}
-
-void BAYANG_telemetry(uint16_t *tele)
-{
-
 }

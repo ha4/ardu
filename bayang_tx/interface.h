@@ -23,12 +23,25 @@ enum BAYANG_OPTIONS {
 
 };
 
-uint16_t initBAYANG(void);
-uint16_t BAYANG_callback();
+struct BayangData {
+  uint16_t roll;      // aileron
+  uint16_t pitch;     // elevator
+  uint16_t throttle;  // throttle
+  uint16_t yaw;       // rudder
+  int8_t  trims[4];   // +/-31 AETR
+  uint8_t aux1;
+  uint8_t flags2;
+  uint8_t flags3;
+};
+
+uint16_t BAYANG_TX_init(void);
+uint16_t BAYANG_TX_callback();
 
 void set_rx_tx_addr(uint32_t id);
-void BAYANG_data(uint16_t *AETR1234);
-void BAYANG_telemetry( uint16_t *tele);
-void BAYANG_bind();
+void BAYANG_TX_data(struct BayangData *x);
+void BAYANG_TX_telemetry(uint16_t *tele);
+uint16_t BAYANG_TX_bind();
+int BAYANG_TX_state();
+
 
 #endif //_INTERFACE_H_
