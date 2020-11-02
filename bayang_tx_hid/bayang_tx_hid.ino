@@ -132,7 +132,7 @@ ISR(ADC_vect)
 {
 #if defined(__AVR_ATmega32U4__)
   adc_values[adc_chan&0x3]=ADC;
-  ADMUX = adc_next; // catch before sample hold
+  ADMUX = adc_next;
   adc_chan=adc_next;
   adc_next = ((adc_next+1)&0x3)|0x04|_BV(REFS0);
 #endif
@@ -225,16 +225,11 @@ void loop()
   }
   if(t-t_print>=100000L) {
     t_print=t;
-    if(Serial.dtr()) {
-      if (sertostart) {
-        sertostart=0;
-        Serial.begin(115200);
-      }
+    if(Serial.dtr()) { // is port open
+      if (sertostart) { sertostart=0; Serial.begin(115200); }
       for(int i=0; i < 4; i++)
         { Serial.print(adc_read(i)); if (i==3) Serial.println(); else Serial.print(' '); }
-    } else if (!sertostart) {
-      sertostart=1;
-      Serial.end();
-    }
+    } else
+      if (!sertostart) { sertostart=1; Serial.end(); }
   }
 }
