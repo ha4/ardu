@@ -1,7 +1,8 @@
 // moving to https://github.com/arduino/Arduino/wiki/PluggableUSB-and-PluggableHID-howto
 
 #include <HID.h>
-
+#include "util.h"
+#include "Bayang_nrf24l01.h"
 
 // display sh1106   GRN,SCL=PD0(d3,scl) BRN,SDA=PD1(d2,sda) BLU,GND YLW,VDD=+3.3
 #include "U8glib.h"
