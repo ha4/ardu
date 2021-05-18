@@ -22,7 +22,7 @@
 #define W_REGISTER    0x20
 #define REGISTER_MASK 0x1F
 
-static byte rf_setup;
+static uint8_t rf_setup;
 
 static void CS_HI() { digitalWrite(CS, 1); }
 static void CS_LO() { digitalWrite(CS, 0); }
@@ -45,87 +45,87 @@ void NRF24L01_Initialize()
   digitalWrite(CE, 0);
 }    
 
-byte NRF24L01_WriteReg(byte reg, byte data)
+uint8_t NRF24L01_WriteReg(uint8_t reg, uint8_t data)
 {
   digitalWrite(CS, 0);
-  byte res = SPI.transfer(W_REGISTER | (REGISTER_MASK & reg));
+  uint8_t res = SPI.transfer(W_REGISTER | (REGISTER_MASK & reg));
   SPI.transfer(data);
   digitalWrite(CS, 1);
   return res;
 }
 
-byte NRF24L01_WriteRegisterMulti(byte reg, const byte data[], byte length)
+uint8_t NRF24L01_WriteRegisterMulti(uint8_t reg, const uint8_t data[], uint8_t length)
 {
   digitalWrite(CS, 0);
-  byte res = SPI.transfer(W_REGISTER | (REGISTER_MASK & reg));
-  for (byte i = 0; i < length; i++)
+  uint8_t res = SPI.transfer(W_REGISTER | (REGISTER_MASK & reg));
+  for (uint8_t i = 0; i < length; i++)
     SPI.transfer(data[i]);
   digitalWrite(CS, 1);
   return res;
 }
 
-byte NRF24L01_WritePayload(byte *data, byte length)
+uint8_t NRF24L01_WritePayload(uint8_t *data, uint8_t length)
 {
   digitalWrite(CS, 0);
-  byte res = SPI.transfer(NRF24L01_A0_TX_PAYLOAD);
-  for (byte i = 0; i < length; i++)
+  uint8_t res = SPI.transfer(NRF24L01_A0_TX_PAYLOAD);
+  for (uint8_t i = 0; i < length; i++)
     SPI.transfer(data[i]);
   digitalWrite(CS, 1);
   return res;
 }
 
-byte NRF24L01_ReadReg(byte reg)
+uint8_t NRF24L01_ReadReg(uint8_t reg)
 {
   digitalWrite(CS, 0);
   SPI.transfer(R_REGISTER | (REGISTER_MASK & reg));
-  byte data = SPI.transfer(0xFF);
+  uint8_t data = SPI.transfer(0xFF);
   digitalWrite(CS, 1);
   return data;
 }
 
-byte NRF24L01_ReadRegisterMulti(byte reg, byte data[], byte length)
+uint8_t NRF24L01_ReadRegisterMulti(uint8_t reg, uint8_t data[], uint8_t length)
 {
   digitalWrite(CS, 0);
-  byte res = SPI.transfer(R_REGISTER | (REGISTER_MASK & reg));
-  for(byte i = 0; i < length; i++)
+  uint8_t res = SPI.transfer(R_REGISTER | (REGISTER_MASK & reg));
+  for(uint8_t i = 0; i < length; i++)
      data[i] = SPI.transfer(0xFF);
   digitalWrite(CS, 1);
   return res;
 }
 
-byte NRF24L01_ReadPayload(byte *data, byte length)
+uint8_t NRF24L01_ReadPayload(uint8_t *data, uint8_t length)
 {
   digitalWrite(CS, 0);
-  byte res = SPI.transfer(NRF24L01_61_RX_PAYLOAD);
-  for(byte i = 0; i < length; i++)
+  uint8_t res = SPI.transfer(NRF24L01_61_RX_PAYLOAD);
+  for(uint8_t i = 0; i < length; i++)
      data[i] = SPI.transfer(0xFF);
   digitalWrite(CS, 1);
   return res;
 }
 
-static byte Strobe(byte state)
+static uint8_t Strobe(uint8_t state)
 {
   digitalWrite(CS, 0);
-  byte res = SPI.transfer(state);
+  uint8_t res = SPI.transfer(state);
   digitalWrite(CS, 1);
   return res;
 }
 
-byte NRF24L01_FlushTx() { return Strobe(NRF24L01_E1_FLUSH_TX); }
-byte NRF24L01_FlushRx() { return Strobe(NRF24L01_E2_FLUSH_RX); }
+uint8_t NRF24L01_FlushTx() { return Strobe(NRF24L01_E1_FLUSH_TX); }
+uint8_t NRF24L01_FlushRx() { return Strobe(NRF24L01_E2_FLUSH_RX); }
 
 
-byte NRF24L01_Activate(byte code)
+uint8_t NRF24L01_Activate(uint8_t code)
 {
   digitalWrite(CS, 0);
-  byte res = SPI.transfer(NRF24L01_50_ACTIVATE);
+  uint8_t res = SPI.transfer(NRF24L01_50_ACTIVATE);
   SPI.transfer(code);
   digitalWrite(CS, 1);
   return res;
 }
 
 // Bitrate 0 - 1Mbps, 1 - 2Mbps, 3 - 250K (for nRF24L01+)
-byte NRF24L01_SetBitrate(byte bitrate)
+uint8_t NRF24L01_SetBitrate(uint8_t bitrate)
 {
   // Note that bitrate 250kbps (and bit RF_DR_LOW) is valid only for nRF24L01+. 
   // Bit 0 goes to RF_DR_HIGH, bit 1 - to RF_DR_LOW
@@ -151,9 +151,9 @@ TXPOWER_30mW   = 15dBm
 TXPOWER_100mW  = 20dBm
 TXPOWER_150mW  = 22dBm
 */
-byte NRF24L01_SetPower(byte power)
+uint8_t NRF24L01_SetPower(uint8_t power)
 {
-    byte nrf_power = 0;
+    uint8_t nrf_power = 0;
     switch(power) {
         case TXPOWER_100uW: nrf_power = 0; break;
         case TXPOWER_300uW: nrf_power = 0; break;
@@ -205,8 +205,8 @@ int8_t NRF24L01_Reset()
 {
     NRF24L01_FlushTx();
     NRF24L01_FlushRx();
-    byte status1 = Strobe(NRF24L01_FF_NOP);
-    byte status2 = NRF24L01_ReadReg(NRF24L01_07_STATUS);
+    uint8_t status1 = Strobe(NRF24L01_FF_NOP);
+    uint8_t status2 = NRF24L01_ReadReg(NRF24L01_07_STATUS);
     NRF24L01_SetTxRxMode(TXRX_OFF);
 
     return (status1 == status2 && (status1 & 0x0f) == 0x0e);

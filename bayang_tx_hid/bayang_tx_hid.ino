@@ -23,7 +23,7 @@ struct {
 #define COLPINA 5
 #define COLPINB 7
 
-// nrf24l0 pin YLW,CS=PB0(ss) ORA,CE=PD4(d4) GRN,SCK=PB1 BRN,MOSI=PB2 BLK,MISO=PB3 RED,VDD=+3.3 BLU,GND
+// nrf24l0 pin YLW,CS=PB0(ss,d17) ORA,CE=PD4(d4) GRN,SCK=PB1(d15) BRN,MOSI=PB2(d16) BLK,MISO=PB3(d14) RED,VDD=+3.3 BLU,GND
 
 const uint8_t _hid_rpt_descr[] PROGMEM = {
   0x05, 0x01,                    // USAGE_PAGE (Generic Desktop)
