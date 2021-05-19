@@ -162,7 +162,7 @@ void setSBUSValuesFromData()
 {
   sbus.chan0 = map(data.roll,     0, 1023, 192, 1971);
   sbus.chan1 = map(data.pitch,    0, 1023, 192, 1971);
-  sbus.chan2 = map(data.throttle, 0, 1023, 192, 197111);
+  sbus.chan2 = map(data.throttle, 0, 1023, 192, 1971);
   sbus.chan3 = map(data.yaw,      0, 1023, 192, 1811);
   sbus.chan4 = map(data.aux1,     0,    1, 192, 1811);
   sbus.chan5 = 172;

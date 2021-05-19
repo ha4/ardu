@@ -250,6 +250,9 @@ void d_update() {
   d_updating = 1;
 }
 
+uint32_t MProtocol_id_master;
+int txstate=100;
+
 void draw(void) {
   switch (d_page) {
     case 0:
@@ -259,27 +262,43 @@ void draw(void) {
     case 1:
       u8g.setFont(u8g_font_unifont); //(u8g_font_osb21);
       u8g.drawStr( 34, 22, (d_flags&dFL_USBSER)? "SERIAL":"no usb");
+      u8g.drawStr(  0, 22, (txstate)? "bound":"bind ");
       break;
   }
 }
 
 uint32_t t_scan, t_print;
+uint32_t ref_t, timout;
+
+
+#define EEPROM_ID_OFFSET    10    // Module ID (4 bytes)
 
 void setup()
 {
 #if defined(_USING_HID)
   mygamepad_init();
 #endif
+  random_init();
+  randomSeed(random_value());  
+  MProtocol_id_master=random_id(EEPROM_ID_OFFSET,false);
+
+  set_rx_tx_addr(MProtocol_id_master);
+  timout=BAYANG_TX_init();
+//  BAYANG_TX_data(&myData);
+  BAYANG_TX_bind(); // autobind
 
   kscan_init();
   adc_setup();
+
   // display setup
   u8g.setColorIndex(1);
   d_page = 1;
   d_update();
   memset(&rpt_data, 0, sizeof(rpt_data));
+
   t_scan = micros();
   t_print = t_scan;
+  ref_t=t_scan;
   rpt_data.buttons = 0x00;
 }
 
@@ -319,6 +338,16 @@ void loop()
     t_scan = t;
     if (adc_scanall()) send_report();
   }
+  if (t-ref_t >= timout) {
+    ref_t = t;
+//    readtest();
+    timout= BAYANG_TX_callback();
+    if (txstate!=BAYANG_TX_state()) {
+      txstate=BAYANG_TX_state();
+      d_update();
+    }
+  }
+
   if (t - t_print >= 100000L) { // 0.1s
     t_print = t;
     if (comm_serial()) serial_print_adc();

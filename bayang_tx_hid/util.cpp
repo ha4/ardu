@@ -1,11 +1,9 @@
 #include <Arduino.h>
 #include "util.h"
 
-#define EEPROM_ID_OFFSET    10    // Module ID (4 bytes)
-
 #define EE_ADDR uint8_t*
 
-static uint32_t random_id(uint16_t address, uint8_t create_new)
+uint32_t random_id(uint16_t address, uint8_t create_new)
 {
   uint32_t id=0;
 
@@ -29,8 +27,7 @@ static uint32_t random_id(uint16_t address, uint8_t create_new)
 
 volatile uint32_t gWDT_entropy=0;
 
-
-static void random_init(void)
+void random_init(void)
 {
   cli(); 
   MCUSR = 0; 
@@ -39,7 +36,7 @@ static void random_init(void)
   sei();
 }
 
-static uint32_t random_value(void)
+uint32_t random_value(void)
 {
   while (!gWDT_entropy);
   return gWDT_entropy;

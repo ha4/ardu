@@ -19,7 +19,7 @@
 #include "nrf24l01.h"
 #include "Bayang_nrf24l01.h"
 
-#define DEBUG
+//#define DEBUG
 
 #ifdef DEBUG
 #define DEBUGLN(x) Serial.println(x)

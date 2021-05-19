@@ -151,7 +151,6 @@ uint16_t symax_callback()
     case SYMAX_INIT:
         tx_power = MODEL_tx_power;
         packet_counter = 0;
-        flags = 0;
 
         NRF24L01_Initialize();
 
