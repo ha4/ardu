@@ -211,5 +211,3 @@ int8_t NRF24L01_Reset()
 
     return (status1 == status2 && (status1 & 0x0f) == 0x0e);
 }
-
-

@@ -3,7 +3,7 @@
 #include "iface_nrf24l01.h"
 
 
-#define BIND_COUNT 346
+#define BIND_COUNT 146
 #define FIRST_PACKET_DELAY  12000
 
 #define PACKET_PERIOD        4000
@@ -244,4 +244,3 @@ void symax_TREAF(byte _throttle, byte _rudder, byte _elevator, byte _aileron, by
   aileron=_aileron;
   flags=_flags;
 }
-

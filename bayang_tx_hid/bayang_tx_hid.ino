@@ -3,6 +3,7 @@
 #include <HID.h>
 #include "util.h"
 #include "Bayang_nrf24l01.h"
+#include "symax_nrf24l01.h"
 
 // display sh1106   GRN,SCL=PD0(d3,scl) BRN,SDA=PD1(d2,sda) BLU,GND YLW,VDD=+3.3
 #include "U8glib.h"
@@ -282,10 +283,6 @@ void setup()
   randomSeed(random_value());  
   MProtocol_id_master=random_id(EEPROM_ID_OFFSET,false);
 
-  set_rx_tx_addr(MProtocol_id_master);
-  timout=BAYANG_TX_init();
-//  BAYANG_TX_data(&myData);
-  BAYANG_TX_bind(); // autobind
 
   kscan_init();
   adc_setup();
@@ -300,6 +297,15 @@ void setup()
   t_print = t_scan;
   ref_t=t_scan;
   rpt_data.buttons = 0x00;
+
+//  BAYANG_TX_id(MProtocol_id_master);
+//  timout=BAYANG_TX_init();
+//  BAYANG_TX_bind(); // autobind
+////  BAYANG_TX_data(&myData);
+  symax_tx_id(0x7F7FC0D7ul);
+  timout=symax_init();
+////  symax_data(&myData2);
+
 }
 
 bool comm_serial()
@@ -322,6 +328,16 @@ bool comm_serial()
     return 0;
 }
 
+void serial_cmd()
+{
+  if (Serial.available()==0) return;
+  switch(Serial.read()) {
+  case 'b':
+    timout=symax_bind();
+    Serial.println("bind");
+    break;
+  }
+}
 void serial_print_adc()
 {
   for (int i = 0; i < 4; i++)  {
@@ -334,23 +350,25 @@ void serial_print_adc()
 void loop()
 {
   uint32_t t = micros();
+  if (t-ref_t >= timout) {
+    ref_t = t;
+//    readtest();
+    timout=symax_callback();
+//    if (txstate!=symax_state()) { txstate=symax_state(); d_update(); }
+//    timout= BAYANG_TX_callback();
+//    if (txstate!=BAYANG_TX_state()) { txstate=BAYANG_TX_state(); d_update(); }
+  }
   if (t - t_scan >= 1000) { // 1.0ms
     t_scan = t;
     if (adc_scanall()) send_report();
   }
-  if (t-ref_t >= timout) {
-    ref_t = t;
-//    readtest();
-    timout= BAYANG_TX_callback();
-    if (txstate!=BAYANG_TX_state()) {
-      txstate=BAYANG_TX_state();
-      d_update();
-    }
-  }
 
   if (t - t_print >= 100000L) { // 0.1s
     t_print = t;
-    if (comm_serial()) serial_print_adc();
+    if (comm_serial()) {
+      serial_cmd();
+      serial_print_adc();
+    }
   }
 
   if (d_updating) {

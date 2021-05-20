@@ -4,7 +4,7 @@
 
 #define SYMAX_AUTOBIND
 
-#define BIND_COUNT 347
+#define BIND_COUNT 346
 #define FIRST_PACKET_DELAY  12000
 
 #define PACKET_PERIOD        4000

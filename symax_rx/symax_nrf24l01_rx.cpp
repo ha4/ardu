@@ -32,6 +32,7 @@ static byte update;
 // frequency channel management
 #define MAX_RF_CHANNELS    4
 volatile byte current_chan;
+volatile static byte rf_chan;
 static byte chans[MAX_RF_CHANNELS];
 
 static byte checksum(byte *data)
@@ -44,6 +45,11 @@ static byte checksum(byte *data)
     return sum + 0x55;
 }
 
+void prhex(byte a)
+{
+      if (a < 16) Serial.print('0');
+      Serial.print(a,HEX);
+}
 
 /*
   Access level routines
@@ -75,7 +81,7 @@ int rxFlag()
 
 void freqHop()
 {
-    NRF24L01_WriteReg(NRF24L01_05_RF_CH, chans[current_chan]);
+    NRF24L01_WriteReg(NRF24L01_05_RF_CH, rf_chan=chans[current_chan]);
     NRF24L01_FlushRx();
     current_chan = (current_chan + 1) % 4;
 }
@@ -198,7 +204,9 @@ word symax_run(int *TREAF_values)
         }
 
         receive_packet();
+
         if(initialize_rx_tx_addr()) { // binding packet
+          Serial.print('>'); Serial.print('@'); prhex(rf_chan);
           set_channels(rx_tx_addr[0] & 0x1f);
           current_chan = 0;
           packet_counter = 0;
@@ -206,12 +214,17 @@ word symax_run(int *TREAF_values)
           freqHop();
           phase = (SYMAX_WAIT_FSYNC);
           return INITIAL_WAIT;
+        } else {
+                Serial.print('?');
+                Serial.print('@'); prhex(rf_chan);
         }
+
         return PACKET_PERIOD;
   
   case SYMAX_WAIT_FSYNC:
         if (rxFlag()) {
           receive_packet();
+          Serial.print('}'); Serial.print('@'); prhex(rf_chan);
           freqHop();
           phase = (SYMAX_BOUND);
           counter = 0;
@@ -238,6 +251,7 @@ word symax_run(int *TREAF_values)
         } 
         counter = 0;
         receive_packet();
+        Serial.print('.'); Serial.print('@'); prhex(rf_chan);
         decode_packet(TREAF_values);
         freqHop();
      

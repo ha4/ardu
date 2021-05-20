@@ -23,11 +23,11 @@
 #include "interface.h"
 #include "xtimer.h"
 
-///#define USE_SERIALSTRING
+#define USE_SERIALSTRING
 //#define USE_PPM
-#define USE_SBUS
+//#define USE_SBUS
 
-enum { pinLED = 18, pinPPM = 5, pinSync= 4} ;
+enum { pinLED = 2, pinPPM = 5, pinSync= 4} ;
 
 xtimer timer;
 xtimer flsh;
