@@ -1,6 +1,14 @@
 #include <Arduino.h>
-#include "interface.h"
-#include "iface_nrf24l01.h"
+#include "symax_nrf24l01_rx.h"
+#include "nrf24l01.h"
+
+#define DEBUG
+
+#ifdef DEBUG
+#define DEBUGLN(x) Serial.print(x); Serial.print('@'); prhex(rf_chan)
+#else
+#define DEBUGLN(x)
+#endif
 
 enum {
   SYMAX_INIT = 0,
@@ -21,6 +29,7 @@ static byte phase = SYMAX_INIT;
 #define PAYLOADSIZE 10
 #define MAX_PACKET_SIZE 15
 
+static struct SymaXData *proto_data=NULL;
 static byte packet[MAX_PACKET_SIZE];
 static word counter;
 static uint32_t packet_counter;
@@ -45,11 +54,13 @@ static byte checksum(byte *data)
     return sum + 0x55;
 }
 
+#ifdef DEBUG
 void prhex(byte a)
 {
       if (a < 16) Serial.print('0');
       Serial.print(a,HEX);
 }
+#endif
 
 /*
   Access level routines
@@ -139,8 +150,8 @@ void receive_packet()
 
 // channels determined by last byte (LSB) of tx address
 // set_channels(rx_tx_addr[0] & 0x1f) - little endian
-static void set_channels(byte laddress) { 
-
+static void set_channels(byte laddress)
+{ 
   static const byte start_chans_1[] = {0x0a, 0x1a, 0x2a, 0x3a};
   static const byte start_chans_2[] = {0x2a, 0x0a, 0x42, 0x22};
   static const byte start_chans_3[] = {0x1a, 0x3a, 0x12, 0x32};
@@ -162,34 +173,26 @@ static void set_channels(byte laddress) {
   }
 }
 
-int convert_channel(byte num)
-{
-    return ((num & 0x80) ? -(num&0x7F) : (num));
-}
-int convert_trim(byte num)
-{
-    return ((num & 0x20) ? -(num&0x1F) : (num&0x1F));
-}
-
 /* packet: T[7:0] E[7:0] R[7:0] A[7:0] fVid,fPict[7:6] fLow[7],tE[5:0] fFlip[6],tR[5:0] fHLess[7],tA[5:0]*/
-void decode_packet(int *TREAF_values)
+void decode_packet(struct SymaXData *val)
 {
-      if (packet[9] != checksum(packet) || packet[8] != 0x00) return;
-    
-      update = 1;
-      TREAF_values[0]=packet[0]; // throttle
-      TREAF_values[2]=convert_channel(packet[1]) + convert_trim(packet[5]); // elevator
-      TREAF_values[1]=convert_channel(packet[2]) + convert_trim(packet[6]); // rudder
-      TREAF_values[3]=convert_channel(packet[3]) + convert_trim(packet[7]); // aileron
-      TREAF_values[4] =
-  ((packet[4] & 0x80) ? FLAG_VIDEO   : 0 ) |
-  ((packet[4] & 0x40) ? FLAG_PICTURE : 0 ) |
-  ((packet[5] & 0x80) ? 0 : FLAG_LOW ) |
-  ((packet[6] & 0x40) ? FLAG_FLIP    : 0 ) |
-  ((packet[7] & 0x80) ? FLAG_HEADLESS: 0 );
+	if (packet[9] != checksum(packet) || packet[8] != 0x00) return;
+	update = 1;
+
+	val->throttle=packet[0];
+	val->elevator=CHAN_SYMAX(packet[1]);
+	val->rudder=CHAN_SYMAX(packet[2]);
+	val->aileron=CHAN_SYMAX(packet[3]);
+	val->trims[0]=TRIM_SYMAX(packet[5]);
+	val->trims[1]=TRIM_SYMAX(packet[6]);
+	val->trims[2]=TRIM_SYMAX(packet[7]);
+	val->flags4=packet[4];
+	val->flags5=packet[5];
+	val->flags6=packet[6];
+	val->flags7=packet[7];
 }
 
-word symax_run(int *TREAF_values)
+uint16_t symax_rx_run()
 {
   switch(phase) {
   case SYMAX_INIT:
@@ -206,7 +209,7 @@ word symax_run(int *TREAF_values)
         receive_packet();
 
         if(initialize_rx_tx_addr()) { // binding packet
-          Serial.print('>'); Serial.print('@'); prhex(rf_chan);
+          DEBUGLN('>');
           set_channels(rx_tx_addr[0] & 0x1f);
           current_chan = 0;
           packet_counter = 0;
@@ -215,8 +218,7 @@ word symax_run(int *TREAF_values)
           phase = (SYMAX_WAIT_FSYNC);
           return INITIAL_WAIT;
         } else {
-                Serial.print('?');
-                Serial.print('@'); prhex(rf_chan);
+                DEBUGLN('?');
         }
 
         return PACKET_PERIOD;
@@ -224,7 +226,7 @@ word symax_run(int *TREAF_values)
   case SYMAX_WAIT_FSYNC:
         if (rxFlag()) {
           receive_packet();
-          Serial.print('}'); Serial.print('@'); prhex(rf_chan);
+          DEBUGLN('}');
           freqHop();
           phase = (SYMAX_BOUND);
           counter = 0;
@@ -251,8 +253,8 @@ word symax_run(int *TREAF_values)
         } 
         counter = 0;
         receive_packet();
-        Serial.print('.'); Serial.print('@'); prhex(rf_chan);
-        decode_packet(TREAF_values);
+        DEBUGLN('.');
+	if (proto_data != NULL) decode_packet(proto_data);
         freqHop();
      
       return PACKET_PERIOD*2;
@@ -260,7 +262,12 @@ word symax_run(int *TREAF_values)
   return PACKET_PERIOD;
 }
 
-int  symax_binding() // 1 binding, -1 no values, 0 - ok data
+void symax_rx_data(struct SymaXData *val)
+{
+	proto_data=val;
+}
+
+int  symax_rx_binding() // 1 binding, -1 no values, 0 - ok data
 {
   if (update) {
     update = 0;

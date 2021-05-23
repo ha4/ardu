@@ -16,10 +16,11 @@
 // Last sync with hexfet new_protocols/bayang_nrf24l01.c dated 2015-12-22
 
 #include <Arduino.h>
-#include "iface_nrf24l01.h"
-#include "interface.h"
+#include "nrf24l01.h"
+#include "xn297_emu.h"
+#include "Bayang_nrf24l01.h"
 
-#define DEBUG
+//#define DEBUG
 
 #ifdef DEBUG
 #define DEBUGLN(x) Serial.println(x)
@@ -49,17 +50,17 @@ enum {
 #define BAYANG_CHECK_DELAY    1000    // Time after write phase to check write complete
 #define BAYANG_READ_DELAY   600     // Time before read phase
 
-uint8_t  rx_tx_addr[5];
-uint8_t  phase;
-uint8_t  proto_flags;
-uint8_t  hopping_frequency[BAYANG_RF_NUM_CHANNELS];
-uint8_t  hopping_frequency_no = 0;
-uint8_t  rf_ch_num;
-uint8_t  packet[BAYANG_PACKET_SIZE];
-uint16_t bind_counter;
-uint16_t tele_counter;
-uint8_t  packet_count;
-struct BayangData *proto_data = NULL;
+static uint8_t  rx_tx_addr[5];
+static uint8_t  bayang_phase;
+static uint8_t  proto_flags;
+static uint8_t  hopping_frequency[BAYANG_RF_NUM_CHANNELS];
+static uint8_t  hopping_frequency_no = 0;
+static uint8_t  rf_ch_num;
+static uint8_t  packet[BAYANG_PACKET_SIZE];
+static uint16_t bind_counter;
+static uint16_t tele_counter;
+static uint8_t  packet_count;
+static struct BayangData *proto_data = NULL;
 
 static uint8_t BAYANG_sum()
 {
@@ -72,7 +73,7 @@ static uint8_t BAYANG_sum()
 static void __attribute__((unused)) BAYANG_send_packet()
 {
   uint8_t i;
-  if (phase == BAYANG_BIND) {
+  if (bayang_phase == BAYANG_BIND) {
     packet[0] = 0xA4;
     for (i = 0; i < 5; i++)
       packet[i + 1] = rx_tx_addr[i];
@@ -89,8 +90,8 @@ static void __attribute__((unused)) BAYANG_send_packet()
   packet[13] = 0x0A;
   packet[14] = BAYANG_sum();
 
-  NRF24L01_WriteReg(NRF24L01_05_RF_CH, phase==BAYANG_BIND ? rf_ch_num : hopping_frequency[hopping_frequency_no]);
-  if(++hopping_frequency_no >= BAYANG_RF_NUM_CHANNELS)
+  NRF24L01_WriteReg(NRF24L01_05_RF_CH, bayang_phase==BAYANG_BIND ? rf_ch_num : hopping_frequency[hopping_frequency_no]);
+  if (++hopping_frequency_no >= BAYANG_RF_NUM_CHANNELS)
     hopping_frequency_no=0;
 
   // Power on, TX mode, 2byte CRC
@@ -156,26 +157,26 @@ static void __attribute__((unused)) BAYANG_init_nrf()
 // t=trim from -31 to 31, 0 middle
 void BAYANG_enc(int n, int x, int t)
 {
-  if (x<0) x=0; else if (x>1023)x=1023;
-  t+=0x1F;
-  if (t<0)t=0; else if (t>63)t=63;
-  packet[n+1]=x&0xff;
-  packet[n]=(x>>8) + (t<<2);
+  if (x < 0) x = 0; else if (x > 1023)x = 1023;
+  t += 0x1F;
+  if (t < 0)t = 0; else if (t > 63)t = 63;
+  packet[n + 1] = x & 0xff;
+  packet[n] = (x >> 8) + (t << 2);
 }
 
 void  BAYANG_bildchannels(struct BayangData *val)
 {
   packet[2] = val->flags2;
   packet[3] = val->flags3;
-  
+
   BAYANG_enc(4, val->roll,   val->trims[0]);
   BAYANG_enc(6, val->pitch,  val->trims[1]);
-  BAYANG_enc(8, val->throttle,val->trims[2]); 
-  BAYANG_enc(10,val->yaw,    val->trims[3]);
+  BAYANG_enc(8, val->throttle, val->trims[2]);
+  BAYANG_enc(10, val->yaw,   val->trims[3]);
 }
 
 // Convert 32b id to rx_tx_addr
-void set_rx_tx_addr(uint32_t id)
+void BAYANG_TX_id(uint32_t id)
 { // Used by almost all protocols
   rx_tx_addr[0] = (id >> 24) & 0xFF;
   rx_tx_addr[1] = (id >> 16) & 0xFF;
@@ -194,11 +195,11 @@ static void __attribute__((unused)) BAYANG_initialize_txid()
   hopping_frequency_no = 0;
 }
 
-uint16_t BAYANG_TX_init(void)
+uint16_t BAYANG_TX_init()
 {
   BAYANG_initialize_txid();
   BAYANG_init_nrf();
-  phase = BAYANG_BIND;
+  bayang_phase = BAYANG_BIND;
   // autobind protocol
 #ifdef BAYANG_TX_AUTOBIND
   bind_counter = BAYANG_BIND_COUNT;
@@ -214,7 +215,7 @@ uint16_t BAYANG_TX_init(void)
 uint16_t BAYANG_TX_bind()
 {
   uint16_t t=BAYANG_TX_init();
-  bind_counter = BAYANG_BIND_COUNT;
+  bind_counter=BAYANG_BIND_COUNT;
   return t;
 }
 
@@ -229,21 +230,22 @@ void BAYANG_TX_telemetry(uint16_t *tele)
 
 int BAYANG_TX_state()
 {
-  if (phase==BAYANG_BIND) return 0;
+  if (bayang_phase==BAYANG_BIND) return 0;
   return 1;
 }
 
 uint16_t BAYANG_TX_callback()
 {
-  switch(phase) {
+  switch(bayang_phase) {
     case BAYANG_BIND:
       if(--bind_counter == 0) {
         XN297_SetTXAddr(rx_tx_addr, BAYANG_ADDRESS_LENGTH);
-        phase++;	// bind done ->WRITE
+        bayang_phase = BAYANG_WRITE;	// bind done
         DEBUGLN("bind complete");
-      }else
+      } else
         BAYANG_send_packet();
       break;
+
     case BAYANG_WRITE:
       if (proto_data != NULL) BAYANG_bildchannels(proto_data);
       BAYANG_send_packet();
@@ -255,10 +257,11 @@ uint16_t BAYANG_TX_callback()
           //telemetry_counter = 0;
           //telemetry_lost = 0;
         }
-        phase++;  // -> CHECK
+        bayang_phase=BAYANG_CHECK;
         return BAYANG_CHECK_DELAY;
       }
       break;
+
     case BAYANG_CHECK:
       // switch radio to rx as soon as packet is sent
       uint16_t start = (uint16_t)micros();
@@ -266,11 +269,12 @@ uint16_t BAYANG_TX_callback()
         if ((NRF24L01_ReadReg(NRF24L01_07_STATUS) & _BV(NRF24L01_07_TX_DS)))
           break;
       NRF24L01_WriteReg(NRF24L01_00_CONFIG, 0x03);
-      phase++;  // READ
+      bayang_phase=BAYANG_READ;  // READ
       return BAYANG_PACKET_TELEM_PERIOD - BAYANG_CHECK_DELAY - BAYANG_READ_DELAY;
+
     case BAYANG_READ:
       BAYANG_check_rx();
-      phase = BAYANG_WRITE;
+      bayang_phase = BAYANG_WRITE;
       return BAYANG_READ_DELAY;
   }
   return BAYANG_PACKET_PERIOD;

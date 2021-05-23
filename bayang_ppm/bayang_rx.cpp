@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "bayang_rx.h"
 #include "nRF24L01.h"
+#include "XN297_emu.h"
 
 //#define BIND_DEBUG
 //#define BAYANG_AUTOBIND

@@ -109,45 +109,27 @@ enum TxPower {
 #define REUSE_TX_PL   0xE3
 //#define NOP           0xFF
 
-// XN297 emulation layer
-enum {
-	XN297_UNSCRAMBLED = 0,
-	XN297_SCRAMBLED
-};
 void NRF24L01_Initialize();
  int8_t NRF24L01_Reset();
-byte NRF24L01_WriteReg(byte reg, byte data);
-byte NRF24L01_WriteRegisterMulti(byte reg, const byte data[], byte length);
-byte NRF24L01_WritePayload(byte *data, byte len);
-byte NRF24L01_ReadReg(byte reg);
-byte NRF24L01_ReadRegisterMulti(byte reg, byte data[], byte length);
-byte NRF24L01_ReadPayload(byte *data, byte len);
+uint8_t NRF24L01_WriteReg(uint8_t reg, uint8_t data);
+uint8_t NRF24L01_WriteRegisterMulti(uint8_t reg, const uint8_t data[], uint8_t length);
+uint8_t NRF24L01_WritePayload(uint8_t *data, uint8_t len);
+uint8_t NRF24L01_ReadReg(uint8_t reg);
+uint8_t NRF24L01_ReadRegisterMulti(uint8_t reg, uint8_t data[], uint8_t length);
+uint8_t NRF24L01_ReadPayload(uint8_t *data, uint8_t len);
 
-byte NRF24L01_FlushTx();
-byte NRF24L01_FlushRx();
-byte NRF24L01_Activate(byte code);
+uint8_t NRF24L01_FlushTx();
+uint8_t NRF24L01_FlushRx();
+uint8_t NRF24L01_Activate(uint8_t code);
 
 
 // Bitrate 0 - 1Mbps, 1 - 2Mbps, 3 - 250K (for nRF24L01+)
-byte NRF24L01_SetBitrate(byte bitrate);
+uint8_t NRF24L01_SetBitrate(uint8_t bitrate);
 
-byte NRF24L01_SetPower(byte power);
+uint8_t NRF24L01_SetPower(uint8_t power);
 void NRF24L01_SetTxRxMode(enum TXRX_State);
 
 // To enable radio transmit after WritePayload you need to turn the radio
 //void NRF24L01_PulseCE();
-
-
-// XN297 emulation layer
-
-void XN297_SetTXAddr(const uint8_t* addr, uint8_t len);
-void XN297_SetRXAddr(const uint8_t* addr, uint8_t len);
-void XN297_Configure(uint8_t flags);
-void XN297_SetScrambledMode(const uint8_t mode);
-void XN297_WritePayload(uint8_t* msg, uint8_t len);
-void XN297_WriteEnhancedPayload(uint8_t* msg, uint8_t len, uint8_t noack);
-boolean XN297_ReadPayload(uint8_t* msg, uint8_t len);
-uint8_t XN297_ReadEnhancedPayload(uint8_t* msg, uint8_t len);
-
 
 #endif

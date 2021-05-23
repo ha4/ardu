@@ -1,5 +1,5 @@
-#ifndef _INTERFACE_H_
-#define _INTERFACE_H_
+#ifndef _BAYANG_INTERFACE_H_
+#define _BAYANG_INTERFACE_H_
 
 enum BAYANG_FLAGS {
 	// flags going to packet[2]
@@ -34,13 +34,13 @@ struct BayangData {
   uint8_t flags3;
 };
 
-uint16_t BAYANG_TX_init(void);
+uint16_t BAYANG_TX_init();
 uint16_t BAYANG_TX_callback();
+uint16_t BAYANG_TX_bind();
 
-void set_rx_tx_addr(uint32_t id);
+void BAYANG_TX_id(uint32_t id);
 void BAYANG_TX_data(struct BayangData *x);
 void BAYANG_TX_telemetry(uint16_t *tele);
-uint16_t BAYANG_TX_bind();
 int BAYANG_TX_state();
 
 

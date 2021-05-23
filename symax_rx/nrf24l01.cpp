@@ -15,7 +15,7 @@
 
 #include <Arduino.h>
 #include <SPI.h>
-#include "iface_nrf24l01.h"
+#include "nrf24l01.h"
 
 /* Instruction Mnemonics */
 #define R_REGISTER    0x00

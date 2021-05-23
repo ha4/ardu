@@ -17,9 +17,10 @@
 
 #include <Arduino.h>
 #include "nrf24l01.h"
+#include "xn297_emu.h"
 #include "Bayang_nrf24l01.h"
 
-//#define DEBUG
+#define DEBUG
 
 #ifdef DEBUG
 #define DEBUGLN(x) Serial.println(x)
@@ -27,7 +28,7 @@
 #define DEBUGLN(x)
 #endif
 
-//#define BAYANG_TX_AUTOBIND
+#define BAYANG_TX_AUTOBIND
 
 #define BAYANG_BIND_COUNT		1000
 #define BAYANG_PACKET_PERIOD	2000
@@ -89,9 +90,9 @@ static void __attribute__((unused)) BAYANG_send_packet()
   packet[13] = 0x0A;
   packet[14] = BAYANG_sum();
 
-  NRF24L01_WriteReg(NRF24L01_05_RF_CH, bayang_phase == BAYANG_BIND ? rf_ch_num : hopping_frequency[hopping_frequency_no]);
+  NRF24L01_WriteReg(NRF24L01_05_RF_CH, bayang_phase==BAYANG_BIND ? rf_ch_num : hopping_frequency[hopping_frequency_no]);
   if (++hopping_frequency_no >= BAYANG_RF_NUM_CHANNELS)
-    hopping_frequency_no = 0;
+    hopping_frequency_no=0;
 
   // Power on, TX mode, 2byte CRC
   // Why CRC0? xn297 does not interpret it - either 16-bit CRC or nothing
@@ -171,7 +172,7 @@ void  BAYANG_bildchannels(struct BayangData *val)
   BAYANG_enc(4, val->roll,   val->trims[0]);
   BAYANG_enc(6, val->pitch,  val->trims[1]);
   BAYANG_enc(8, val->throttle, val->trims[2]);
-  BAYANG_enc(10, val->yaw,    val->trims[3]);
+  BAYANG_enc(10, val->yaw,   val->trims[3]);
 }
 
 // Convert 32b id to rx_tx_addr
@@ -213,8 +214,8 @@ uint16_t BAYANG_TX_init()
 
 uint16_t BAYANG_TX_bind()
 {
-  uint16_t t = BAYANG_TX_init();
-  bind_counter = BAYANG_BIND_COUNT;
+  uint16_t t=BAYANG_TX_init();
+  bind_counter=BAYANG_BIND_COUNT;
   return t;
 }
 
@@ -229,17 +230,18 @@ void BAYANG_TX_telemetry(uint16_t *tele)
 
 int BAYANG_TX_state()
 {
-  if (bayang_phase == BAYANG_BIND) return 0;
+  if (bayang_phase==BAYANG_BIND) return 0;
   return 1;
 }
 
 uint16_t BAYANG_TX_callback()
 {
-  switch (bayang_phase) {
+  switch(bayang_phase) {
     case BAYANG_BIND:
-      if (--bind_counter == 0) {
+      if(--bind_counter == 0) {
         XN297_SetTXAddr(rx_tx_addr, BAYANG_ADDRESS_LENGTH);
         bayang_phase = BAYANG_WRITE;	// bind done
+        DEBUGLN("bind complete");
       } else
         BAYANG_send_packet();
       break;
@@ -247,8 +249,8 @@ uint16_t BAYANG_TX_callback()
     case BAYANG_WRITE:
       if (proto_data != NULL) BAYANG_bildchannels(proto_data);
       BAYANG_send_packet();
-      if (proto_flags & BAYANG_OPTION_TELEMETRY) {
-        if (++tele_counter > 200) {
+      if(proto_flags & BAYANG_OPTION_TELEMETRY) {
+        if(++tele_counter > 200) {
           tele_counter = 0;
           //telemetry reception packet rate - packets per second
           //TX_LQI = telemetry_counter >> 1;
@@ -269,7 +271,7 @@ uint16_t BAYANG_TX_callback()
       NRF24L01_WriteReg(NRF24L01_00_CONFIG, 0x03);
       bayang_phase=BAYANG_READ;  // READ
       return BAYANG_PACKET_TELEM_PERIOD - BAYANG_CHECK_DELAY - BAYANG_READ_DELAY;
- 
+
     case BAYANG_READ:
       BAYANG_check_rx();
       bayang_phase = BAYANG_WRITE;

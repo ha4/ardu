@@ -1,8 +1,8 @@
 #include "bayang_rx.h"
 
-//#define DEBUG
+#define DEBUG
 //#define USE_PPM
-#define USE_SBUS
+//#define USE_SBUS
 
 #define IO_pin    2
 

@@ -1,212 +1,54 @@
-// moving to https://github.com/arduino/Arduino/wiki/PluggableUSB-and-PluggableHID-howto
-
-#include <HID.h>
-#include "util.h"
+#include "usb_gpad.h"
+#include "tx_util.h"
 #include "Bayang_nrf24l01.h"
 #include "symax_nrf24l01.h"
+#include "xtimer.h"
+#include "inp_x.h"
 
 // display sh1106   GRN,SCL=PD0(d3,scl) BRN,SDA=PD1(d2,sda) BLU,GND YLW,VDD=+3.3
 #include "U8glib.h"
-U8GLIB_SH1106_128X64 u8g(U8G_I2C_OPT_DEV_0 | U8G_I2C_OPT_FAST); // Dev 0, Fast I2C / TWI
 
-
-struct {
-  uint8_t buttons;
-  uint16_t leftX;
-  uint16_t leftY;
-  uint16_t rightX;
-  uint16_t rightY;
-} rpt_data; // 9 bytes
-
-// 74hc164 pin 1&2 - DATA, 8 - CLOCK, pin 9 - CLEAR (+Vdd)
-#define DATAPIN 8
-#define CLKPIN  6
-#define COLPINA 5
-#define COLPINB 7
 
 // nrf24l0 pin YLW,CS=PB0(ss,d17) ORA,CE=PD4(d4) GRN,SCK=PB1(d15) BRN,MOSI=PB2(d16) BLK,MISO=PB3(d14) RED,VDD=+3.3 BLU,GND
 
-const uint8_t _hid_rpt_descr[] PROGMEM = {
-  0x05, 0x01,                    // USAGE_PAGE (Generic Desktop)
-  0x09, 0x05,                    // USAGE (Game Pad)
-  0xa1, 0x01,                    // COLLECTION (Application)
-  0xa1, 0x00,                    //   COLLECTION (Physical)
-  0x85, 0x03,                	   //     REPORT_ID (3)
-
-  0x05, 0x09,                    //     USAGE_PAGE (Button)
-  0x19, 0x01,                    //     USAGE_MINIMUM (Button 1)
-  0x29, 0x08,                    //     USAGE_MAXIMUM (Button 8)
-  0x15, 0x00,                    //     LOGICAL_MINIMUM (0)
-  0x25, 0x01,                    //     LOGICAL_MAXIMUM (1)
-  0x75, 0x01,                    //     REPORT_SIZE (1)
-  0x95, 0x08,                    //     REPORT_COUNT (8)
-  0x81, 0x02,                    //     INPUT (Data,Var,Abs)
-
-  0x05, 0x01,                    //     USAGE_PAGE (Generic Desktop)
-  0x09, 0x30,                    //     USAGE (X)
-  0x09, 0x31,                    //     USAGE (Y)
-  0x09, 0x33,                    //     USAGE (Rx)
-  0x09, 0x34,                    //     USAGE (Ry)
-  0x35, 0x00,                    //     PHYSICAL_MINIMUM (0)
-  0x46, 0xff, 0x03,              //     PHYSICAL_MAXIMUM (1023)
-  0x15, 0x00,                    //     LOGICAL_MINIMUM (0)
-  0x26, 0xff, 0x03,              //     LOGICAL_MAXIMUM (1023)
-  0x75, 0x10,                    //     REPORT_SIZE (16)
-  0x95, 0x04,                    //     REPORT_COUNT (4)
-  0x81, 0x02,                    //     INPUT (Data,Var,Abs)
-
-  0xc0,                          //     END_COLLECTION
-  0xc0                           // END_COLLECTION
-};
+U8GLIB_SH1106_128X64 u8g(U8G_I2C_OPT_DEV_0 | U8G_I2C_OPT_FAST); // Dev 0, Fast I2C / TWI
 
 
-#if !defined(_USING_HID)
+struct SymaXData txS;
+struct BayangData txB;
 
-#include "USBAPI.h"
-#include "USBDesc.h"
+xtimer txtimer; // Transmitter
+xtimer potimer; // Pot read adc
+xtimer prtimer; // serial print
 
-#warning "Using legacy HID core (non pluggable)"
-extern const HIDDescriptor _hid_iface PROGMEM;
-const HIDDescriptor _hid_iface =
+#define EEPROM_ID_OFFSET    10    // Module ID (4 bytes)
+
+#define dFL_USBSER 0x0001
+
+volatile uint8_t d_updating, d_page;
+volatile uint16_t d_flags;
+
+uint32_t MProtocol_id_master;
+int txstate=100;
+
+
+int  limadd(int a, int b) { a+=b;  return max(-511,min(a,511)); }
+
+void readtest()
 {
-  D_INTERFACE(HID_INTERFACE, 1, 3, 0, 0), //n, endpoints, class, subclass,proto
-  D_HIDREPORT(sizeof(_hid_rpt_descr)),
-  // addr,attr,_packetsize,interval
-  D_ENDPOINT(USB_ENDPOINT_IN (HID_ENDPOINT_INT), USB_ENDPOINT_TYPE_INTERRUPT, 64, 1)
-};
+    static int sa=0, ca=511, sb=511, cb=0;
+    txS.aileron=sa/4;
+    txS.elevator=cb/4;
+    txS.throttle=(511+sb)>>2;
+    txS.rudder=ca/4;
 
-
-u8 _hid_proto = 1;
-u8 _hid_idlex = 1;
-
-
-int HID_GetInterface(u8* interfaceNum)
-{
-  interfaceNum[0] += 1; // uses 1
-  return USB_SendControl(TRANSFER_PGM, &_hid_iface, sizeof(_hid_iface));
+    int ts=sa/128,  tc=ca/128;
+    sa=limadd(sa,tc), ca=limadd(ca,-ts);
+    ts=sb/32,  tc=cb/32;
+    sb=limadd(sb,tc), cb=limadd(cb,-ts);
 }
 
 
-int HID_GetDescriptor(int i)
-{
-  return USB_SendControl(TRANSFER_PGM, _hid_rpt_descr, sizeof(_hid_rpt_descr));
-}
-
-bool HID_Setup(Setup& setup)
-{
-  u8 r = setup.bRequest;
-  if (setup.bmRequestType == REQUEST_DEVICETOHOST_CLASS_INTERFACE) {
-    if (HID_GET_REPORT == r) {
-      /*HID_GetReport();*/ return true;
-    }
-    if (HID_GET_PROTOCOL == r) {
-      /*Send8(_hid_protocol); // TODO */ return true;
-    }
-  }
-  else if (setup.bmRequestType == REQUEST_HOSTTODEVICE_CLASS_INTERFACE) {
-    if (HID_SET_PROTOCOL == r) {
-      _hid_proto = setup.wValueL;
-      return true;
-    }
-    if (HID_SET_IDLE == r) {
-      _hid_idlex = setup.wValueL;
-      return true;
-    }
-  } else
-    return false;
-}
-
-void send_report()
-{
-  uint8_t id = 3;
-  USB_Send(HID_TX, &id, 1);
-  USB_Send(HID_TX | TRANSFER_RELEASE, &rpt_data, sizeof(rpt_data));
-}
-
-#else
-
-void mygamepad_init(void) {
-  static HIDSubDescriptor node(_hid_rpt_descr, sizeof(_hid_rpt_descr));
-  HID().AppendDescriptor(&node);
-}
-
-//mygamepad_ mygamepad;
-
-void send_report()
-{
-  HID().SendReport(3, &rpt_data, sizeof(rpt_data));
-}
-
-#endif
-
-#define POT_THROTTLE 2
-#define POT_RUDDER   0
-#define POT_ELEVATOR 1
-#define POT_AILERON  3
-
-byte adc_chan, adc_next;
-volatile uint16_t adc_values[4];
-
-ISR(ADC_vect)
-{
-#if defined(__AVR_ATmega32U4__)
-  adc_values[adc_chan & 0x3] = ADC;
-  ADMUX = adc_next;
-  adc_chan = adc_next;
-  adc_next = ((adc_next + 1) & 0x3) | 0x04 | _BV(REFS0);
-#endif
-}
-
-uint16_t adc_read(uint8_t chan)
-{
-  uint16_t v;
-  noInterrupts();
-  v = adc_values[((~chan) + 1) & 0x3];
-  interrupts();
-  return v;
-}
-
-void adc_setup()
-{
-  // 125khz (ADPS=0b111, 16MHz div128)
-  noInterrupts();
-  adc_chan = adc_next = 0x04 | _BV(REFS0);
-  ADMUX  = adc_chan;
-  ADCSRA = _BV(ADEN) | _BV(ADSC) | _BV(ADATE) | _BV(ADIE) | _BV(ADPS2) | _BV(ADPS1) | _BV(ADPS0);
-  ADCSRB = 0;
-  DIDR0  = 0xF0; // digital input disable channel 4..7
-  interrupts();
-}
-
-volatile uint16_t k_cnt;
-volatile uint16_t k_matrix;
-
-void kscan_init()
-{
-  k_cnt = 0;
-  k_matrix = 0;
-  pinMode(DATAPIN, OUTPUT);
-  pinMode(CLKPIN, OUTPUT);
-  pinMode(COLPINA, INPUT_PULLUP);
-  pinMode(COLPINB, INPUT_PULLUP);
-}
-
-void kscan_tick()
-{
-  if (k_cnt == 0) k_cnt = 1;
-  digitalWrite(CLKPIN, 0);
-  digitalWrite(DATAPIN, (k_cnt == 1) ? 0 : 1);
-  digitalWrite(CLKPIN, 1);
-  delayMicroseconds(2);
-  if (digitalRead(COLPINA)) k_matrix &= ~k_cnt; else k_matrix |= k_cnt; k_cnt <<= 1;
-  if (digitalRead(COLPINB)) k_matrix &= ~k_cnt; else k_matrix |= k_cnt; k_cnt <<= 1;
-}
-
-uint16_t kscan_mx()
-{
-  do kscan_tick(); while (k_cnt != 0);
-  return k_matrix;
-}
 
 bool adc_scanall()
 {
@@ -241,18 +83,11 @@ bool adc_scanall()
   return c;
 }
 
-#define dFL_USBSER 0x0001
-
-volatile uint8_t d_updating, d_page;
-volatile uint16_t d_flags;
-
 
 void d_update() {
   d_updating = 1;
 }
 
-uint32_t MProtocol_id_master;
-int txstate=100;
 
 void draw(void) {
   switch (d_page) {
@@ -268,45 +103,6 @@ void draw(void) {
   }
 }
 
-uint32_t t_scan, t_print;
-uint32_t ref_t, timout;
-
-
-#define EEPROM_ID_OFFSET    10    // Module ID (4 bytes)
-
-void setup()
-{
-#if defined(_USING_HID)
-  mygamepad_init();
-#endif
-  random_init();
-  randomSeed(random_value());  
-  MProtocol_id_master=random_id(EEPROM_ID_OFFSET,false);
-
-
-  kscan_init();
-  adc_setup();
-
-  // display setup
-  u8g.setColorIndex(1);
-  d_page = 1;
-  d_update();
-  memset(&rpt_data, 0, sizeof(rpt_data));
-
-  t_scan = micros();
-  t_print = t_scan;
-  ref_t=t_scan;
-  rpt_data.buttons = 0x00;
-
-//  BAYANG_TX_id(MProtocol_id_master);
-//  timout=BAYANG_TX_init();
-//  BAYANG_TX_bind(); // autobind
-////  BAYANG_TX_data(&myData);
-  symax_tx_id(0x7F7FC0D7ul);
-  timout=symax_init();
-////  symax_data(&myData2);
-
-}
 
 bool comm_serial()
 {
@@ -333,11 +129,13 @@ void serial_cmd()
   if (Serial.available()==0) return;
   switch(Serial.read()) {
   case 'b':
-    timout=symax_bind();
+    //txtimer.set(BAYANG_TX_bind());
+    txtimer.set(symax_bind());
     Serial.println("bind");
     break;
   }
 }
+
 void serial_print_adc()
 {
   for (int i = 0; i < 4; i++)  {
@@ -347,34 +145,68 @@ void serial_print_adc()
   }
 }
 
+void setup()
+{
+  uint32_t t;
+
+  mygamepad_init();
+
+  random_init();
+  randomSeed(random_value());  
+  MProtocol_id_master=random_id(EEPROM_ID_OFFSET,false);
+
+
+  kscan_init();
+  adc_setup();
+
+  // display setup
+  u8g.setColorIndex(1);
+  d_page = 1;
+  d_update();
+  memset(&rpt_data, 0, sizeof(rpt_data));
+
+  t = micros();
+  txtimer.start(t);
+  potimer.start(t); potimer.set(1000);
+  prtimer.start(t); prtimer.set(100000L);
+  
+  rpt_data.buttons = 0x00;
+
+//  BAYANG_TX_id(MProtocol_id_master);
+//  txtimer.set(BAYANG_TX_init());
+//  BAYANG_TX_bind(); // autobind
+//  BAYANG_TX_data(&txB);
+  memset(&txB,0,sizeof(txB));
+
+  symax_tx_id(0x7F7FC0D7ul);
+  txtimer.set(symax_init());
+  symax_data(&txS);
+  memset(&txS,0,sizeof(txS));
+}
+
 void loop()
 {
   uint32_t t = micros();
-  if (t-ref_t >= timout) {
-    ref_t = t;
-//    readtest();
-    timout=symax_callback();
-//    if (txstate!=symax_state()) { txstate=symax_state(); d_update(); }
-//    timout= BAYANG_TX_callback();
-//    if (txstate!=BAYANG_TX_state()) { txstate=BAYANG_TX_state(); d_update(); }
-  }
-  if (t - t_scan >= 1000) { // 1.0ms
-    t_scan = t;
-    if (adc_scanall()) send_report();
+  if (txtimer.check(t)) {
+        readtest();
+        //txtimer.set(BAYANG_TX_callback());
+        txtimer.set(symax_callback());
+        //if (txstate!=BAYANG_TX_state()) { txstate=BAYANG_TX_state(); Serial.println(txstate); }
+        if (txstate!=symax_state()) { txstate=symax_state(); Serial.println(txstate); }
   }
 
-  if (t - t_print >= 100000L) { // 0.1s
-    t_print = t;
+  if(potimer.check(t)) 
+    if (adc_scanall()) send_report();
+
+  if(prtimer.check(t))
     if (comm_serial()) {
       serial_cmd();
-      serial_print_adc();
+      //serial_print_adc();
     }
-  }
 
-  if (d_updating) {
+  if (0 && d_updating) {
     d_updating = 0;
     u8g.firstPage();
     do draw(); while (u8g.nextPage());
   }
-
 }

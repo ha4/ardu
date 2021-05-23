@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include "util.h"
+#include "tx_util.h"
 
 #define EE_ADDR uint8_t*
 

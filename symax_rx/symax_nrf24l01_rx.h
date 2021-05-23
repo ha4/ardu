@@ -1,5 +1,5 @@
-#ifndef _SYMAX_INTERFACE_H_
-#define _SYMAX_INTERFACE_H_
+#ifndef _SYMAX_DATA_H_
+#define _SYMAX_DATA_H_
 
 #define FLAG4_VIDEO     0x80
 #define FLAG4_PICTURE   0x40
@@ -28,12 +28,17 @@ struct SymaXData {
 #define SYMAX_CHAN(num) ((num<0)?SCHAN_SIGN|((-num)&SCHAN_MASK):num&SCHAN_MASK)
 #define SYMAX_TRIM(num) ((num<0)?STRIM_SIGN|((-num)&STRIM_MASK):num&STRIM_MASK)
 
-uint16_t symax_init();
-uint16_t symax_callback();
-uint16_t symax_bind();
+#define CHAN_SYMAX(num) ((num&SCHAN_SIGN)?-(num&SCHAN_MASK):(num))
+#define TRIM_SYMAX(num) ((num&STRIM_SIGN)?-(num&STRIM_MASK):(num&STRIM_MASK))
 
-void symax_tx_id(uint32_t id); // default 0x7F7FC0D7ul;
-void symax_data(struct SymaXData *x);
-uint8_t symax_state();
+#endif
 
-#endif //_SYMAX_INTERFACE_H_
+
+#ifndef _SYMAX_RX_INTERFACE_H_
+#define _SYMAX_RX_INTERFACE_H_
+
+uint16_t symax_rx_run();
+void symax_rx_data(struct SymaXData *val);
+int  symax_rx_binding(); // 1 binding, -1 no values, 0 - ok data
+
+#endif //_INTERFACE_H_
