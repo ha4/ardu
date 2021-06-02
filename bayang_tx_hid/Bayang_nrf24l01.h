@@ -41,7 +41,7 @@ uint16_t BAYANG_TX_bind();
 void BAYANG_TX_id(uint32_t id);
 void BAYANG_TX_data(struct BayangData *x);
 void BAYANG_TX_telemetry(uint16_t *tele);
-int BAYANG_TX_state();
+int8_t BAYANG_TX_state();
 
 
 #endif //_INTERFACE_H_

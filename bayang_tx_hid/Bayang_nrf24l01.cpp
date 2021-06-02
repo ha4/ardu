@@ -228,7 +228,7 @@ void BAYANG_TX_telemetry(uint16_t *tele)
 {
 }
 
-int BAYANG_TX_state()
+int8_t BAYANG_TX_state()
 {
   if (bayang_phase==BAYANG_BIND) return 0;
   return 1;

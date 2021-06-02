@@ -42,6 +42,6 @@ uint16_t symax_bind();
 
 void symax_tx_id(uint32_t id); // default 0x7F7FC0D7ul;
 void symax_data(struct SymaXData *x);
-uint8_t symax_state();
+int8_t symax_state();
 
 #endif //_SYMAX_INTERFACE_H_

@@ -226,7 +226,7 @@ uint16_t symax_callback()
   return PACKET_PERIOD;
 }
 
-uint8_t symax_state()
+int8_t symax_state()
 {
   return (symax_phase == SYMAX_DATA);
 }

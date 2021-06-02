@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include "inp_x.h"
 
-static uint16_t k_matrix;
+uint16_t k_matrix;
 static uint8_t k_cnt;
 
 void kscan_init()
