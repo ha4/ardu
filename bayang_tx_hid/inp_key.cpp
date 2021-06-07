@@ -2,7 +2,7 @@
 #include "inp_x.h"
 
 uint16_t k_matrix;
-static uint8_t k_cnt;
+static uint16_t k_cnt;
 
 void kscan_init()
 {

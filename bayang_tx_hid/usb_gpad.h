@@ -2,11 +2,11 @@
 #define __MY_USB_GAMEPAD_H_
 
 struct usb_gamepad_rpt {
+  int16_t leftX;
+  int16_t leftY;
+  int16_t rightX;
+  int16_t rightY;
   uint8_t buttons;
-  uint16_t leftX;
-  uint16_t leftY;
-  uint16_t rightX;
-  uint16_t rightY;
 };  // 9 bytes
 
 extern struct usb_gamepad_rpt rpt_data;

@@ -50,56 +50,58 @@ volatile uint16_t d_flags;
 uint32_t MProtocol_id_master;
 int txstate=100;
 
+#define TEST_LIM 511
+#define TEST_SCA 128
+#define TEST_SCB 32
+#define TEST_CIRC(s,c,fs,fc,sc) fs=s/sc; fc=c/sc; s=limadd(s,fc); c=limadd(c,-fs)
 
-int  limadd(int a, int b) { a+=b;  return max(-511,min(a,511)); }
+int  limadd(int a, int b) { a+=b;  return max(-TEST_LIM,min(a,TEST_LIM)); }
 
-void readtest()
+int read_test(uint8_t chan)
 {
-    static int sa=0, ca=511, sb=511, cb=0;
-    txS.aileron=sa/4;
-    txS.elevator=cb/4;
-    txS.throttle=(511+sb)>>2;
-    txS.rudder=ca/4;
-
-    int ts=sa/128,  tc=ca/128;
-    sa=limadd(sa,tc), ca=limadd(ca,-ts);
-    ts=sb/32,  tc=cb/32;
-    sb=limadd(sb,tc), cb=limadd(cb,-ts);
+    static int sc[] = {0, TEST_LIM, TEST_LIM, 0};
+    int ts,tc;
+    if (chan==0) {
+      TEST_CIRC(sc[0],sc[1],ts,tc,TEST_SCA);
+      TEST_CIRC(sc[2],sc[3],ts,tc,TEST_SCB);
+    }
+    return sc[chan];
 }
 
-
+/* conversion routines */
 
 bool adc_scanall()
 {
   bool c = 0;
 
   uint8_t b = k_matrix;
-  uint16_t ry = adc_read(POT_ELEVATOR);
-  uint16_t rx = adc_read(POT_AILERON);
-  uint16_t ly = adc_read(POT_THROTTLE);
-  uint16_t lx = adc_read(POT_RUDDER);
-  if (b != rpt_data.buttons) {
+  int16_t ry = adc_read(POT_ELEVATOR);
+  int16_t rx = adc_read(POT_AILERON);
+  int16_t ly = adc_read(POT_THROTTLE);
+  int16_t lx = adc_read(POT_RUDDER);
+  if (b != rpt_data.buttons || 
+      ry != rpt_data.rightY || rx != rpt_data.rightX ||
+      ly != rpt_data.leftY || lx != rpt_data.leftX) {
+    rpt_data.leftX = lx-512;
+    rpt_data.leftY = ly-512;
+    rpt_data.rightX = -(rx-512);
+    rpt_data.rightY = ry-512;
     rpt_data.buttons = b;
-    c = 1;
-  }
-  if (ry != rpt_data.rightY) {
-    rpt_data.rightY = 120; //ry;
-    c = 1;
-  }
-  if (rx != rpt_data.rightX) {
-    rpt_data.rightX = -120; //rx;
-    c = 1;
-  }
-  if (ly != rpt_data.leftY) {
-    rpt_data.leftY = ly;
-    c = 1;
-  }
-  if (lx != rpt_data.leftX) {
-    rpt_data.leftX = lx;
     c = 1;
   }
 
   return c;
+}
+
+bool rpt_test()
+{
+    rpt_data.buttons = 0;
+    rpt_data.leftY = read_test(0);
+    rpt_data.leftX = read_test(1);
+    rpt_data.rightY = read_test(2);
+    rpt_data.rightX = read_test(3);
+
+  return true;
 }
 
 void bayang_data()
@@ -122,12 +124,14 @@ void symax_data()
   txS.flags5=FLAG5_HIRATE;
 }
 
-void d_update() {
+
+void d_update()
+{
   d_updating = 1;
 }
 
-
-void draw(void) {
+void draw(void)
+{
   switch (d_page) {
     case 0:
       u8g.setFont(u8g_font_unifont); //(u8g_font_osb21);
@@ -192,6 +196,7 @@ void serial_print_rpt()
   Serial.print(rpt_data.rightX);Serial.print(' ');
   Serial.println(rpt_data.rightY);
 }
+
 void serial_cmd()
 {
   if (Serial.available()==0) return;
@@ -211,7 +216,6 @@ void serial_cmd()
     break;
   }
 }
-
 
 void setup()
 {
@@ -268,6 +272,7 @@ void loop()
     comm_usb();
     kscan_tick();
     if (adc_scanall()) send_report();
+//    if (rpt_test()) send_report();
   }
 
   if(prtimer.check(t))

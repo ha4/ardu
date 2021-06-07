@@ -46,6 +46,8 @@
 
 /* HID USAGES */
 #define HID_GAME_PAD 0x05
+#define HID_JOYSTICK 0x04
+#define HID_POINTER 0x01
 #define HID_X 0x30
 #define HID_Y 0x31
 #define HID_Z 0x32
@@ -62,20 +64,29 @@
 /* INPUT/OUTPUT/FREATURE */
 #define T_DATA  0x00
 #define T_CONST 0x01
+
 #define T_ARRAY 0x00
 #define T_VARIABLE  0x02
+
 #define T_ABSOLUTE 0x00
 #define T_RELATIVE 0x04
+
 #define T_NOWRAP   0x00
 #define T_WRAP     0x08
+
 #define T_LINEAR   0x00
 #define T_NLIN     0x10
+
 #define T_PREFSTATE 0x00
 #define T_NPRF      0x20
+
 #define T_NONULL    0x00
 #define T_NULLSTATE 0x40
+
 #define T_NONVOLATILE 0x00
 #define T_VOLATILE  0x80
+
+/* use INPUT(2) and LAST op if BUFERED: T_DATA | T_VARIABLE | T_BUFFERED */
 #define T_BITFIELD  0x00
 #define T_BUFFERED  0x00, 0x01
 
@@ -85,8 +96,18 @@ const uint8_t _hid_rpt_descr[] PROGMEM = {
   USAGE_PAGE(1), HID_GENERIC_DESKTOP,
   USAGE(1), HID_GAME_PAD,
   COLLECTION(1), C_APPLICATION,
-    COLLECTION(1), C_PHYSICAL,
     REPORT_ID(1), 0x03,
+    COLLECTION(1), C_PHYSICAL,
+      USAGE(1), HID_X,
+      USAGE(1), HID_Y,
+      USAGE(1), HID_RX,
+      USAGE(1), HID_RY,
+      LOGICAL_MINIMUM(2), 0x01, 0xFE, // -511
+      LOGICAL_MAXIMUM(2), 0xFF, 0x01, // 511
+      REPORT_SIZE(1), 16,
+      REPORT_COUNT(1), 4,
+      INPUT(1), T_DATA|T_VARIABLE|T_ABSOLUTE,
+    END_COLLECTION(0),
 
     USAGE_PAGE(1), HID_BUTTON,
     USAGE_MINIMUM(1), 0x01, //  (Button 1)
@@ -97,20 +118,6 @@ const uint8_t _hid_rpt_descr[] PROGMEM = {
     REPORT_COUNT(1), 8,
     INPUT(1), T_DATA|T_VARIABLE|T_ABSOLUTE,
 
-    USAGE_PAGE(1), HID_GENERIC_DESKTOP,
-    USAGE(1), HID_X,
-    USAGE(1), HID_Y,
-    USAGE(1), HID_RX,
-    USAGE(1), HID_RY,
-//    PHYSICAL_MINIMUM(2), 0x00, 0x00, // 0
-//    PHYSICAL_MAXIMUM(2), 0xff, 0x03, // 1023
-    LOGICAL_MINIMUM(2), 0x00, 0x00,  // 0
-    LOGICAL_MAXIMUM(2), 0xff, 0x03,  // 1023
-    REPORT_SIZE(1), 16,
-    REPORT_COUNT(1), 4,
-    INPUT(1), T_DATA|T_VARIABLE|T_ABSOLUTE,
-
-    END_COLLECTION(0),
   END_COLLECTION(0)
 };
 
