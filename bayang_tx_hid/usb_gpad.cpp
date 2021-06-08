@@ -102,8 +102,10 @@ const uint8_t _hid_rpt_descr[] PROGMEM = {
       USAGE(1), HID_Y,
       USAGE(1), HID_RX,
       USAGE(1), HID_RY,
-      LOGICAL_MINIMUM(2), 0x01, 0xFE, // -511
-      LOGICAL_MAXIMUM(2), 0xFF, 0x01, // 511
+//      LOGICAL_MINIMUM(2), 0x01, 0x80, // -32767
+//      LOGICAL_MAXIMUM(2), 0xFF, 0x7F, // 32767
+      LOGICAL_MINIMUM(2), 0x01, 0xF8, // -2047
+      LOGICAL_MAXIMUM(2), 0xFF, 0x03, // 2047
       REPORT_SIZE(1), 16,
       REPORT_COUNT(1), 4,
       INPUT(1), T_DATA|T_VARIABLE|T_ABSOLUTE,

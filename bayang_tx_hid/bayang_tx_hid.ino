@@ -76,16 +76,23 @@ bool adc_scanall()
 
   uint8_t b = k_matrix;
   int16_t ry = adc_read(POT_ELEVATOR);
-  int16_t rx = adc_read(POT_AILERON);
+  int16_t rx = 1023-adc_read(POT_AILERON);
   int16_t ly = adc_read(POT_THROTTLE);
   int16_t lx = adc_read(POT_RUDDER);
+//  lx-=512;  ly-=512;  rx-=512;  ry-=512; // +/-511 scale
+//  lx*=64; ly*=64; rx*=64; ry*=64; // +/-32767 scale
+//  lx*=4; ly*=4; rx*=4; ry*=4; // +/-2047 scale
+//  lx+=1000; ly+=1000; rx+=1000; ry+=1000; // 1000..2000 pulse scale
+//  lx/=4; ly/=4; rx/=4; ry/=4; // +/-127 scale
+//  lx*=2; ly*=2; rx*=2; ry*=2; // 0..2048 scale
+
   if (b != rpt_data.buttons || 
       ry != rpt_data.rightY || rx != rpt_data.rightX ||
       ly != rpt_data.leftY || lx != rpt_data.leftX) {
-    rpt_data.leftX = lx-512;
-    rpt_data.leftY = ly-512;
-    rpt_data.rightX = -(rx-512);
-    rpt_data.rightY = ry-512;
+    rpt_data.leftX = lx;
+    rpt_data.leftY = ly;
+    rpt_data.rightX = rx;
+    rpt_data.rightY = ry;
     rpt_data.buttons = b;
     c = 1;
   }
