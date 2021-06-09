@@ -16,10 +16,16 @@ void adc_setup();
 #define COLPINA 5
 #define COLPINB 7
 
+#define KEY_1 8
+#define KEY_2 2
+#define KEY_3 4
+#define KEY_4 1
+
 void kscan_init();
 void kscan_tick();
+uint16_t kscan_keys();
+
 uint16_t kscan_mx();
-extern uint16_t k_matrix;
 
 
 #endif

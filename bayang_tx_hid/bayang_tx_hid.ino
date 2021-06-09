@@ -20,35 +20,40 @@ U8GLIB_SH1106_128X64 u8g(U8G_I2C_OPT_DEV_0 | U8G_I2C_OPT_FAST); // Dev 0, Fast I
 #define dFL_USBSER 0x0002
 #define dFL_PROTO_SYMAX 0x0004
 
+void none_data();
 void bayang_data();
 void symax_data();
 
 struct proto_t {
-  uint8_t proto_id;
-  uint16_t (*tx_id)(uint32_t id);
   uint16_t (*init)();
   uint16_t (*bind)();
   uint16_t (*callback)();
   int8_t (*state)();
-  void (*load_data)();
+  void (*data)();
+  char *name;
 };
 
 struct SymaXData txS;
 struct BayangData txB;
+
 struct proto_t tx_lst[] = {
-  {1, &BAYANG_TX_id, &BAYANG_TX_init, &BAYANG_TX_bind, &BAYANG_TX_callback, &BAYANG_TX_state, &bayang_data },
-  {2, &symax_tx_id, &symax_init, &symax_bind, &symax_callback, &symax_state, &symax_data },  
+  {&noneTX_init, &noneTX_bind, &noneTX_callback, &noneTX_state, &none_data, "NoTxm" },
+  {&BAYANG_TX_init, &BAYANG_TX_bind, &BAYANG_TX_callback, &BAYANG_TX_state, &bayang_data, "Bayng" },
+  {&symax_init, &symax_bind, &symax_callback, &symax_state, &symax_data, "SymaX" },  
 };
 
 xtimer txtimer; // Transmitter
 xtimer potimer; // Pot read adc
 xtimer prtimer; // serial print
 
-volatile uint8_t d_updating, d_page;
+volatile uint8_t d_updating, d_updid, d_page;
 volatile uint16_t d_flags;
 
+uint16_t keys;
+
 uint32_t MProtocol_id_master;
-int txstate=100;
+int8_t txstate;
+struct proto_t *txproto;
 
 #define TEST_LIM 511
 #define TEST_SCA 128
@@ -74,7 +79,7 @@ bool adc_scanall()
 {
   bool c = 0;
 
-  uint8_t b = k_matrix;
+  uint8_t b = 0;
   int16_t ry = adc_read(POT_ELEVATOR);
   int16_t rx = 1023-adc_read(POT_AILERON);
   int16_t ly = adc_read(POT_THROTTLE);
@@ -111,6 +116,8 @@ bool rpt_test()
   return true;
 }
 
+void none_data() {}
+
 void bayang_data()
 {
   
@@ -118,7 +125,7 @@ void bayang_data()
 
 void symax_data()
 {
-  uint8_t b = k_matrix;
+  uint8_t b = 0;
   uint16_t elevt = adc_read(POT_ELEVATOR);
   uint16_t ailrn = adc_read(POT_AILERON);
   uint16_t throt = adc_read(POT_THROTTLE);
@@ -131,14 +138,42 @@ void symax_data()
   txS.flags5=FLAG5_HIRATE;
 }
 
+void set_protocol(char *name)
+{
+  int i=sizeof(tx_lst)/sizeof(struct proto_t);
+  txstate=-2;
+  if (name==NULL) { txproto=&tx_lst[0]; return; }
+  size_t nl=strlen(name);
+  if (nl==0) { txproto=&tx_lst[0]; return; }
+  while(i) {
+    i--;
+    txproto=&tx_lst[i];
+    if(strncmp(name,txproto->name,nl)==0) return;
+  }
+}
+
+char *next_protocol()
+{
+  static uint8_t i=0;
+  if(i < sizeof(tx_lst)/sizeof(struct proto_t)) return tx_lst[i++].name;
+  i=0;
+  return NULL;
+}
+
+char *get_protocol()
+{
+  return txproto->name;
+}
 
 void d_update()
 {
   d_updating = 1;
+  d_updid = !d_updid;
 }
 
 void draw(void)
 {
+  if (d_updid) u8g.drawPixel(127,0);
   switch (d_page) {
     case 0:
       u8g.setFont(u8g_font_unifont); //(u8g_font_osb21);
@@ -147,8 +182,12 @@ void draw(void)
     case 1:
       u8g.setFont(u8g_font_unifont); //(u8g_font_osb21);
       u8g.drawStr( 76, 12, (d_flags&dFL_VUSB)?((d_flags&dFL_USBSER)? "SERIAL":"USB"):"no usb");
-      u8g.drawStr( 76, 24, (txstate)? "bound":"bind ");
-      u8g.drawStr( 76, 36, (d_flags&dFL_PROTO_SYMAX)? "SymaX":"Bayang");
+      u8g.drawStr( 76, 24, (txstate)? (txstate==-2?"init":"bound"):"bind ");
+      u8g.drawStr( 76, 36, get_protocol());
+      u8g.drawStr(  0, 63, "Bind"); if (keys&KEY_1) u8g.drawFrame( 0,52,31,11);
+      u8g.drawStr( 32, 63, "Prot"); if (keys&KEY_2) u8g.drawFrame(32,52,31,11);
+      u8g.drawStr( 64, 63, "--");  if (keys&KEY_3) u8g.drawFrame(64,52,31,11);
+      u8g.drawStr( 95, 63, "Menu"); if (keys&KEY_4) u8g.drawFrame(95,52,31,11);
       break;
   }
 }
@@ -204,6 +243,14 @@ void serial_print_rpt()
   Serial.println(rpt_data.rightY);
 }
 
+void serial_print_sym()
+{
+  Serial.print(txS.throttle);Serial.print(' ');
+  Serial.print(txS.rudder);Serial.print(' ');
+  Serial.print(txS.elevator);Serial.print(' ');
+  Serial.println(txS.aileron);
+}
+
 void serial_cmd()
 {
   if (Serial.available()==0) return;
@@ -224,17 +271,43 @@ void serial_cmd()
   }
 }
 
+void sel_next_proto()
+{
+  char *prt=get_protocol();
+  char *nx;
+  nx=next_protocol();
+  while(nx != NULL) {
+    if (strcmp(prt,nx)==0) {
+      nx=next_protocol();
+      set_protocol(nx);
+    } else nx=next_protocol();
+  } 
+}
+
+void kcommand(uint16_t k, uint16_t ch)
+{
+  if (ch&(KEY_1|KEY_2|KEY_3|KEY_4)) d_update();
+  if ((ch&KEY_1) && (k&KEY_1)) 
+    //txtimer.set(txproto->bind());
+    symax_bind();
+  if ((ch&KEY_2) && (k&KEY_2)) sel_next_proto();
+}
+
 void setup()
 {
   uint32_t t;
 
+  // usb setup
   mygamepad_init();
+  memset(&rpt_data, 0, sizeof(rpt_data));
 
+  // tx general setup
   random_init();
   randomSeed(random_value());  
   MProtocol_id_master=random_id(EEPROM_ID_OFFSET,false);
+  set_protocol(NULL);
 
-
+  // input setup
   kscan_init();
   adc_setup();
 
@@ -243,50 +316,62 @@ void setup()
   d_page = 1;
   d_flags |= dFL_PROTO_SYMAX;
   d_update();
-  memset(&rpt_data, 0, sizeof(rpt_data));
 
+  // timer setup
   t = micros();
-  txtimer.start(t);
+  txtimer.start(t); txtimer.set(1000);
   potimer.start(t); potimer.set(1000);
   prtimer.start(t); prtimer.set(100000L);
-  
-  BAYANG_TX_data(&txB);
+
+  // protocols setup
   memset(&txB,0,sizeof(txB));
-  symax_data(&txS);
+  BAYANG_TX_data(&txB);
+  BAYANG_TX_id(MProtocol_id_master);
   memset(&txS,0,sizeof(txS));
-
-//  BAYANG_TX_id(MProtocol_id_master);
-//  txtimer.set(BAYANG_TX_init());
-//  BAYANG_TX_bind(); // autobind
-
   symax_tx_id(0x7F7FC0D7ul);
+//  symax_tx_id(MProtocol_id_master);
+  symax_data(&txS);
   txtimer.set(symax_init());
 }
 
 void loop()
 {
   uint32_t t = micros();
+  uint16_t k_chg=0;
   if (txtimer.check(t)) {
         //readtest();
+        //txproto->data();
+        //if (txstate==-2)txtimer.set(txproto->init());
+        //txtimer.set(txproto->callback());
+        //int8_t st=txproto->state();
         symax_data();
-        //txtimer.set(BAYANG_TX_callback());
         txtimer.set(symax_callback());
-        //if (txstate!=BAYANG_TX_state()) { txstate=BAYANG_TX_state(); Serial.println(txstate); }
-        if (txstate!=symax_state()) { txstate=symax_state(); Serial.println(txstate); }
+        int8_t st=symax_state();
+        if (txstate!=st) {
+          txstate=st;
+          //Serial.println(txstate);
+          //d_update();
+        }
   }
 
   if(potimer.check(t)) {
-    comm_usb();
     kscan_tick();
+    comm_usb();
     if (adc_scanall()) send_report();
 //    if (rpt_test()) send_report();
+    uint16_t k = kscan_keys();
+    k_chg=k^keys;
+    keys=k;
   }
+
+  kcommand(keys, k_chg);
 
   if(prtimer.check(t))
     if (comm_serial()) {
       serial_cmd();
-      serial_print_adc();
+      //serial_print_adc();
       //serial_print_rpt();
+      serial_print_sym();
     }
 
   if (d_updating) {

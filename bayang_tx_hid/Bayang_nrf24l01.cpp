@@ -28,6 +28,8 @@
 #define DEBUGLN(x)
 #endif
 
+#define NONE_TX_PERIOD 20000
+
 #define BAYANG_TX_AUTOBIND
 
 #define BAYANG_BIND_COUNT		1000
@@ -84,7 +86,6 @@ static void __attribute__((unused)) BAYANG_send_packet()
   } else {
     uint16_t val;
     packet[0] = 0xA5;
-    packet[1] = 0xFA;		// normal mode is 0xF7, expert 0xFa , D4 normal is 0xF4
   }
   packet[12] = rx_tx_addr[2];	// txid[2]
   packet[13] = 0x0A;
@@ -166,6 +167,8 @@ void BAYANG_enc(int n, int x, int t)
 
 void  BAYANG_bildchannels(struct BayangData *val)
 {
+  packet[1] = val->aux1?0xFA:0xF7;    // normal mode is 0xF7, expert 0xFa , D4 normal is 0xF4
+
   packet[2] = val->flags2;
   packet[3] = val->flags3;
 
@@ -278,4 +281,33 @@ uint16_t BAYANG_TX_callback()
       return BAYANG_READ_DELAY;
   }
   return BAYANG_PACKET_PERIOD;
+}
+
+/*
+ *  no TX protocol
+ */
+
+static int8_t none_tx_state;
+
+uint16_t noneTX_init()
+{
+  NRF24L01_Initialize();
+  none_tx_state = NRF24L01_Reset();
+
+  return NONE_TX_PERIOD; 
+}
+
+uint16_t noneTX_callback()
+{
+  return NONE_TX_PERIOD;
+}
+
+uint16_t noneTX_bind()
+{
+  return NONE_TX_PERIOD;
+}
+
+int8_t  noneTX_state()
+{
+  return none_tx_state?1:-1;
 }
