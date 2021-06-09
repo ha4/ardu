@@ -225,7 +225,7 @@ uint16_t symax_rx_run()
   
   case SYMAX_WAIT_FSYNC:
         if (rxFlag()) {
-          receive_packet();
+          receive_packet(); // sync packet throttle should be 0
           DEBUGLN('}');
           freqHop();
           phase = (SYMAX_BOUND);
@@ -237,14 +237,15 @@ uint16_t symax_rx_run()
 
   case SYMAX_LOST_BOUND:
         if (!rxFlag()) {
-              if (counter++ > 40) phase = (SYMAX_INIT);
+              freqHop();
+              // if (counter++ > 40) phase = (SYMAX_INIT); do not unbound
               return PACKET_PERIOD * 8; // repeat 4 channels twice
         }
         phase = (SYMAX_BOUND);
 
   case SYMAX_BOUND:
         if (!rxFlag()) {  // switch search channels
-            //freqHop();
+            freqHop();
             if (counter++ > 40) {
               counter = 0;
               phase = (SYMAX_LOST_BOUND);
@@ -254,7 +255,7 @@ uint16_t symax_rx_run()
         counter = 0;
         receive_packet();
         DEBUGLN('.');
-	if (proto_data != NULL) decode_packet(proto_data);
+	      if (proto_data != NULL) decode_packet(proto_data);
         freqHop();
      
       return PACKET_PERIOD*2;

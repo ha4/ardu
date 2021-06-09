@@ -198,10 +198,11 @@ static void __attribute__((unused)) BAYANG_initialize_txid()
   hopping_frequency_no = 0;
 }
 
-uint16_t BAYANG_TX_init()
+void BAYANG_TX_init()
 {
   BAYANG_initialize_txid();
   BAYANG_init_nrf();
+
   bayang_phase = BAYANG_BIND;
   // autobind protocol
 #ifdef BAYANG_TX_AUTOBIND
@@ -215,11 +216,10 @@ uint16_t BAYANG_TX_init()
 }
 
 
-uint16_t BAYANG_TX_bind()
+void BAYANG_TX_bind()
 {
-  uint16_t t=BAYANG_TX_init();
+  BAYANG_TX_init();
   bind_counter=BAYANG_BIND_COUNT;
-  return t;
 }
 
 void BAYANG_TX_data(struct BayangData *x)
@@ -289,7 +289,7 @@ uint16_t BAYANG_TX_callback()
 
 static int8_t none_tx_state;
 
-uint16_t noneTX_init()
+void noneTX_init()
 {
   NRF24L01_Initialize();
   none_tx_state = NRF24L01_Reset();
@@ -302,7 +302,7 @@ uint16_t noneTX_callback()
   return NONE_TX_PERIOD;
 }
 
-uint16_t noneTX_bind()
+void noneTX_bind()
 {
   return NONE_TX_PERIOD;
 }

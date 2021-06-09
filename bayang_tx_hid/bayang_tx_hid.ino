@@ -25,8 +25,8 @@ void bayang_data();
 void symax_data();
 
 struct proto_t {
-  uint16_t (*init)();
-  uint16_t (*bind)();
+  void (*init)();
+  void (*bind)();
   uint16_t (*callback)();
   int8_t (*state)();
   void (*data)();
@@ -133,7 +133,7 @@ void symax_data()
 
   txS.aileron=(ailrn-512)/4;
   txS.elevator=(512-elevt)/4;
-  txS.throttle=(1024-throt)/4-34;
+  txS.throttle=(1024-throt)/4-48;
   txS.rudder=(512-rudd)/4;
   txS.flags5=FLAG5_HIRATE;
 }
@@ -257,7 +257,7 @@ void serial_cmd()
   switch(Serial.read()) {
   case 'b':
     //txtimer.set(BAYANG_TX_bind());
-    txtimer.set(symax_bind());
+    symax_bind();
     Serial.println("bind");
     break;
   case 'k':
@@ -288,7 +288,7 @@ void kcommand(uint16_t k, uint16_t ch)
 {
   if (ch&(KEY_1|KEY_2|KEY_3|KEY_4)) d_update();
   if ((ch&KEY_1) && (k&KEY_1)) 
-    //txtimer.set(txproto->bind());
+    //txproto->bind();
     symax_bind();
   if ((ch&KEY_2) && (k&KEY_2)) sel_next_proto();
 }
@@ -331,7 +331,7 @@ void setup()
   symax_tx_id(0x7F7FC0D7ul);
 //  symax_tx_id(MProtocol_id_master);
   symax_data(&txS);
-  txtimer.set(symax_init());
+  symax_init();
 }
 
 void loop()
@@ -341,7 +341,7 @@ void loop()
   if (txtimer.check(t)) {
         //readtest();
         //txproto->data();
-        //if (txstate==-2)txtimer.set(txproto->init());
+        //if (txstate==-2) txproto->init();
         //txtimer.set(txproto->callback());
         //int8_t st=txproto->state();
         symax_data();

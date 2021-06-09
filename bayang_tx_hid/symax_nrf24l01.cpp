@@ -135,6 +135,7 @@ static void symax_send_packet(uint8_t bind)
   }
   packet[8] = 0x00;
   packet[9] = symax_checksum(packet);
+
   rf_chan = bind?bchans[current_chan_no]:chans[current_chan_no];
   // clear packet status bits and TX FIFO
   NRF24L01_WriteReg(NRF24L01_07_STATUS, 0x70);
@@ -145,7 +146,7 @@ static void symax_send_packet(uint8_t bind)
   NRF24L01_WritePayload(packet, PAYLOADSIZE);
 
   // use each channel twice
-  if ((packet_counter++) & 1) current_chan_no = (current_chan_no + 1) & 3;
+  if (packet_counter++ % 2) current_chan_no = (current_chan_no + 1) & 3;
 
   // Check and adjust transmission power. We do this after transmission to not bother
   // with timeout after power settings change -  we have plenty of time until next packet.
@@ -177,9 +178,10 @@ static void symax_init_nrf()
   NRF24L01_SetTxRxMode(TX_EN);
 }
 
-uint16_t symax_init()
+void symax_init()
 {
     symax_init_nrf();
+
 #ifdef SYMAX_AUTOBIND
     symax_phase = SYMAX_INIT;
 #else
@@ -188,14 +190,12 @@ uint16_t symax_init()
 #endif
     current_chan_no = 0;
     packet_counter = 0;
-    return INITIAL_WAIT; 
 }
 
-uint16_t symax_bind()
+void symax_bind()
 {
     symax_init_nrf();
     symax_phase = SYMAX_INIT;
-    return INITIAL_WAIT; 
 }
 
 uint16_t symax_callback()
@@ -211,7 +211,7 @@ uint16_t symax_callback()
     case SYMAX_BIND:
       if (--bind_counter == 0) {
         set_channels();
-        NRF24L01_WriteRegisterMulti(NRF24L01_10_TX_ADDR, rx_tx_addr, 5);
+        NRF24L01_WriteRegisterMulti(NRF24L01_10_TX_ADDR, rx_tx_addr, 5); // sync packet first, throttle should be 0x00
         current_chan_no = 0;
         packet_counter = 0;
         symax_phase = SYMAX_DATA;

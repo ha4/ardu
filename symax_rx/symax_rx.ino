@@ -95,7 +95,7 @@ void loop()
 #ifdef USE_PPM
       if (ppm_state) { ppm_stop(); ppm_state=0; }
 #endif
-    }
+    } else if (rc < 0) if (flsh.check(millis())) digitalWrite(pinLED, 1-digitalRead(pinLED));
     return;
   }
     digitalWrite(pinLED,0);
