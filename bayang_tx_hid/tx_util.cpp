@@ -60,3 +60,30 @@ ISR(WDT_vect)
     WDTCSR = 0; // Disable Watchdog interrupt
   }
 }
+
+char* saved_proto(uint16_t address, char *new_name)
+{
+  uint8_t chk;
+  static char n[6];
+
+  chk=0;
+  if (new_name==NULL) { // try to get
+    for(uint8_t i=0;i<6;i++) chk^=eeprom_read_byte((EE_ADDR)(address+i));
+    chk+=0x55;
+    if(eeprom_read_byte((EE_ADDR)(address+6))!=0xf6 || eeprom_read_byte((EE_ADDR)(address+7))!=chk)
+      return NULL; // fail to read
+    for(uint8_t i=0;i<6;i++) n[i]=eeprom_read_byte((EE_ADDR)(address+i));
+    return n;
+  }
+  for(uint8_t i=0;i<6;i++) {
+    n[i]=*new_name;
+    if (*new_name) new_name++;
+    eeprom_write_byte((EE_ADDR)address+i,(uint8_t)n[i]);
+    chk^=(uint8_t)n[i];
+  }
+  chk+=0x55;
+  eeprom_write_byte((EE_ADDR)(address+6),0xf6); // write marker
+  eeprom_write_byte((EE_ADDR)(address+7),chk); // write chksum
+
+  return new_name;
+}

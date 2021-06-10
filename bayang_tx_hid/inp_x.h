@@ -20,6 +20,12 @@ void adc_setup();
 #define KEY_2 2
 #define KEY_3 4
 #define KEY_4 1
+#define KEY_LU 0x1000
+#define KEY_LD 0x4000
+#define KEY_RU 0x8000
+#define KEY_RD 0x2000
+#define KEY_R  0x0100
+#define KEY_SYS (KEY_1|KEY_2|KEY_3|KEY_4)
 
 void kscan_init();
 void kscan_tick();

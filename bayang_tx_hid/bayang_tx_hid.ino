@@ -51,6 +51,25 @@ volatile uint16_t d_flags;
 
 uint16_t keys;
 
+void cmd_bind();
+void cmd_next_proto();
+void cmd_m_menu();
+void cmd_m_ok();
+void cmd_m_up();
+void cmd_m_down();
+void cmd_m_exit();
+
+static char *menu1[]={"Bind","Prot","---","Menu"};
+static char *menu2[]={" ok "," up "," dn ","exit"};
+static void (*menu1_cmd[])()={cmd_bind, cmd_next_proto, NULL, cmd_m_menu};
+static void (*menu2_cmd[])()={cmd_m_ok, cmd_m_up, cmd_m_down, cmd_m_exit};
+
+#define STATE_DATA 0
+#define STATE_BIND 1
+#define STATE_ERR  -1
+#define STATE_DOINIT -2
+#define STATE_DOBIND -3
+
 uint32_t MProtocol_id_master;
 int8_t txstate;
 struct proto_t *txproto;
@@ -141,7 +160,7 @@ void symax_data()
 void set_protocol(char *name)
 {
   int i=sizeof(tx_lst)/sizeof(struct proto_t);
-  txstate=-2;
+  txstate=STATE_DOINIT;
   if (name==NULL) { txproto=&tx_lst[0]; return; }
   size_t nl=strlen(name);
   if (nl==0) { txproto=&tx_lst[0]; return; }
@@ -171,23 +190,39 @@ void d_update()
   d_updid = !d_updid;
 }
 
+void draw_hmenu(char **lst, uint8_t marks)
+{
+  for(int i = 0; i < 4; i++) {
+    int x=(i==3)?95:i*32;
+    uint8_t m=(i<2)?(i==0?KEY_1:KEY_2):(i==2?KEY_3:KEY_4);
+    u8g.drawStr(x, 63, lst[i]);
+    if (marks&m) u8g.drawFrame(x,52,31,11);
+  }
+}
+
 void draw(void)
 {
   if (d_updid) u8g.drawPixel(127,0);
   switch (d_page) {
-    case 0:
+    case 0: // test screen
       u8g.setFont(u8g_font_unifont); //(u8g_font_osb21);
       u8g.drawStr( 0, 22, "Hello World!");
       break;
-    case 1:
+    case 1: // main screen
       u8g.setFont(u8g_font_unifont); //(u8g_font_osb21);
       u8g.drawStr( 76, 12, (d_flags&dFL_VUSB)?((d_flags&dFL_USBSER)? "SERIAL":"USB"):"no usb");
       u8g.drawStr( 76, 24, (txstate)? (txstate==-2?"init":"bound"):"bind ");
       u8g.drawStr( 76, 36, get_protocol());
-      u8g.drawStr(  0, 63, "Bind"); if (keys&KEY_1) u8g.drawFrame( 0,52,31,11);
-      u8g.drawStr( 32, 63, "Prot"); if (keys&KEY_2) u8g.drawFrame(32,52,31,11);
-      u8g.drawStr( 64, 63, "--");  if (keys&KEY_3) u8g.drawFrame(64,52,31,11);
-      u8g.drawStr( 95, 63, "Menu"); if (keys&KEY_4) u8g.drawFrame(95,52,31,11);
+      draw_hmenu(menu1, keys&KEY_SYS);
+      break;
+    case 2: // menu screen
+      u8g.setFont(u8g_font_unifont); //(u8g_font_osb21);
+      u8g.drawStr( 0, 12, "page2");
+      draw_hmenu(menu2, keys&KEY_SYS);
+      break;
+    case 3: // XY screen
+      u8g.setFont(u8g_font_unifont); //(u8g_font_osb21);
+      u8g.drawStr( 0, 12, "page3");
       break;
   }
 }
@@ -256,8 +291,7 @@ void serial_cmd()
   if (Serial.available()==0) return;
   switch(Serial.read()) {
   case 'b':
-    //txtimer.set(BAYANG_TX_bind());
-    symax_bind();
+    txstate=STATE_DOBIND;
     Serial.println("bind");
     break;
   case 'k':
@@ -271,7 +305,9 @@ void serial_cmd()
   }
 }
 
-void sel_next_proto()
+void cmd_bind() { txstate=STATE_DOBIND; }
+
+void cmd_next_proto()
 {
   char *prt=get_protocol();
   char *nx;
@@ -284,13 +320,35 @@ void sel_next_proto()
   } 
 }
 
-void kcommand(uint16_t k, uint16_t ch)
+
+void cmd_m_menu() { d_page=2; }
+void cmd_m_ok() { }
+void cmd_m_up() { }
+void cmd_m_down() { }
+void cmd_m_exit() { d_page=1; }
+
+void menu_command(uint16_t k, uint16_t ch)
 {
-  if (ch&(KEY_1|KEY_2|KEY_3|KEY_4)) d_update();
-  if ((ch&KEY_1) && (k&KEY_1)) 
-    //txproto->bind();
-    symax_bind();
-  if ((ch&KEY_2) && (k&KEY_2)) sel_next_proto();
+  void (**cmdlst)();
+
+  d_update();
+  switch (d_page) {
+  default: // test screen
+    cmdlst=NULL;
+    break;
+  case 1: // main screen
+    cmdlst=menu1_cmd;
+    break;
+  case 2: // main menu
+    cmdlst=menu2_cmd;
+    break;
+  }
+
+  for(int i = 0; i < 4; i++) {
+    uint8_t m=(i<2)?(i==0?KEY_1:KEY_2):(i==2?KEY_3:KEY_4);
+    if (ch&k&m && cmdlst!=NULL && cmdlst[i]!=NULL)
+      (cmdlst[i])();
+  }
 }
 
 void setup()
@@ -305,7 +363,15 @@ void setup()
   random_init();
   randomSeed(random_value());  
   MProtocol_id_master=random_id(EEPROM_ID_OFFSET,false);
+
+  // protocols setup
   set_protocol(NULL);
+  memset(&txB,0,sizeof(txB));
+  BAYANG_TX_data(&txB);
+  BAYANG_TX_id(MProtocol_id_master);
+  memset(&txS,0,sizeof(txS));
+  symax_tx_id(MProtocol_id_master);
+  symax_data(&txS);
 
   // input setup
   kscan_init();
@@ -322,16 +388,6 @@ void setup()
   txtimer.start(t); txtimer.set(1000);
   potimer.start(t); potimer.set(1000);
   prtimer.start(t); prtimer.set(100000L);
-
-  // protocols setup
-  memset(&txB,0,sizeof(txB));
-  BAYANG_TX_data(&txB);
-  BAYANG_TX_id(MProtocol_id_master);
-  memset(&txS,0,sizeof(txS));
-  symax_tx_id(0x7F7FC0D7ul);
-//  symax_tx_id(MProtocol_id_master);
-  symax_data(&txS);
-  symax_init();
 }
 
 void loop()
@@ -340,17 +396,15 @@ void loop()
   uint16_t k_chg=0;
   if (txtimer.check(t)) {
         //readtest();
-        //txproto->data();
-        //if (txstate==-2) txproto->init();
-        //txtimer.set(txproto->callback());
-        //int8_t st=txproto->state();
-        symax_data();
-        txtimer.set(symax_callback());
-        int8_t st=symax_state();
+        txproto->data();
+        if (txstate==STATE_DOINIT) txproto->init();
+        if (txstate==STATE_DOBIND) txproto->bind();
+        txtimer.set(txproto->callback());
+        int8_t st=txproto->state();
         if (txstate!=st) {
           txstate=st;
           //Serial.println(txstate);
-          //d_update();
+          d_update();
         }
   }
 
@@ -360,19 +414,18 @@ void loop()
     if (adc_scanall()) send_report();
 //    if (rpt_test()) send_report();
     uint16_t k = kscan_keys();
-    k_chg=k^keys;
+    k_chg=(k^keys) & KEY_SYS;
     keys=k;
   }
 
-  kcommand(keys, k_chg);
+  if (k_chg) menu_command(keys, k_chg);
 
-  if(prtimer.check(t))
-    if (comm_serial()) {
+  if(prtimer.check(t) &&comm_serial()) {
       serial_cmd();
       //serial_print_adc();
       //serial_print_rpt();
-      serial_print_sym();
-    }
+      //serial_print_sym();
+  }
 
   if (d_updating) {
     d_updating = 0;
