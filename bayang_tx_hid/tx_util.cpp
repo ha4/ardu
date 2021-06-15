@@ -1,7 +1,15 @@
 #include <Arduino.h>
 #include "tx_util.h"
 
+uint32_t MProtocol_id_master;
+int8_t txstate;
+struct proto_t *txproto;
+
 #define EE_ADDR uint8_t*
+
+/*
+ * tx-id management
+ */
 
 uint32_t random_id(uint16_t address, uint8_t create_new)
 {
@@ -61,6 +69,10 @@ ISR(WDT_vect)
   }
 }
 
+/*
+ * protocols list manage
+ */
+
 char* saved_proto(uint16_t address, char *new_name)
 {
   uint8_t chk;
@@ -86,4 +98,35 @@ char* saved_proto(uint16_t address, char *new_name)
   eeprom_write_byte((EE_ADDR)(address+7),chk); // write chksum
 
   return new_name;
+}
+
+void set_protocol(char *name)
+{
+  int i=0;
+  while(tx_lst[i].name!=NULL) i++; // sizeof(tx_lst)/sizeof(struct proto_t);
+
+  txstate=STATE_DOINIT;
+  if (name==NULL) { txproto=&tx_lst[0]; return; }
+  size_t nl=strlen(name);
+  if (nl==0) { txproto=&tx_lst[0]; return; }
+  while(i) {
+    i--;
+    txproto=&tx_lst[i];
+    if(strncmp(name,txproto->name,nl)==0) return;
+  }
+}
+
+char *next_protocol()
+{
+  static uint8_t i=0;
+  // if (i < sizeof(tx_lst)/sizeof(struct proto_t))
+  if(tx_lst[i].name != NULL)
+    return tx_lst[i++].name;
+  i=0;
+  return NULL;
+}
+
+char *get_protocol()
+{
+  return txproto->name;
 }
