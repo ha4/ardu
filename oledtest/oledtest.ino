@@ -111,7 +111,7 @@ uint8_t ssd1306_128x32_fn(u8g_t *u8g, u8g_dev_t *dev, uint8_t msg, void *arg)
     case U8G_DEV_MSG_SLEEP_OFF:
       u8g_WriteEscSeqP(u8g, dev, ssd13xx_sleep_off);    
       return 1;
-}
+  }
   
   return u8g_dev_pb8v1_base_fn(u8g, dev, msg, arg);
 }
@@ -179,7 +179,7 @@ uint8_t com_arduino_ssd_i2c_fn(u8g_t *u8g, uint8_t msg, uint8_t arg_val, void *a
 
 /* zaames */
 
-static const uint8_t font8x8_dig[] PROGMEM = {
+static const uint8_t font6x8_dig[] PROGMEM = {
   0, 0, 0, 0, 0, 0, 0, 0,
   112, 136, 168, 168, 136, 112, 0, 0, /*0*/
   32, 96, 32, 32, 32, 112, 0, 0,
@@ -196,7 +196,7 @@ static const uint8_t font8x8_dig[] PROGMEM = {
   0, 0, 0, 0, 0, 64, 0, 0,      /*.*/ 
 };
 
-void my_Draw8Pixel(u8g_t *u8g, u8g_dev_t *dev, u8g_uint_t x, u8g_uint_t y, uint8_t dir, uint8_t pixel)
+void _Draw8Pixel(u8g_t *u8g, u8g_dev_t *dev, u8g_uint_t x, u8g_uint_t y, uint8_t dir, uint8_t pixel)
 {
   u8g_dev_arg_pixel_t *arg = &(u8g->arg_pixel);
   arg->x = x;
@@ -206,7 +206,8 @@ void my_Draw8Pixel(u8g_t *u8g, u8g_dev_t *dev, u8g_uint_t x, u8g_uint_t y, uint8
   u8g_call_dev_fn(u8g, dev, U8G_DEV_MSG_SET_8PIXEL, arg);
 }
 
-static uint8_t __inline__ __attribute__((always_inline)) _is_intersection_decision_tree(u8g_uint_t a0, u8g_uint_t a1, u8g_uint_t v0, u8g_uint_t v1) 
+static uint8_t __inline__ __attribute__((always_inline)) 
+   _is_intersect(u8g_uint_t a0, u8g_uint_t a1, u8g_uint_t v0, u8g_uint_t v1) 
 {
   if(v0 <= a1) {
     if(v1 >= a0) return 1;
@@ -217,37 +218,31 @@ static uint8_t __inline__ __attribute__((always_inline)) _is_intersection_decisi
   }
 }
 
-uint8_t my_IsBBXIntersection(u8g_t *u8g, u8g_uint_t x, u8g_uint_t y, u8g_uint_t w, u8g_uint_t h)
+uint8_t _IsBBXIntersection(u8g_t *u8g, u8g_uint_t x, u8g_uint_t y, u8g_uint_t w, u8g_uint_t h)
 {
-  register u8g_uint_t tmp;
-  tmp = y;
-  tmp += h;
-  tmp--;
-  if(_is_intersection_decision_tree(u8g->current_page.y0, u8g->current_page.y1, y, tmp) == 0)
+  register u8g_uint_t e=y+h;
+  if(_is_intersect(u8g->current_page.y0, u8g->current_page.y1, y, --e) == 0)
     return 0; 
-  
-  tmp = x;
-  tmp += w;
-  tmp--;
-  return _is_intersection_decision_tree(u8g->current_page.x0, u8g->current_page.x1, x, tmp);
+  e = x+w;
+  return _is_intersect(u8g->current_page.x0, u8g->current_page.x1, x, --e);
 }
 
-int8_t my_draw_glyph6(u8g_t *u8g, u8g_uint_t x, u8g_uint_t y, uint8_t encoding)
+int8_t _drawGlyph6(u8g_t *u8g, u8g_uint_t x, u8g_uint_t y, uint8_t encoding)
 {
   const u8g_pgm_uint8_t *data;
   uint8_t w, h;
 
-  data=font8x8_dig;
+  data=font6x8_dig;
   if(encoding >='0' && encoding <='9') data+=(encoding-'0'+1)*8;
-  if(encoding =='+') data+=(11)*8;
-  if(encoding =='-') data+=(12)*8;
-  if(encoding =='.') data+=(13)*8;
+  else if(encoding =='+') data+=(11)*8;
+  else if(encoding =='-') data+=(12)*8;
+  else if(encoding =='.') data+=(13)*8;
   w = 6;
   h = 8;
 
-  if(my_IsBBXIntersection(u8g, x, y, w, h) == 0) return w;
+  if(_IsBBXIntersection(u8g, x, y, w, h) == 0) return w;
   for(int j=0; j < h; j++, y++)
-      my_Draw8Pixel(u8g,u8g->dev, x, y, 0, u8g_pgm_read(data++));
+      _Draw8Pixel(u8g,u8g->dev, x, y, 0, u8g_pgm_read(data++));
   return w;
 }
 
@@ -255,28 +250,91 @@ void my_DrawStr(u8g_t *u8g, u8g_uint_t x, u8g_uint_t y, const char *s)
 {
   int8_t d;
   while(*s != '\0') {
-    d = my_draw_glyph6(u8g, x, y, *s++);
+    d = _drawGlyph6(u8g, x, y, *s++);
     x += d;
   }
 }
 
+void _firstPage(u8g_t *u8g)
+{
+  u8g_call_dev_fn(u8g, u8g->dev, U8G_DEV_MSG_PAGE_FIRST, NULL);
+  u8g_call_dev_fn(u8g, u8g->dev, U8G_DEV_MSG_GET_PAGE_BOX, &(u8g->current_page));  
+}
+
+uint8_t _nextPage(u8g_t *u8g)
+{
+  uint8_t r;
+  if(u8g->cursor_fn)
+    u8g->cursor_fn(u8g);
+  r=u8g_call_dev_fn(u8g, u8g->dev, U8G_DEV_MSG_PAGE_NEXT, NULL);
+  if(r)
+    u8g_call_dev_fn(u8g, u8g->dev, U8G_DEV_MSG_GET_PAGE_BOX, &(u8g->current_page));
+  return r;
+}
+
+/*callbacks*/
+u8g_uint_t _vref_font(u8g_t *u8g) { return 0; }
+void _dummystate_cb(uint8_t msg) { }
+
+void _init_data(u8g_t *u8g)
+{
+  u8g->font = NULL;
+  u8g->cursor_font = NULL;
+  u8g->cursor_bg_color = 0;
+  u8g->cursor_fg_color = 1;
+  u8g->cursor_encoding = 34;
+  u8g->cursor_fn = (u8g_draw_cursor_fn)0;
+
+  for(uint8_t i = 0; i < U8G_PIN_LIST_LEN; i++ )
+    u8g->pin_list[i] = U8G_PIN_NONE;
+  
+  u8g->arg_pixel.color = 1; // set color index
+  u8g->font_calc_vref = _vref_font; // setfontpos_baseline
+  
+  u8g->font_height_mode = U8G_FONT_HEIGHT_MODE_XTEXT;
+  u8g->font_ref_ascent = 0;
+  u8g->font_ref_descent = 0;
+  u8g->font_line_spacing_factor = 64;           /* 64 = 1.0, 77 = 1.2 line spacing factor */
+  u8g->line_spacing = 0;
+  
+  u8g->state_cb = _dummystate_cb;
+}
+
+void _initGC(u8g_t *u8g)
+{
+  u8g_uint_t r;
+ 
+  _init_data(u8g);
+  u8g->dev = &dev_ssd1306_128x32_i2c;
+  u8g->pin_list[U8G_PI_I2C_OPTION] = U8G_I2C_OPT_FAST;
+
+  // begin
+  if(u8g_call_dev_fn(u8g, u8g->dev, U8G_DEV_MSG_INIT, NULL) == 0)
+    return ;
+  /* fetch width and height from the low level */
+  u8g_call_dev_fn(u8g, u8g->dev, U8G_DEV_MSG_GET_WIDTH, &r);
+  u8g->width = r;
+  u8g_call_dev_fn(u8g, u8g->dev, U8G_DEV_MSG_GET_HEIGHT, &r);
+  u8g->height = r;
+  u8g->mode = u8g_call_dev_fn(u8g, u8g->dev, U8G_DEV_MSG_GET_MODE, NULL);
+  u8g_call_dev_fn(u8g, u8g->dev, U8G_DEV_MSG_GET_PAGE_BOX, &(u8g->current_page));
+}
 
 void setup()
 {
-  u8g_InitI2C(&y8,&dev_ssd1306_128x32_i2c,U8G_I2C_OPT_FAST);
+  _initGC(&y8);
 }
 
 void loop()
 {
   static int cnt=0;
-  char v[10];
-  u8g_FirstPage(&y8);
+  char v[20];
+  _firstPage(&y8);
+
   do {
-    u8g_SetDefaultForegroundColor(&y8);
-    itoa(cnt,v,10);
-    my_DrawStr(&y8, 0, 0, v);
-    my_DrawStr(&y8, 32, 0, v);
-    my_DrawStr(&y8, 32, 24, v);
-  } while( u8g_NextPage(&y8) );
+    itoa(cnt,v,10);       my_DrawStr(&y8, 0, 0, v);
+    itoa(cnt,v,2);        my_DrawStr(&y8, 0, 17, v);
+    itoa(32767-cnt,v,10); my_DrawStr(&y8, 32, 24, v);
+  } while( _nextPage(&y8) );
   cnt++;
 }
