@@ -45,7 +45,7 @@ static const uint8_t ssd1306_128x32_adafruit3_init_seq[] PROGMEM = {
   
   0x02e,        /* 2012-05-27: Deactivate scroll */ 
   0x0a4,        /* output ram to display */
-  0x0a6,        /* none inverted normal display mode */
+  0x0a6,        /* 0xa6 none inverted normal display mode, 0xa7 inverted */
   0x0af,        /* display on */
 
   U8G_ESC_CS(0),        /* disable chip */
@@ -77,43 +77,175 @@ static const uint8_t ssd13xx_sleep_off[] PROGMEM = {
   U8G_ESC_END                /* end of sequence */
 };
 
+uint8_t _WriteEscSeqP(u8g_t *u8g, u8g_dev_t *dev, const uint8_t *esc_seq)
+{
+  uint8_t is_escape = 0;
+  uint8_t value;
+  for(;;) {
+    value = u8g_pgm_read(esc_seq++);
+    if(is_escape == 0) {
+      if(value != 255) { if(dev->com_fn(u8g, U8G_COM_MSG_WRITE_BYTE, value, NULL) == 0) return 0; }
+      else is_escape = 1;
+      continue;
+    }
+
+    if(value == 255) { if(dev->com_fn(u8g, U8G_COM_MSG_WRITE_BYTE, value, NULL) == 0) return 0; }
+    else if(value == 254)  { break; }
+    else if(value >= 0x0f0){ /* not yet used, do nothing */ }
+    else if(value >= 0xe0) { dev->com_fn(u8g, U8G_COM_MSG_ADDRESS, value & 0x0f, NULL); }
+    else if(value >= 0xd0) { dev->com_fn(u8g, U8G_COM_MSG_CHIP_SELECT, value & 0x0f, NULL); }
+    else if(value >= 0xc0) {
+      dev->com_fn(u8g, U8G_COM_MSG_RESET, 0, NULL);
+      value=2+((value & 0x0f) << 4);
+      delay(value);
+      dev->com_fn(u8g, U8G_COM_MSG_RESET, 1, NULL);
+      delay(value);
+    } else if(value >= 0xbe){ /* not yet implemented u8g_SetVCC(u8g, dev, value & 0x01); */ }
+    else if ( value <= 127 ){ delay(value); }
+    is_escape = 0;
+  }
+  return 1;
+}
+
+void _pb8v1_SetPixel(u8g_pb_t *b, const u8g_dev_arg_pixel_t * const arg_pixel)
+{
+  if (arg_pixel->y < b->p.page_y0) return;
+  if (arg_pixel->y > b->p.page_y1) return;
+  if (arg_pixel->x >= b->width)  return;
+  register uint8_t mask=1<<((arg_pixel->y - b->p.page_y0)&7);
+  uint8_t *ptr = b->buf + arg_pixel->x;
+  if(arg_pixel->color) *ptr |= mask;
+  else  *ptr &= mask^0xff;
+}
+
+void _pb8v1_Set8PixelOpt2(u8g_pb_t *b, u8g_dev_arg_pixel_t *arg_pixel)
+{
+  register uint8_t pixel = arg_pixel->pixel;
+  u8g_uint_t dx = 0;
+  u8g_uint_t dy = 0;
+
+  switch(arg_pixel->dir)
+    { case 0: dx++; break; case 1: dy++; break; case 2: dx--; break; case 3: dy--; break; }
+
+  do {
+    if (pixel & 128) _pb8v1_SetPixel(b, arg_pixel);
+    arg_pixel->x += dx;
+    arg_pixel->y += dy;
+    pixel <<= 1;
+  } while(pixel != 0);
+}
+
+void _pb_Clear(u8g_pb_t *b)
+{
+  uint8_t *ptr = (uint8_t *)b->buf;
+  uint8_t *end_ptr = ptr;
+  end_ptr += b->width;
+  do *ptr++ = 0; while( ptr != end_ptr );
+}
+
+void _pb_GetPageBox(u8g_pb_t *pb, u8g_box_t *box)
+{
+  box->x0 = 0; box->y0 = pb->p.page_y0; 
+  box->x1 = pb->width; box->x1--; box->y1 = pb->p.page_y1; 
+}
+
+uint8_t _pb_Is8PixelVisible(u8g_pb_t *b, u8g_dev_arg_pixel_t *arg_pixel)
+{
+  u8g_uint_t v0, v1;
+  v0 = arg_pixel->y;
+  v1 = v0;
+  switch(arg_pixel->dir)
+  {
+    case 0: break;
+    case 1: v1 += 8; /* this is independent from the page height */  break;
+    case 2: break;
+    case 3: v0 -= 8; break;
+  }
+  uint8_t c1, c2, c3, tmp;
+  c1 = v0 <= b->p.page_y1;
+  c2 = v1 >= b->p.page_y0;
+  c3 = v0 > v1;
+  tmp = c1;
+  c1 &= c2;
+  c2 &= c3;
+  c3 &= tmp;
+  c1 |= c2;
+  c1 |= c3;
+  return c1 & 1;
+}
+
+void _page_First(u8g_page_t *p)
+{
+  p->page_y0=0;
+  p->page_y1=p->page_height;
+  p->page_y1--;
+  p->page = 0;
+}
+
+uint8_t _page_Next(u8g_page_t * p)
+{
+  register u8g_uint_t y1;
+  p->page_y0 += p->page_height;
+  if(p->page_y0 >= p->total_height) return 0;
+  p->page++;
+  y1 = p->page_y1;
+  y1 += p->page_height;
+  if(y1 >= p->total_height) {
+    y1 = p->total_height;
+    y1--;
+  }
+  p->page_y1 = y1;
+  return 1;
+}
+
 uint8_t ssd1306_128x32_fn(u8g_t *u8g, u8g_dev_t *dev, uint8_t msg, void *arg)
 {
+  u8g_pb_t *pb = (u8g_pb_t *)(dev->dev_mem);
   switch(msg)
   {
     case U8G_DEV_MSG_INIT:
-      u8g_InitCom(u8g, dev, U8G_SPI_CLK_CYCLE_300NS);
-      u8g_WriteEscSeqP(u8g, dev, ssd1306_128x32_adafruit3_init_seq);
+      dev->com_fn(u8g, U8G_COM_MSG_INIT, U8G_SPI_CLK_CYCLE_300NS, NULL); // init com
+      _WriteEscSeqP(u8g, dev, ssd1306_128x32_adafruit3_init_seq);
       break;
     case U8G_DEV_MSG_STOP:
       break;
     case U8G_DEV_MSG_PAGE_NEXT:
-      {
-        u8g_pb_t *pb = (u8g_pb_t *)(dev->dev_mem);
-        u8g_WriteEscSeqP(u8g, dev, ssd1306_128x32_data_start);    
-        u8g_WriteByte(u8g, dev, 0x0b0 | pb->p.page);  /* select current page (SSD1306) */
-        u8g_SetAddress(u8g, dev, 1);          /* data mode */
-        if ( u8g_pb_WriteBuffer(pb, u8g, dev) == 0 )
-          return 0;
-        u8g_SetChipSelect(u8g, dev, 0);
-      }
+      _WriteEscSeqP(u8g, dev, ssd1306_128x32_data_start);
+      dev->com_fn(u8g, U8G_COM_MSG_WRITE_BYTE, 0x0b0 | pb->p.page, NULL); /* select current page (SSD1306) */
+      dev->com_fn(u8g, U8G_COM_MSG_ADDRESS, 1, NULL);          /* data mode */
+      if(dev->com_fn(u8g, U8G_COM_MSG_WRITE_SEQ, pb->width, pb->buf) == 0)
+        return 0;
+      dev->com_fn(u8g, U8G_COM_MSG_CHIP_SELECT, 0, NULL);
       break;
     case U8G_DEV_MSG_CONTRAST:
-      u8g_SetChipSelect(u8g, dev, 1);
-      u8g_SetAddress(u8g, dev, 0);          /* instruction mode */
-      u8g_WriteByte(u8g, dev, 0x081);
-      u8g_WriteByte(u8g, dev, (*(uint8_t *)arg) ); /* 11 Jul 2015: fixed contrast calculation */
-      u8g_SetChipSelect(u8g, dev, 0);      
+      dev->com_fn(u8g, U8G_COM_MSG_CHIP_SELECT, 1, NULL);
+      dev->com_fn(u8g, U8G_COM_MSG_ADDRESS, 0, NULL);     /* instruction mode */
+      dev->com_fn(u8g, U8G_COM_MSG_WRITE_BYTE, 0x081, NULL);
+      dev->com_fn(u8g, U8G_COM_MSG_WRITE_BYTE, (*(uint8_t *)arg), NULL); /* 11 Jul 2015: fixed contrast calculation */
+      dev->com_fn(u8g, U8G_COM_MSG_CHIP_SELECT, 0, NULL);
       return 1; 
     case U8G_DEV_MSG_SLEEP_ON:
-      u8g_WriteEscSeqP(u8g, dev, ssd13xx_sleep_on);    
+      _WriteEscSeqP(u8g, dev, ssd13xx_sleep_on);    
       return 1;
     case U8G_DEV_MSG_SLEEP_OFF:
-      u8g_WriteEscSeqP(u8g, dev, ssd13xx_sleep_off);    
+      _WriteEscSeqP(u8g, dev, ssd13xx_sleep_off);    
       return 1;
   }
   
-  return u8g_dev_pb8v1_base_fn(u8g, dev, msg, arg);
+  switch(msg){
+    case U8G_DEV_MSG_SET_8PIXEL:
+        if (_pb_Is8PixelVisible(pb, (u8g_dev_arg_pixel_t *)arg))
+        _pb8v1_Set8PixelOpt2(pb, (u8g_dev_arg_pixel_t *)arg);
+      break;
+    case U8G_DEV_MSG_SET_PIXEL: _pb8v1_SetPixel(pb, (u8g_dev_arg_pixel_t *)arg);  break;
+    case U8G_DEV_MSG_PAGE_FIRST: _pb_Clear(pb); _page_First(&(pb->p)); break;
+    case U8G_DEV_MSG_PAGE_NEXT: if (_page_Next(&(pb->p)) == 0) return 0; _pb_Clear(pb); break;
+    case U8G_DEV_MSG_GET_PAGE_BOX: _pb_GetPageBox(pb, (u8g_box_t *)arg);  break;
+    case U8G_DEV_MSG_GET_WIDTH:  *((u8g_uint_t *)arg) = pb->width;   break;
+    case U8G_DEV_MSG_GET_HEIGHT: *((u8g_uint_t *)arg) = pb->p.total_height;  break;
+    case U8G_DEV_MSG_GET_MODE: return U8G_MODE_BW;
+  }
+  return 1;
 }
 
 
@@ -169,7 +301,7 @@ uint8_t com_arduino_ssd_i2c_fn(u8g_t *u8g, uint8_t msg, uint8_t arg_val, void *a
         arg_val--;
       }
       break;
-    case U8G_COM_MSG_ADDRESS:                     /* define cmd (arg_val = 0) or data mode (arg_val = 1) */
+    case U8G_COM_MSG_ADDRESS:    /* define cmd (arg_val = 0) or data mode (arg_val = 1) */
       u8g->pin_list[U8G_PI_A0_STATE] = arg_val;
       u8g->pin_list[U8G_PI_SET_A0] = 1;   /* force a0 to set again */
       break;
@@ -195,6 +327,16 @@ static const uint8_t font6x8_dig[] PROGMEM = {
   0, 0, 0, 248, 0, 0, 0, 0,     /*-*/
   0, 0, 0, 0, 0, 64, 0, 0,      /*.*/ 
 };
+
+u8g_pgm_uint8_t *_glyphdata(uint8_t c)
+{
+  uint16_t d=9;
+  if(c >='0' && c <='9') d=(c-'0'+1)*8;
+  else if(c =='+') d=(11)*8;
+  else if(c =='-') d=(12)*8;
+  else if(c =='.') d=(13)*8;
+  return font6x8_dig+d;
+}
 
 void _Draw8Pixel(u8g_t *u8g, u8g_dev_t *dev, u8g_uint_t x, u8g_uint_t y, uint8_t dir, uint8_t pixel)
 {
@@ -231,12 +373,8 @@ int8_t _drawGlyph6(u8g_t *u8g, u8g_uint_t x, u8g_uint_t y, uint8_t encoding)
 {
   const u8g_pgm_uint8_t *data;
   uint8_t w, h;
-
-  data=font6x8_dig;
-  if(encoding >='0' && encoding <='9') data+=(encoding-'0'+1)*8;
-  else if(encoding =='+') data+=(11)*8;
-  else if(encoding =='-') data+=(12)*8;
-  else if(encoding =='.') data+=(13)*8;
+  
+  data = _glyphdata(encoding);
   w = 6;
   h = 8;
 
@@ -328,11 +466,18 @@ void setup()
 void loop()
 {
   static int cnt=0;
+  static uint32_t t1=0;
+  uint32_t t=micros();
   char v[20];
-  _firstPage(&y8);
+  t1=t-t1;
+  if(t1>0)t1=10000000L/t1;
+  itoa(t1/10,v,10);
+  t1=t;
 
+  _firstPage(&y8);
   do {
-    itoa(cnt,v,10);       my_DrawStr(&y8, 0, 0, v);
+    my_DrawStr(&y8, 0, 0, v);
+    itoa(cnt,v,10);       my_DrawStr(&y8, 64, 0, v);
     itoa(cnt,v,2);        my_DrawStr(&y8, 0, 17, v);
     itoa(32767-cnt,v,10); my_DrawStr(&y8, 32, 24, v);
   } while( _nextPage(&y8) );
