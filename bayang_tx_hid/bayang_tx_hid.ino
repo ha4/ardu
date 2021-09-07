@@ -1,4 +1,4 @@
-#include "usb_gpad.h"
+ #include "usb_gpad.h"
 #include "tx_util.h"
 #include "Bayang_nrf24l01.h"
 #include "symax_nrf24l01.h"
@@ -10,8 +10,6 @@
 // display sh1106   GRN,SCL=PD0(d3,scl) BRN,SDA=PD1(d2,sda) BLU,GND YLW,VDD=+3.3
 // key-rows 74hc164 pin 1&2 = DATA(d8), 8 - CLOCK(d6), pin 9 - CLEAR (+Vdd)
 // key-columns pullup=10k COL(A)=(d5), COL(B)=(d7)
-
-#define EEPROM_ID_OFFSET    10    // Module ID (4 bytes)
 
 void none_data();
 void bayang_data();
@@ -28,8 +26,16 @@ struct proto_t tx_lst[] = {
 };
 
 xtimer txtimer; // Transmitter
-xtimer potimer; // Pot read adc
+xtimer polltimer; // 1 ms, Pot read adc, keys, usb
 xtimer prtimer; // serial print
+
+/* discrete channels */
+enum { SW_RT=0, SW_LT, SW_RB, SW_LB, // physical
+  SW_V0, SW_V1, SW_V2, SW_V3, SW_V4, SW_V5, // virtual
+  SWCH_NUM };
+uint8_t swch[SWCH_NUM];
+
+/* test circular motion */
 
 #define TEST_LIM 511
 #define TEST_SCA 128
@@ -51,9 +57,17 @@ int read_test(uint8_t chan)
 
 /* conversion routines */
 
-bool adc_scanall()
+void switch_keys(uint16_t k)
 {
-  bool c = 0;
+  swch[SW_RT]= (k&KEY_RD)?0:((k&KEY_RU)?2:1); // Right top 3 state
+  swch[SW_LT]= (k&KEY_LD)?0:((k&KEY_LU)?2:1); // Left top 3 state
+  swch[SW_RB]= (k&KEY_R)?1:0; // Right bottom
+  swch[SW_LB]= (k&KEY_L)?1:0; // Left bottom
+}
+
+bool adc_to_usb()
+{
+  bool changed = 0;
 
   uint8_t b = 0;
   int16_t ry = adc_read(POT_ELEVATOR);
@@ -75,10 +89,10 @@ bool adc_scanall()
     rpt_data.rightX = rx;
     rpt_data.rightY = ry;
     rpt_data.buttons = b;
-    c = 1;
+    changed = 1;
   }
 
-  return c;
+  return changed;
 }
 
 bool rpt_test()
@@ -105,8 +119,11 @@ void bayang_data()
   txB.pitch=1023-elevt;
   txB.throttle=1023-throt;
   txB.yaw=1023-rudd;
-  txS.flags5=FLAG5_HIRATE;
-  
+  txB.aux1=swch[SW_RT]*127;
+  txB.aux2=swch[SW_LT]*127;
+  txB.flags2=0;
+  if (swch[SW_RB]) txB.flags2|=BAYANG_FLAG_FLIP;
+  if (swch[SW_LB]) txB.flags2|=BAYANG_FLAG_PICTURE;
 }
 
 void symax_data()
@@ -121,6 +138,7 @@ void symax_data()
   txS.elevator=(512-elevt)/4;
   txS.throttle=(1023-throt)/4-48;
   txS.rudder=(512-rudd)/4;
+  txS.flags5=FLAG5_HIRATE;
 }
 
 
@@ -159,6 +177,7 @@ bool comm_serial()
 
 void serial_print_adc()
 {
+  Serial.print(F("ADC "));
   for (int i = 0; i < 8; i++)  {
         Serial.print(adc_read(i));
         if (i == 7) Serial.println();
@@ -187,18 +206,9 @@ void serial_cmd()
 {
   if (Serial.available()==0) return;
   switch(Serial.read()) {
-  case 'b':
-    txstate=STATE_DOBIND;
-    Serial.println("bind");
-    break;
-  case 'k':
-    Serial.print("keys:0x");
-    Serial.println(kscan_mx(),HEX);
-    break;
-  case 'x':
-    Serial.print("sticks ");
-    serial_print_adc();
-    break;
+  case 'b': txstate=STATE_DOBIND;  Serial.println(F("bind"));  break;
+  case 'k': Serial.print(F("keys:0x")); Serial.println(kscan_mx(),HEX); break;
+  case 'x': serial_print_adc(); break;
   }
 }
 
@@ -217,8 +227,9 @@ void setup()
   MProtocol_id_master=random_id(EEPROM_ID_OFFSET,false);
 
   // protocols setup
-  set_protocol(NULL);
+  set_protocol(saved_proto(EEPROM_PROTO_OFFSET,NULL));
   memset(&txB,0,sizeof(txB));
+  txB.option = BAYANG_OPTION_ANALOGAUX;
   BAYANG_TX_data(&txB);
   BAYANG_TX_id(MProtocol_id_master);
   memset(&txS,0,sizeof(txS));
@@ -228,6 +239,7 @@ void setup()
   // input setup
   kscan_init();
   adc_setup();
+  memset(&swch[0],0,sizeof(swch));
 
   // visual setup
   v_init();
@@ -235,7 +247,7 @@ void setup()
   // timers setup
   t = micros();
   txtimer.start(t); txtimer.set(1000);
-  potimer.start(t); potimer.set(1000);
+  polltimer.start(t); polltimer.set(1000);
   prtimer.start(t); prtimer.set(100000L);
 }
 
@@ -257,14 +269,16 @@ void loop()
         }
   }
 
-  if(potimer.check(t)) {
+  if(polltimer.check(t)) {
     kscan_tick();
     comm_usb();
-    if (adc_scanall()) send_report();
+    if (adc_to_usb()) send_report();
 //    if (rpt_test()) send_report();
 
     uint16_t k = kscan_keys();
-    k_chg=(k^v_keys) & KEY_SYS;
+    switch_keys(k);
+    k &= KEY_SYS;
+    k_chg=k^v_keys;
     v_keys=k;
   }
 
@@ -277,5 +291,5 @@ void loop()
       //serial_print_sym();
   }
 
-  v_loop();
+  v_loop(); // visual
 }

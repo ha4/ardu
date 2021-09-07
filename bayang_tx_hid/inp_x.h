@@ -8,6 +8,10 @@
 
 #define ADC_SIZE 8
 #define ADC_UREF 1106 /*mV*/
+#define ADC_KBAT 0.01854
+#define ADC_SBAT 0.5
+#define ADC_UBAT10(c) (5+(((c)*12150L)>>16))
+
 uint16_t adc_read(uint8_t chan);
 void adc_setup();
 
@@ -25,6 +29,7 @@ void adc_setup();
 #define KEY_RU 0x8000
 #define KEY_RD 0x2000
 #define KEY_R  0x0100
+#define KEY_L  0x0400
 #define KEY_SYS (KEY_1|KEY_2|KEY_3|KEY_4)
 
 void kscan_init();

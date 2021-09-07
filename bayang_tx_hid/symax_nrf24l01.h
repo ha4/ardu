@@ -23,6 +23,7 @@ struct SymaXData {
   uint8_t flags5; 
   uint8_t flags6;
   uint8_t flags7;
+  uint8_t option;
 };
 
 #define SYMAX_CHAN(num) ((num<0)?SCHAN_SIGN|((-num)&SCHAN_MASK):num&SCHAN_MASK)

@@ -30,8 +30,11 @@ struct BayangData {
   uint16_t yaw;       // rudder
   int8_t  trims[4];   // +/-31 AETR
   uint8_t aux1;
+  uint8_t aux2;
   uint8_t flags2;
   uint8_t flags3;
+  uint8_t option;    // not transmitted
+  uint8_t lqi;      // received telemetry LQI
 };
 
 void BAYANG_TX_init();

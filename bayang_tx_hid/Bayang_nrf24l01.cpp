@@ -54,7 +54,6 @@ enum {
 
 static uint8_t  rx_tx_addr[5];
 static uint8_t  bayang_phase;
-static uint8_t  proto_flags;
 static uint8_t  hopping_frequency[BAYANG_RF_NUM_CHANNELS];
 static uint8_t  hopping_frequency_no = 0;
 static uint8_t  rf_ch_num;
@@ -76,19 +75,20 @@ static void __attribute__((unused)) BAYANG_send_packet()
 {
   uint8_t i;
   if (bayang_phase == BAYANG_BIND) {
-    packet[0] = 0xA4;
+    if (proto_data != NULL && proto_data->option & BAYANG_OPTION_ANALOGAUX)
+      packet[0] = 0xA2;
+    else
+      packet[0] = 0xA4;
     for (i = 0; i < 5; i++)
       packet[i + 1] = rx_tx_addr[i];
     for (i = 0; i < 4; i++)
       packet[i + 6] = hopping_frequency[i];
     packet[10] = rx_tx_addr[0];	// txid[0]
     packet[11] = rx_tx_addr[1];	// txid[1]
-  } else {
-    uint16_t val;
-    packet[0] = 0xA5;
-  }
-  packet[12] = rx_tx_addr[2];	// txid[2]
-  packet[13] = 0x0A;
+    packet[12] = rx_tx_addr[2];  // txid[2]
+    packet[13] = 0x0A;
+  } else
+      packet[0] = 0xA5;
   packet[14] = BAYANG_sum();
 
   NRF24L01_WriteReg(NRF24L01_05_RF_CH, bayang_phase==BAYANG_BIND ? rf_ch_num : hopping_frequency[hopping_frequency_no]);
@@ -151,7 +151,6 @@ static void __attribute__((unused)) BAYANG_init_nrf()
   NRF24L01_Activate(0x73);
 
   rf_ch_num = BAYANG_RF_BIND_CHANNEL;
-  proto_flags = 0;
 }
 
 // x=value from 1000 to 2000, 1500 middle
@@ -167,7 +166,13 @@ void BAYANG_enc(int n, int x, int t)
 
 void  BAYANG_bildchannels(struct BayangData *val)
 {
-  packet[1] = val->aux1?0xFA:0xF7;    // normal mode is 0xF7, expert 0xFa , D4 normal is 0xF4
+  if (val->option & BAYANG_OPTION_ANALOGAUX) {
+     packet[1] = val->aux1;
+     packet[13] = val->aux2;
+  } else {
+    packet[1] = val->aux1?0xFA:0xF7;    // normal mode is 0xF7, expert 0xFa , D4 normal is 0xF4
+    packet[13] = 0x0a;
+  }
 
   packet[2] = val->flags2;
   packet[3] = val->flags3;
@@ -176,6 +181,7 @@ void  BAYANG_bildchannels(struct BayangData *val)
   BAYANG_enc(6, val->pitch,  val->trims[1]);
   BAYANG_enc(8, val->throttle, val->trims[2]);
   BAYANG_enc(10, val->yaw,   val->trims[3]);
+  packet[12] = rx_tx_addr[2];  // txid[2]
 }
 
 // Convert 32b id to rx_tx_addr
@@ -212,7 +218,6 @@ void BAYANG_TX_init()
 #endif
   packet_count = 0;
   tele_counter = 0;
-  return BAYANG_INITIAL_WAIT + BAYANG_PACKET_PERIOD;
 }
 
 
@@ -252,7 +257,7 @@ uint16_t BAYANG_TX_callback()
     case BAYANG_WRITE:
       if (proto_data != NULL) BAYANG_bildchannels(proto_data);
       BAYANG_send_packet();
-      if(proto_flags & BAYANG_OPTION_TELEMETRY) {
+      if(proto_data && (proto_data->option & BAYANG_OPTION_TELEMETRY)) {
         if(++tele_counter > 200) {
           tele_counter = 0;
           //telemetry reception packet rate - packets per second
@@ -293,8 +298,6 @@ void noneTX_init()
 {
   NRF24L01_Initialize();
   none_tx_state = NRF24L01_Reset();
-
-  return NONE_TX_PERIOD; 
 }
 
 uint16_t noneTX_callback()
@@ -304,7 +307,6 @@ uint16_t noneTX_callback()
 
 void noneTX_bind()
 {
-  return NONE_TX_PERIOD;
 }
 
 int8_t  noneTX_state()

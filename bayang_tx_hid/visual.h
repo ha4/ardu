@@ -4,6 +4,9 @@
 #define dFL_VUSB 0x0001
 #define dFL_USBSER 0x0002
 
+#define SCREEN_W 128
+#define SCREEN_H 64
+
 extern volatile uint8_t d_updating;
 extern volatile uint8_t d_page;
 extern volatile uint16_t d_flags;

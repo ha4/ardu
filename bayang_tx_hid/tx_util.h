@@ -7,6 +7,9 @@
 #define STATE_DOINIT -2
 #define STATE_DOBIND -3
 
+#define EEPROM_ID_OFFSET    10    /* Module ID (4 bytes), 11 bytes total */
+#define EEPROM_PROTO_OFFSET 21    /* saved protocol name(6chars), 8 bytes total */
+
 struct proto_t {
   void (*init)();
   void (*bind)();
