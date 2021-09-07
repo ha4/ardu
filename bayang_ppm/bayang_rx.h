@@ -18,7 +18,7 @@ enum BAYANG_FLAGS {
 
 
 enum BAYANG_OPTIONS {
-  BAYANG_OPTION_BIND = 0x01,
+  BAYANG_OPTION_BIND = 0x01,  // auto binding
   BAYANG_OPTION_TELEMETRY = 0x02,
   BAYANG_OPTION_TELEMETRY_READ = 0x04,
   BAYANG_OPTION_ANALOGAUX = 0x08,
@@ -32,15 +32,18 @@ struct BayangData {
   uint16_t yaw;       // rudder
   int8_t  trims[4];   // +/-31 AETR
   uint8_t aux1;
+  uint8_t aux2;
   uint8_t flags2;
   uint8_t flags3;
+  uint8_t option; // not transmitted
+  uint8_t lqi;
 };
 
 void BAYANG_RX_data(struct BayangData *t);
-uint16_t BAYANG_RX_init();
-uint16_t BAYANG_RX_bind();
 uint8_t BAYANG_RX_available();
-int BAYANG_RX_state();
+void BAYANG_RX_init();
+void BAYANG_RX_bind();
+int BAYANG_RX_state(); // 0:binding 1:data -1:data loss
 uint16_t BAYANG_RX_callback();
 
 #endif //_INTERFACE_H_

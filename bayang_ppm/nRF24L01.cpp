@@ -183,7 +183,7 @@ uint8_t NRF24L01_Reset()
     NRF24L01_FlushTx();
     NRF24L01_FlushRx();
     uint8_t status1 = Strobe(0xFF); // NOP
-    uint8_t status2 = NRF24L01_ReadReg(0x07);
+    uint8_t status2 = NRF24L01_ReadReg(NRF24L01_07_STATUS);
     NRF24L01_SetTxRxMode(TXRX_OFF);
     return (status1 == status2 && (status1 & 0x0f) == 0x0e);
 }
