@@ -9,10 +9,12 @@ class OneWire
     uint8_t adr[8];
     char srchJ;
     uint8_t srchE;
-    uint8_t pin;
+    uint8_t datapin, _bit;
+    volatile uint8_t *_reg, *_out, *_pin;
+
 
   public:
-    OneWire( uint8_t pin);
+    OneWire(uint8_t pin);
 
     uint8_t reset();
     void write_bit(uint8_t v);

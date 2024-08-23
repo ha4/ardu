@@ -64,7 +64,16 @@ sample code bearing this copyright.
 
 OneWire::OneWire( uint8_t pinArg)
 {
-    pin = pinArg;
+    uint8_t port;
+    datapin = pinArg;
+    _bit = digitalPinToBitMask(datapin);
+    port = digitalPinToPort(datapin);
+    if (port == NOT_A_PIN) return;
+
+    _reg = portModeRegister(port);
+    _out = portOutputRegister(port);
+    _pin = portInputRegister(port);
+
     start();
 }
 
@@ -80,46 +89,45 @@ uint8_t OneWire::reset() {
     uint8_t retries = 125;
 
     // wait until the wire is high... just in case
-    pinMode(pin,INPUT);
+    *_reg &= ~_bit; // input
+    *_out &= ~_bit; // no pullup
+
     do {
 	if ( retries-- == 0) return 0;
-	delayMicroseconds(2); 
-    } while( !digitalRead( pin));
+	delayMicroseconds(2);  // 250 us wait
+    } while(!(*_pin & _bit));
     
-    digitalWrite(pin,0);   // pull low for 500uS
-    pinMode(pin,OUTPUT);
+    *_reg |= _bit;   // pull low for 500uS
     delayMicroseconds(500);
 
-    pinMode(pin,INPUT);
+    *_reg &= ~_bit;
     delayMicroseconds(65);
 
-    r = !digitalRead(pin);
+    r = !(*_pin & _bit);
     delayMicroseconds(490);
     return r;
 }
 
 void OneWire::write_bit(uint8_t v) {
 
-    pinMode(pin,OUTPUT);
-    digitalWrite(pin,0);
+    *_out &= ~_bit; // no pullup
+    *_reg |= _bit; // output low
     delayMicroseconds((v&1)?5:55);
 
-    digitalWrite(pin,1);
-    pinMode(pin,INPUT);
+    *_reg &= ~_bit; // output release
     delayMicroseconds((v&1)?55:5);
 }
 
 uint8_t OneWire::read_bit() {
     uint8_t r;
     
-    pinMode(pin,OUTPUT);
-    digitalWrite(pin,0);
+    *_out &= ~_bit; // no pullup
+    *_reg |= _bit; // output low
     delayMicroseconds(1);
 
-    digitalWrite(pin,1);
-    pinMode(pin,INPUT);
+    *_reg &= ~_bit; // output release
     delayMicroseconds(5);          // A "read slot" is when 1mcs > t > 2mcs
-    r = digitalRead(pin);
+    r = (*_pin & _bit)!=0;
 
     delayMicroseconds(50);        // whole bit slot is 60-120uS, need to give some time
     
@@ -128,11 +136,13 @@ uint8_t OneWire::read_bit() {
 
 void OneWire::power(bool p)
 {
-    digitalWrite(pin,1);
-    if (p)
-	pinMode(pin,OUTPUT);
-    else
-	pinMode(pin,INPUT);
+    if (p) {
+        *_out |= _bit; // force 1
+        *_reg |= _bit; // output high
+    } else {
+        *_out &= ~_bit; // 0
+        *_reg &= ~_bit; // release
+    }
 }
 
 void OneWire::write(uint8_t v) {
