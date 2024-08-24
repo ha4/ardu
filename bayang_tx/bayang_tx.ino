@@ -95,9 +95,9 @@ void setup()
 void loop()
 {
   uint32_t t=micros();
-
-  if (t-ref_t >= timout) {
-    ref_t = t;
+  t-=ref_t;
+  if (t >= timout) {
+    ref_t += t;
   //readpot(); 
     readtest();
     timout= BAYANG_TX_callback();

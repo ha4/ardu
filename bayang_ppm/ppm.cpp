@@ -27,7 +27,12 @@ void setupPPM() {
 }
 
 //#error This line is here to intentionally cause a compile error. Please make sure you set clockMultiplier below as appropriate, then delete this line.
-#define clockMultiplier 2 // set this to 2 if you are using a 16MHz arduino, leave as 1 for an 8MHz arduino
+// set this to 2 if you are using a 16MHz arduino, leave as 1 for an 8MHz arduino
+#if F_CPU < 16000000L
+#define clockMultiplier 1
+#else
+#define clockMultiplier 2
+#endif
 
 ISR(TIMER1_COMPA_vect){
   static boolean pulse = true;

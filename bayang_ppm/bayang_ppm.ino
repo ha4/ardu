@@ -59,10 +59,11 @@ void setup()
 
 void loop()
 {
+    uint32_t difft;
     uint32_t t=micros();
-
-    if(t-ref_t >= timout) {
-      ref_t = t;
+    difft = t-ref_t;
+    if(difft >= timout) {
+      ref_t += difft;
       timout=BAYANG_RX_callback();
     }
 
@@ -80,16 +81,18 @@ void loop()
     }
 
 #ifdef USE_SBUS
-    if(t-tsbus >= SBUS_HIGHSPEED_PERIOD) { // decimate
-      tsbus=t;
+    difft = t-tsbus;
+    if(difft >= SBUS_HIGHSPEED_PERIOD) { // decimate
+      tsbus+=difft;
       setSBUSValuesFromData();
       sbus_send();
     }
 #endif
 
     // button check & state 5ms scan time
-    if(t-tscan >= 5000) {
-      tscan=t;
+    difft = t-tscan;
+    if(difft >= 5000) {
+      tscan+=difft;
       IO_off;
       scan_button();
       switch(BAYANG_RX_state()) {
