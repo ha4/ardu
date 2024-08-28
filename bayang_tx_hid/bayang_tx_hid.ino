@@ -1,4 +1,4 @@
- #include "usb_gpad.h"
+#include "usb_gpad.h"
 #include "tx_util.h"
 #include "Bayang_nrf24l01.h"
 #include "symax_nrf24l01.h"
@@ -35,29 +35,10 @@ enum { SW_RT=0, SW_LT, SW_RB, SW_LB, // physical
   SWCH_NUM };
 uint8_t swch[SWCH_NUM];
 
-/* test circular motion */
-
-#define TEST_LIM 511
-#define TEST_SCA 128
-#define TEST_SCB 32
-#define TEST_CIRC(s,c,fs,fc,sc) fs=s/sc; fc=c/sc; s=limadd(s,fc); c=limadd(c,-fs)
-
-int  limadd(int a, int b) { a+=b;  return max(-TEST_LIM,min(a,TEST_LIM)); }
-
-int read_test(uint8_t chan)
-{
-    static int sc[] = {0, TEST_LIM, TEST_LIM, 0};
-    int ts,tc;
-    if (chan==0) {
-      TEST_CIRC(sc[0],sc[1],ts,tc,TEST_SCA);
-      TEST_CIRC(sc[2],sc[3],ts,tc,TEST_SCB);
-    }
-    return sc[chan];
-}
 
 /* conversion routines */
 
-void switch_keys(uint16_t k)
+void convert_switch_keys(uint16_t k)
 {
   swch[SW_RT]= (k&KEY_RD)?0:((k&KEY_RU)?2:1); // Right top 3 state
   swch[SW_LT]= (k&KEY_LD)?0:((k&KEY_LU)?2:1); // Left top 3 state
@@ -129,20 +110,30 @@ void bayang_data()
 void symax_data()
 {
   uint8_t b = 0;
-  uint16_t elevt = adc_read(POT_ELEVATOR);
-  uint16_t ailrn = adc_read(POT_AILERON);
-  uint16_t throt = adc_read(POT_THROTTLE);
-  uint16_t rudd  = adc_read(POT_RUDDER);
-
-  txS.aileron=(ailrn-512)/4;
-  txS.elevator=(512-elevt)/4;
-  txS.throttle=(1023-throt)/4-48;
-  txS.rudder=(512-rudd)/4;
+  int16_t  v;
+  uint16_t elevt = adc_read(POT_ELEVATOR); // ^ 184  v 890 #2  .546.
+  uint16_t ailrn = adc_read(POT_AILERON);  // < 916  > 190 #0  .546.
+  uint16_t throt = adc_read(POT_THROTTLE); // ^ 176  v 889 #1  .530.
+  uint16_t rudd  = adc_read(POT_RUDDER);   // < 184  > 940 #3  .545.
+    // roll
+  v = ailrn; v+=v<<1; v>>=3; v=v-192; if(v < -127)v=-127; if(v > 127)v=127;
+  txS.aileron = v;
+    // pitch
+  v = elevt; v+=v<<1; v>>=3; v=192-v; if(v < -127)v=-127; if(v > 127)v=127;
+  txS.elevator = v;
+    // yaw
+  v = rudd; v+=v<<1; v>>=3; v=192-v; if(v < -127)v=-127; if(v > 127)v=127;
+  txS.rudder = v;
+    // throttle
+  v = throt; v+=v<<1; v>>=3; v=341-v; if(v < 0)v=0; if(v > 255)v=255;
+  txS.throttle = v;
   txS.flags5=FLAG5_HIRATE;
+  if (swch[SW_RB]) txS.flags6|=FLAG6_AUTOFLIP; else txS.flags6&=~FLAG6_AUTOFLIP;
+  if (swch[SW_LB]) txS.flags4|=FLAG4_PICTURE; else txS.flags4&=~FLAG4_PICTURE;
 }
 
 
-void comm_usb()
+void connection_usb()
 { /* ###FIXME: not-functional now */
    if(USBSTA&(1<<VBUS)) {
     if(d_flags&dFL_VUSB) return;
@@ -155,7 +146,7 @@ void comm_usb()
    }
 }
 
-bool comm_serial()
+bool conection_serial()
 {
   static bool sertostart = 1;
     if (Serial.dtr()) { // is port open
@@ -232,6 +223,7 @@ void setup()
   txB.option = BAYANG_OPTION_ANALOGAUX;
   BAYANG_TX_data(&txB);
   BAYANG_TX_id(MProtocol_id_master);
+  
   memset(&txS,0,sizeof(txS));
   symax_tx_id(MProtocol_id_master);
   symax_data(&txS);
@@ -251,11 +243,22 @@ void setup()
   prtimer.start(t); prtimer.set(100000L);
 }
 
+uint32_t dt2;
+void dt_print(uint32_t t)
+{
+  uint32_t dt;
+  dt=t-dt2;
+  dt2=t;
+  Serial.print(dt);
+  Serial.println(' ');
+}
+
 void loop()
 {
   uint32_t t = micros();
   uint16_t k_chg=0;
   if (txtimer.check(t)) {
+        //dt_print(t);
         //readtest();
         txproto->data();
         if (txstate==STATE_DOINIT) txproto->init();
@@ -271,20 +274,20 @@ void loop()
 
   if(polltimer.check(t)) {
     kscan_tick();
-    comm_usb();
-    if (adc_to_usb()) send_report();
+    connection_usb();
+//    if (adc_to_usb()) send_report();
 //    if (rpt_test()) send_report();
 
     uint16_t k = kscan_keys();
-    switch_keys(k);
+    convert_switch_keys(k);
     k &= KEY_SYS;
     k_chg=k^v_keys;
     v_keys=k;
+    if (k_chg) menu_key_event(v_keys, k_chg);
   }
 
-  if (k_chg) menu_command(v_keys, k_chg);
 
-  if(prtimer.check(t) &&comm_serial()) {
+  if(prtimer.check(t) && conection_serial()) {
       serial_cmd();
       //serial_print_adc();
       //serial_print_rpt();

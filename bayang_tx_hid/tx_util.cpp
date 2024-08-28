@@ -130,3 +130,23 @@ char *get_protocol()
 {
   return txproto->name;
 }
+
+/* test circular motion */
+
+#define TEST_LIM 511
+#define TEST_SCA 128
+#define TEST_SCB 32
+#define TEST_CIRC(s,c,fs,fc,sc) fs=s/sc; fc=c/sc; s=limadd(s,fc); c=limadd(c,-fs)
+
+int  limadd(int a, int b) { a+=b;  return max(-TEST_LIM,min(a,TEST_LIM)); }
+
+int read_test(uint8_t chan)
+{
+    static int sc[] = {0, TEST_LIM, TEST_LIM, 0};
+    int ts,tc;
+    if (chan==0) {
+      TEST_CIRC(sc[0],sc[1],ts,tc,TEST_SCA);
+      TEST_CIRC(sc[2],sc[3],ts,tc,TEST_SCB);
+    }
+    return sc[chan];
+}

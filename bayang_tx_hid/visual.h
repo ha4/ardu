@@ -15,7 +15,7 @@ extern volatile uint16_t v_keys;
 void v_init();
 void v_update();
 void v_loop();
-void menu_command(uint16_t k, uint16_t ch);
+void menu_key_event(uint16_t k, uint16_t ch);
 
 
 #endif

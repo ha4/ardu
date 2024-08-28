@@ -33,4 +33,9 @@ char *get_protocol(); // current proto name
 char *next_protocol(); // cycle over protocols
 char* saved_proto(uint16_t address, char *new_name); // 8 bytes
 
+/* test & diganostics */
+
+/* test circular motion */
+int read_test(uint8_t chan);
+
 #endif

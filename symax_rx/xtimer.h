@@ -7,8 +7,9 @@ public:
   byte check(uint32_t t) {
     if (wait==0xFFFFFFFF) { t0 = t; return 0; }
     if (wait==0) { t0 = t; return 1; }
-    if (t - t0 < wait)  return 0;
-    t0 = t;
+    t-=t0;
+    if (t < wait)  return 0;
+    t0 += t;
     return 1;
   }
 
@@ -19,5 +20,3 @@ public:
   uint32_t t0;
   uint32_t wait;
 };
-
-

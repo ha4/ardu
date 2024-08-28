@@ -71,7 +71,7 @@ void cmd_m_exit() { d_page=1; }
 
 uint8_t item_key(int i) { return (i<2)?(i==0?KEY_1:KEY_2):(i==2?KEY_3:KEY_4); }
 
-void menu_command(uint16_t k, uint16_t ch)
+void menu_key_event(uint16_t k, uint16_t ch)
 {
   void (**cmdlst)();
 
@@ -111,12 +111,13 @@ void draw_hmenu(char **lst, uint8_t marks)
     if (marks&m) u8g.drawFrame(x,SCREEN_H-MENU1_H,MENU1_W-1,MENU1_H-1);
   }
 }
+
 void draw_menu(char **lst, uint8_t n)
 {
   for(int i = 0; i < MENU_ITEMS; i++) {
     if(lst[i]==NULL) break;
     int x=(i>=4)?MENU2_W-1:0;
-    int y=i%4;
+    int y=(i%4)*MENU1_H;
     u8g.drawStr(x, y+MENU1_H-1, lst[i]);
     if (i==n) u8g.drawFrame(x,y,MENU2_W-1,MENU1_H-1);
   }

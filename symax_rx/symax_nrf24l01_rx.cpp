@@ -245,12 +245,14 @@ uint16_t symax_rx_run()
 
   case SYMAX_BOUND:
         if (!rxFlag()) {  // switch search channels
-            freqHop();
+            DEBUGLN('R');
+            //freqHop();
             if (counter++ > 40) {
+              DEBUGLN('L');
               counter = 0;
               phase = (SYMAX_LOST_BOUND);
             }
-            return PACKET_PERIOD/8;
+            return PACKET_PERIOD/16;
         } 
         counter = 0;
         receive_packet();

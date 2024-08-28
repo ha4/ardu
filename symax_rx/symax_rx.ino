@@ -143,3 +143,10 @@ void loop()
   Serial.println();
 #endif
 }
+
+/*           throttle 255                  elevator 127
+ *              ^                               ^
+ * rudder 127 < O > rudder -127   aileron 127 < O > aileron -127
+ *              V                               V
+ *           throttle 0                    elevator -127
+ */
