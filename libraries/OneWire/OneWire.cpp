@@ -126,10 +126,10 @@ uint8_t OneWire::read_bit() {
     delayMicroseconds(1);
 
     *_reg &= ~_bit; // output release
-    delayMicroseconds(5);          // A "read slot" is when 1mcs > t > 2mcs
+    delayMicroseconds(5);  // A "read slot" is when 1mcs > t > 2mcs
     r = (*_pin & _bit)!=0;
 
-    delayMicroseconds(50);        // whole bit slot is 60-120uS, need to give some time
+    delayMicroseconds(50); // bit slot is 60-120uS, need to give some time
     
     return r;
 }
@@ -196,9 +196,10 @@ uint8_t OneWire::discover(uint8_t *newAddr)
 
 	if (a && _a ) return 0;
 	if (a == _a) {
-                if (i==srchJ) a=1;   // if (i < srchJ) a = ((adr[ptr]&msk) != 0)?1:0;
-	   else if(adr[ptr]&msk) a=1;// else           a = (i==srchJ)?1:0;
-	   else lastZJ = i;          // if (a == 0) lastZJ = i;
+	   // if (i < srchJ) a = ((adr[ptr]&msk) != 0)?1:0;
+           if (i<=srchJ && (adr[ptr]&msk!=0)) a=1;   
+	   else if(i==srchJ) a=1;// else  a = (i==srchJ)?1:0;
+	   else lastZJ = i;    // if (a == 0) lastZJ = i;
 	}
 
 	if(a) adr[ptr] |=  msk;

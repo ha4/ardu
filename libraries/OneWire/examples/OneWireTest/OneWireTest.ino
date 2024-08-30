@@ -20,9 +20,11 @@ void loop(void) {
   byte data[12];
   byte addr[8];
   
+  ds.reset();
   if ( !ds.search(addr)) {
       Serial.print("No more addresses.\n");
-      ds.reset_search();
+      ds.start();
+      delay(1000);
       return;
   }
   
